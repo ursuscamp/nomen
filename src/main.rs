@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+mod hash160;
 mod name;
 
 use std::{borrow::BorrowMut, str::FromStr};
