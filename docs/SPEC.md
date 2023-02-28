@@ -29,3 +29,20 @@ Namespace names's must obey the following limitations:
 * Must NOT begin with underscore character `_`. All names beginning with underscore characters are reserved for protocol use.
 
 During indexing, a client must ignore any transactions where any names violate these rules. For the purposes of the protocol, the invalid transaction may as well not exist. In the case of an initiation transaction, for example, if a namespace root is valid, but a child name is not valid, the entire transaction is invalid, and the namespace root is still considered "free" to be claimed by anyone.
+
+
+#### Index
+
+##### Transaction Types
+
+| Transaction Type | Description            |
+|------------------|------------------------|
+| 0                | Initiation Transaction |
+
+##### Standard Name Types
+
+| Name Type | Description      |
+|-----------|------------------|
+| 4         | IPv4 address     |
+| 6         | IPv6 address     |
+| NPUB      | Nostr public key |

@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+mod name;
+
 use std::{borrow::BorrowMut, str::FromStr};
 
 use bitcoin::{
