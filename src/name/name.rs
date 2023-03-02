@@ -7,7 +7,9 @@ use crate::hash160::Hash160;
 
 use self::util::merkle_root;
 
-#[derive(Debug, PartialEq, Eq)]
+use super::Validator;
+
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct Name {
     pub parent_name: String,
     pub name: String,
@@ -43,6 +45,10 @@ impl Name {
             return [self.name.as_str(), self.parent_name.as_str()].join(".");
         }
         self.name.clone()
+    }
+
+    pub fn validate(&self) -> anyhow::Result<()> {
+        Validator::new(self).validate()
     }
 }
 

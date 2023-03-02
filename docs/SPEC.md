@@ -20,18 +20,26 @@ The null byte `\x00` following `GUN` is a version byte. It's made to indicate wh
 
 The next null byte is a __transaction type__. The transaction type indicates indicates which transaction will follow. Transsaction type `0` indicates a namespace intitiation transaction.
 
-The `NAMESPACE_ID` is a 20-byte hash value of the namespace data. It is created by concatenating the following values: 32-byte secp256k1 public key, 32-byte merkle root for namespace data, and the UTF-8 encoded __namespace root__, or what we would typically think of a top-level name. Then the value is run through the HASH160 algorithm like so: `RIPEMD160(SHA256(PUBKEY MERKLE_ROOT NAMESPACE_ROOT))`. The 20-byte value produced by this function is the `NAMESPACE_ID`, which uniquely identifies a root name.
+The `NAMESPACE_ID` is a 20-byte hash value of the namespace data. It is created by concatenating the following values: 32-byte secp256k1 public key, 32-byte merkle root for namespace data, and the UTF-8 encoded __fully qualified name__. Then the value is run through the HASH160 algorithm like so: `RIPEMD160(SHA256(PUBKEY MERKLE_ROOT? FULLY_QUALIFIED_NAME))`. The 20-byte value produced by this function is the `NAMESPACE_ID`, which uniquely identifies a root name.
+
+If a namespace has no children, the merkle root should be skipped.
+
+The fully qualified name is a complete name, from parent's name all the way to a child. So if the top-level namespace `com` has child `amazon` which in turn has a child `www` then the fully qualified name is `www.amazon.com`.
 
 Namespace names's must obey the following limitations:
 
-* Must be 256 bytes or less (restriction may be lifted in later versions).
-* Must be valid UTF-8 strings.
-* Must NOT begin with underscore character `_`. All names beginning with underscore characters are reserved for protocol use.
+* Must be 256 bytes or less when fully qualified (restriction may be lifted in later versions).
+* Must be match the following regular expression: `[a-z][a-z0-9\-_]*` (restrictions may be lifted in later versions).
+* Must NOT begin with underscore character `_`. All names beginning with underscore characters are reserved for protocol use. Even when character restrictions are lifted, `_` will always be reserved.
 
 During indexing, a client must ignore any transactions where any names violate these rules. For the purposes of the protocol, the invalid transaction may as well not exist. In the case of an initiation transaction, for example, if a namespace root is valid, but a child name is not valid, the entire transaction is invalid, and the namespace root is still considered "free" to be claimed by anyone.
 
 
 #### Index
+
+##### Merkle Roots
+
+Each domain makes up a namespace of child namespaces, potentially infinitely. Each commitment to the blockchain has a namespace ID (`nsid`), as mentioned above. Part of the __NSID__ is a merkle root who's tree consists of the child namespaces __NSIDs__. The merkle root is calculated by doing a HASH160 on a __NSID__ and it's neighbor. If there are an odd number of names, then the last one is hashed with itself. When there is only one hash remaining, this is the merkle root.
 
 ##### Transaction Types
 
