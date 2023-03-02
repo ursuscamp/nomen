@@ -16,6 +16,13 @@ impl Hash160 {
         self
     }
 
+    pub fn chain_optional(mut self, data: &Option<&[u8]>) -> Hash160 {
+        if let Some(data) = data {
+            self.update(*data);
+        }
+        self
+    }
+
     pub fn finalize(self) -> [u8; 20] {
         let f = self.hasher.finalize();
         Ripemd160::digest(f)
