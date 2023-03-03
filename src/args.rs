@@ -5,7 +5,7 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
-pub struct Args {
+pub struct Cli {
     /// Location of config file
     #[arg(short, long, default_value = ".gun.toml")]
     #[serde(skip)]
@@ -35,9 +35,9 @@ pub struct Args {
     #[arg(long, default_value = "bitcoin")]
     pub network: Option<Network>,
 }
-impl Args {
-    pub fn merge(&self, config: &Args) -> Args {
-        Args {
+impl Cli {
+    pub fn merge(&self, config: &Cli) -> Cli {
+        Cli {
             config: config.config.clone().or(self.config.clone()),
             cookie: config.cookie.clone().or(self.cookie.clone()),
             rpcuser: config.rpcuser.clone().or(self.rpcuser.clone()),

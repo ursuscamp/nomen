@@ -6,7 +6,7 @@ mod name;
 
 use std::{borrow::BorrowMut, str::FromStr};
 
-use args::Args;
+use args::Cli;
 use bitcoin::{
     blockdata::{
         opcodes::{
@@ -24,19 +24,19 @@ use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let mut args = Args::parse();
+    let mut cli = Cli::parse();
 
-    if let Some(config) = &args.config {
+    if let Some(config) = &cli.config {
         if config.is_file() {
             let config = std::fs::read_to_string(config)?;
-            let config: Args = toml::from_str(&config)?;
-            args = config.merge(&args);
+            let config: Cli = toml::from_str(&config)?;
+            cli = config.merge(&cli);
         } else {
             log::info!("Config file not found. Skipping.");
         }
     }
 
-    log::debug!("Config loaded: {args:?}");
+    log::debug!("Config loaded: {cli:?}");
 
     Ok(())
 }
