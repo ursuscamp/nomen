@@ -1,0 +1,4 @@
+rpcuser="regtest"
+rpcpass="regtest"
+rpchost="localhost"
+rpcport=18443
