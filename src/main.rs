@@ -22,8 +22,6 @@ use bitcoin::{
 use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
 
-static AUTH: &'static str = include_str!("../.auth");
-
 fn main() -> anyhow::Result<()> {
     let mut args = Args::parse();
 
@@ -36,11 +34,4 @@ fn main() -> anyhow::Result<()> {
     println!("{args:#?}");
 
     Ok(())
-}
-
-fn auth() -> (&'static str, Auth) {
-    let mut lines = AUTH.lines();
-    let ip = lines.next().unwrap();
-    let auth = Auth::UserPass(lines.next().unwrap().into(), lines.next().unwrap().into());
-    (ip, auth)
 }
