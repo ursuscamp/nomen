@@ -1,12 +1,11 @@
 #![allow(unused)]
 
-mod args;
+mod config;
 mod hash160;
 mod name;
 
 use std::{borrow::BorrowMut, str::FromStr};
 
-use args::Cli;
 use bitcoin::{
     blockdata::{
         opcodes::{
@@ -21,22 +20,27 @@ use bitcoin::{
 };
 use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
+use config::Config;
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let mut cli = Cli::parse();
+    let mut cli = Config::parse();
 
     if let Some(config) = &cli.config {
         if config.is_file() {
             let config = std::fs::read_to_string(config)?;
-            let config: Cli = toml::from_str(&config)?;
-            cli = config.merge(&cli);
+            let config: Config = toml::from_str(&config)?;
+            cli = cli.merge_config_file(&config);
         } else {
             log::info!("Config file not found. Skipping.");
         }
     }
 
     log::debug!("Config loaded: {cli:?}");
+
+    let client = cli.rpc_client()?;
+    let blockinfo = client.get_blockchain_info()?;
+    log::debug!("{blockinfo:?}");
 
     Ok(())
 }
