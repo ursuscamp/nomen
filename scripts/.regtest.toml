@@ -2,3 +2,4 @@ rpcuser="regtest"
 rpcpass="regtest"
 rpchost="localhost"
 rpcport=18443
+network="regtest"

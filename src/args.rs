@@ -43,8 +43,8 @@ impl Args {
             rpcuser: config.rpcuser.clone().or(self.rpcuser.clone()),
             rpcpass: config.rpcpass.clone().or(self.rpcpass.clone()),
             rpchost: config.rpchost.clone().or(self.rpchost.clone()),
-            rpcport: config.rpcport.or(self.rpcport),
-            network: config.network.or(self.network),
+            rpcport: config.rpcport.or(self.rpcport).or(Some(8443)),
+            network: config.network.or(self.network).or(Some(Network::Bitcoin)),
         }
     }
 }
