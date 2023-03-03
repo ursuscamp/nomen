@@ -26,9 +26,11 @@ fn main() -> anyhow::Result<()> {
     let mut args = Args::parse();
 
     if let Some(config) = &args.config {
-        let config = std::fs::read_to_string(config)?;
-        let config: Args = toml::from_str(&config)?;
-        args = config.merge(&args);
+        if config.is_file() {
+            let config = std::fs::read_to_string(config)?;
+            let config: Args = toml::from_str(&config)?;
+            args = config.merge(&args);
+        }
     }
 
     println!("{args:#?}");

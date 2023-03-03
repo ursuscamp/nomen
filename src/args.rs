@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Parser, Serialize, Deserialize, Debug)]
 pub struct Args {
     /// Location of config file
-    #[arg(short, long)]
+    #[arg(short, long, default_value = ".gun.toml")]
     #[serde(skip)]
     pub config: Option<PathBuf>,
 
@@ -28,11 +28,11 @@ pub struct Args {
     pub rpchost: Option<String>,
 
     /// RPC port number
-    #[arg(long)]
+    #[arg(long, default_value = "8332")]
     pub rpcport: Option<u16>,
 
     /// Bitcoin network
-    #[arg(long)]
+    #[arg(long, default_value = "bitcoin")]
     pub network: Option<Network>,
 }
 impl Args {

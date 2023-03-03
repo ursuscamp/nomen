@@ -2,3 +2,4 @@
 cookie
 .auth*
 .bitcoin
+.gun.toml
