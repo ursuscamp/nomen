@@ -23,6 +23,7 @@ use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
+    env_logger::init();
     let mut args = Args::parse();
 
     if let Some(config) = &args.config {
@@ -30,10 +31,12 @@ fn main() -> anyhow::Result<()> {
             let config = std::fs::read_to_string(config)?;
             let config: Args = toml::from_str(&config)?;
             args = config.merge(&args);
+        } else {
+            log::info!("Config file not found. Skipping.");
         }
     }
 
-    println!("{args:#?}");
+    log::debug!("Config loaded: {args:?}");
 
     Ok(())
 }
