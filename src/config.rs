@@ -87,6 +87,7 @@ impl Config {
 
 #[derive(clap::Subcommand, Deserialize, Serialize, Debug, Clone)]
 pub enum Subcommand {
+    #[command(skip)]
     Noop,
     /// Create a transaction to publish a new name to the blockchain.
     NewNameTx {
