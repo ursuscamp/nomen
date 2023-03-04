@@ -98,6 +98,10 @@ pub enum Subcommand {
 
         /// Output address for the coins
         address: String,
+
+        /// Fee rate to use for spend (in sats/vB)
+        #[arg(long, default_value = "3")]
+        fee_rate: usize,
     },
 }
 

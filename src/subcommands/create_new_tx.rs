@@ -9,13 +9,12 @@ use yansi::Paint;
 
 use crate::config::Config;
 
-static FEE_SIZE: usize = 3;
-
 pub fn create_new_tx(
     config: &Config,
     name: &String,
     input: &String,
     address: &String,
+    fee_rate: &usize,
 ) -> anyhow::Result<()> {
     let mut input = input.split(':');
     let txid: Txid = input.next().ok_or(anyhow!("Invalid input"))?.parse()?;
@@ -52,7 +51,7 @@ pub fn create_new_tx(
         output: vec![new_txout, op_out],
     };
 
-    let fee = (new_tx.vsize() * FEE_SIZE) as u64;
+    let fee = (new_tx.vsize() * fee_rate) as u64;
     log::debug!("Estimated fee: {fee}");
     new_tx.output[0].value -= fee;
 

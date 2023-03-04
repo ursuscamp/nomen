@@ -45,8 +45,9 @@ fn main() -> anyhow::Result<()> {
             name,
             input,
             address,
+            fee_rate,
         } => {
-            subcommands::create_new_tx(&cli, name, input, address);
+            subcommands::create_new_tx(&cli, name, input, address, fee_rate);
         }
     }
 
