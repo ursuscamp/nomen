@@ -3,6 +3,7 @@
 mod config;
 mod hash160;
 mod name;
+mod subcommands;
 
 use std::{borrow::BorrowMut, str::FromStr};
 
@@ -38,9 +39,16 @@ fn main() -> anyhow::Result<()> {
 
     log::debug!("Config loaded: {cli:?}");
 
-    let client = cli.rpc_client()?;
-    let blockinfo = client.get_blockchain_info()?;
-    log::debug!("{blockinfo:?}");
+    match &cli.subcommand {
+        config::Subcommand::Noop => {}
+        config::Subcommand::NewNameTx {
+            name,
+            input,
+            address,
+        } => {
+            subcommands::create_new_tx(&cli, name, input, address);
+        }
+    }
 
     Ok(())
 }

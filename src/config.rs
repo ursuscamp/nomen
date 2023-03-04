@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{ops::Sub, path::PathBuf};
 
 use anyhow::anyhow;
 use bitcoin::Network;
@@ -36,6 +36,10 @@ pub struct Config {
     /// Bitcoin network
     #[arg(long)]
     pub network: Option<Network>,
+
+    #[serde(skip)]
+    #[command(subcommand)]
+    pub subcommand: Subcommand,
 }
 
 impl Config {
@@ -59,6 +63,7 @@ impl Config {
                 .network
                 .or(self.network)
                 .or(Some(Network::Bitcoin)),
+            subcommand: self.subcommand.clone(),
         }
     }
 
@@ -77,5 +82,27 @@ impl Config {
             bitcoincore_rpc::Auth::None
         };
         Ok(bitcoincore_rpc::Client::new(&url, auth)?)
+    }
+}
+
+#[derive(clap::Subcommand, Deserialize, Serialize, Debug, Clone)]
+pub enum Subcommand {
+    Noop,
+    /// Create a transaction to publish a new name to the blockchain.
+    NewNameTx {
+        /// The top-level name to publish to the blockchain
+        name: String,
+
+        /// The input to use, in the form of "txid:vout"
+        input: String,
+
+        /// Output address for the coins
+        address: String,
+    },
+}
+
+impl Default for Subcommand {
+    fn default() -> Self {
+        Subcommand::Noop
     }
 }
