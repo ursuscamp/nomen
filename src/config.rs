@@ -89,6 +89,10 @@ impl Config {
 pub enum Subcommand {
     #[command(skip)]
     Noop,
+
+    /// Generate a private/public keypair.
+    GenerateKeypair,
+
     /// Create a transaction to publish a new name to the blockchain.
     NewNameTx {
         /// The top-level name to publish to the blockchain
@@ -99,6 +103,9 @@ pub enum Subcommand {
 
         /// Output address for the coins
         address: String,
+
+        /// Pubkey for name to register (in hex)
+        pubkey: String,
 
         /// Fee rate to use for spend (in sats/vB)
         #[arg(long, default_value = "3")]

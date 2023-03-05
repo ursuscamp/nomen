@@ -2,20 +2,35 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use bitcoin::{
-    Address, OutPoint, PackedLockTime, Script, Sequence, Transaction, TxIn, TxOut, Txid, Witness,
+    hashes::hex::ToHex, Address, OutPoint, PackedLockTime, Script, Sequence, Transaction, TxIn,
+    TxOut, Txid, Witness,
 };
 use bitcoincore_rpc::{RawTx, RpcApi};
 use yansi::Paint;
 
-use crate::config::Config;
+use crate::{
+    config::Config,
+    name::{self, Name},
+};
 
 pub fn create_new_tx(
     config: &Config,
     name: &String,
     input: &String,
     address: &String,
+    pubkey: &String,
     fee_rate: &usize,
 ) -> anyhow::Result<()> {
+    let mut pkbin = [0; 32];
+    hex::decode_to_slice(&pubkey, &mut pkbin)?;
+    let name = Name {
+        parent_name: String::new(),
+        name: name.clone(),
+        pubkey: pkbin,
+        names: vec![],
+    };
+    name::Validator::new(&name).validate()?;
+
     let mut input = input.split(':');
     let txid: Txid = input.next().ok_or(anyhow!("Invalid input"))?.parse()?;
     let vout: usize = input.next().ok_or(anyhow!("Invalid input"))?.parse()?;
@@ -38,7 +53,11 @@ pub fn create_new_tx(
         script_pubkey: address.script_pubkey(),
     };
 
-    let op_return = Script::new_op_return(format!("gun\x00\x00{name}").as_bytes());
+    let mut op_return = format!("gun\x00\x00").as_bytes().to_vec();
+    let namespace_id = name.namespace_id();
+    log::debug!("Namespace id for {}: {}", name.name, namespace_id.to_hex());
+    op_return.extend(name.namespace_id());
+    let op_return = Script::new_op_return(&op_return);
     let op_out = TxOut {
         value: 0,
         script_pubkey: op_return,

@@ -18,7 +18,7 @@ pub struct Name {
 }
 
 impl Name {
-    fn namespace_id(&self) -> [u8; 20] {
+    pub fn namespace_id(&self) -> [u8; 20] {
         let mr = self.merkle_root();
         let slice = mr.iter().map(|d| d.as_slice()).next();
         Hash160::default()

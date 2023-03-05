@@ -45,10 +45,12 @@ fn main() -> anyhow::Result<()> {
             name,
             input,
             address,
+            pubkey,
             fee_rate,
         } => {
-            subcommands::create_new_tx(&cli, name, input, address, fee_rate);
+            subcommands::create_new_tx(&cli, name, input, address, pubkey, fee_rate)?;
         }
+        config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
     }
 
     Ok(())
