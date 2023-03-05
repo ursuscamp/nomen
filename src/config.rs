@@ -111,6 +111,9 @@ pub enum Subcommand {
         #[arg(long, default_value = "3")]
         fee_rate: usize,
     },
+
+    /// Scan and index the blockchain.
+    Index,
 }
 
 impl Default for Subcommand {

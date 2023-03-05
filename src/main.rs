@@ -51,6 +51,7 @@ fn main() -> anyhow::Result<()> {
             subcommands::create_new_tx(&cli, name, input, address, pubkey, fee_rate)?;
         }
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
+        config::Subcommand::Index => subcommands::index_blockchain(&cli)?,
     }
 
     Ok(())
