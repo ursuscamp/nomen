@@ -37,6 +37,11 @@ pub struct Config {
     #[arg(long)]
     pub network: Option<Network>,
 
+    /// Nostr relays for commands that interact with relays.
+    /// Can be specified multiple times.
+    #[arg(long, short, action = clap::ArgAction::Append)]
+    pub relay: Option<Vec<String>>,
+
     #[serde(skip)]
     #[command(subcommand)]
     pub subcommand: Subcommand,
@@ -63,6 +68,16 @@ impl Config {
                 .network
                 .or(self.network)
                 .or(Some(Network::Bitcoin)),
+            relay: self
+                .relay
+                .clone()
+                .or(config_file.relay.clone())
+                .or_else(|| {
+                    Some(vec![
+                        "wss://relay.damus.io".to_string(),
+                        "wss://relay.snort.social".to_string(),
+                    ])
+                }),
             subcommand: self.subcommand.clone(),
         }
     }

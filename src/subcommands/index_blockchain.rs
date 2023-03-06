@@ -21,9 +21,12 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
             for output in tx.output {
                 if output.script_pubkey.is_op_return() {
                     let b = &output.script_pubkey.as_bytes()[2..];
-                    if b.starts_with(b"gun\x00\x00") {
-                        let b = &b[5..];
-                        log::info!("GUN output found: {}", b.to_hex());
+                    if b.starts_with(b"gun") {
+                        let b = &b[3..];
+                        match parse_gun_output(&b) {
+                            Ok(b) => log::info!("GUN output found: {}", b.to_hex()),
+                            Err(e) => log::error!("Index error: {e}"),
+                        }
                     }
                 }
             }
@@ -43,11 +46,20 @@ fn log_height(height: u64) {
     }
 }
 
-pub fn starting_blockheight(network: Network) -> anyhow::Result<u64> {
+fn starting_blockheight(network: Network) -> anyhow::Result<u64> {
     match network {
         Network::Bitcoin => Err(anyhow!("Unsupported network {}", network)),
         Network::Testnet => Err(anyhow!("Unsupported network {}", network)),
         Network::Signet => Err(anyhow!("Unsupported network {}", network)),
         Network::Regtest => Ok(1),
+    }
+}
+
+fn parse_gun_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
+    let mut b = byte.into_iter();
+    let (gun_ver, gun_type) = (b.next(), b.next());
+    match (gun_ver, gun_type) {
+        (Some(&0), Some(&0)) => Ok(b.copied().collect()),
+        _ => Err(anyhow!("Invalid GUN code")),
     }
 }
