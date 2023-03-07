@@ -2,4 +2,4 @@
 cookie
 .auth*
 .bitcoin
-.gun.toml
+.indigo.toml

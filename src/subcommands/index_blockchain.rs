@@ -21,10 +21,10 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
             for output in tx.output {
                 if output.script_pubkey.is_op_return() {
                     let b = &output.script_pubkey.as_bytes()[2..];
-                    if b.starts_with(b"gun") {
+                    if b.starts_with(b"ind") {
                         let b = &b[3..];
-                        match parse_gun_output(&b) {
-                            Ok(b) => log::info!("GUN output found: {}", b.to_hex()),
+                        match parse_ind_output(&b) {
+                            Ok(b) => log::info!("IND output found: {}", b.to_hex()),
                             Err(e) => log::error!("Index error: {e}"),
                         }
                     }
@@ -55,11 +55,11 @@ fn starting_blockheight(network: Network) -> anyhow::Result<u64> {
     }
 }
 
-fn parse_gun_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
+fn parse_ind_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
     let mut b = byte.into_iter();
-    let (gun_ver, gun_type) = (b.next(), b.next());
-    match (gun_ver, gun_type) {
+    let (ind_ver, ind_type) = (b.next(), b.next());
+    match (ind_ver, ind_type) {
         (Some(&0), Some(&0)) => Ok(b.copied().collect()),
-        _ => Err(anyhow!("Invalid GUN code")),
+        _ => Err(anyhow!("Invalid ind code")),
     }
 }

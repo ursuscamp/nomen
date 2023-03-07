@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Parser, Serialize, Deserialize, Debug)]
 pub struct Config {
     /// Location of config file
-    #[arg(short, long, default_value = ".gun.toml")]
+    #[arg(short, long, default_value = ".indigo.toml")]
     #[serde(skip)]
     pub config: Option<PathBuf>,
 

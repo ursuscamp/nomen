@@ -99,7 +99,7 @@ fn calculate_fee(new_tx: &Transaction, fee_rate: &usize) -> u64 {
 }
 
 fn op_return_output(name: Name) -> TxOut {
-    let mut op_return = format!("gun\x00\x00").as_bytes().to_vec();
+    let mut op_return = format!("ind\x00\x00").as_bytes().to_vec();
     let namespace_id = name.namespace_id();
     log::debug!("Namespace id for {}: {}", name.name, namespace_id.to_hex());
     op_return.extend(name.namespace_id());

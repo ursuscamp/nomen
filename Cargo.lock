@@ -316,31 +316,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gun"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bitcoin",
- "bitcoincore-rpc",
- "clap",
- "env_logger",
- "futures-util",
- "hex",
- "log",
- "rand",
- "regex",
- "ripemd",
- "secp256k1 0.26.0",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tokio-tungstenite",
- "toml",
- "yansi",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -414,6 +389,31 @@ checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg",
  "hashbrown",
+]
+
+[[package]]
+name = "indigo"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitcoin",
+ "bitcoincore-rpc",
+ "clap",
+ "env_logger",
+ "futures-util",
+ "hex",
+ "log",
+ "rand",
+ "regex",
+ "ripemd",
+ "secp256k1 0.26.0",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-tungstenite",
+ "toml",
+ "yansi",
 ]
 
 [[package]]
