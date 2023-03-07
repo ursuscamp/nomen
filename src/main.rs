@@ -3,6 +3,7 @@
 mod config;
 mod hash160;
 mod name;
+mod nostr;
 mod subcommands;
 
 use std::{borrow::BorrowMut, str::FromStr};
@@ -51,6 +52,10 @@ fn main() -> anyhow::Result<()> {
             subcommands::create_new_tx(&cli, name, input, address, pubkey, fee_rate)?;
         }
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
+        config::Subcommand::BroadcastNewName {
+            namespace_id,
+            privkey,
+        } => subcommands::broadcast_new_name(&cli, namespace_id, privkey)?,
         config::Subcommand::Index => subcommands::index_blockchain(&cli)?,
     }
 

@@ -127,6 +127,15 @@ pub enum Subcommand {
         fee_rate: usize,
     },
 
+    /// Broadcast event for new name to Nostr relays.
+    BroadcastNewName {
+        /// The namespace ID for the name to broadcast.
+        namespace_id: String,
+
+        /// The private key used to the sign the nostr event. Must be the same private key that belongs to the public key used to create the name.
+        privkey: String,
+    },
+
     /// Scan and index the blockchain.
     Index,
 }
