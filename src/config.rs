@@ -111,26 +111,10 @@ pub enum Subcommand {
     /// Generate a private/public keypair.
     GenerateKeypair,
 
-    /// Create a transaction to publish a new name to the blockchain.
-    NewNameTx {
-        /// Path to a document describing the name to create.
-        /// Use `indigo example create` to output an example document.
-        document: PathBuf,
-    },
-
-    /// Output example documents
+    /// Create and broadcast new names.
     #[command(subcommand)]
     #[serde(skip)]
-    Example(ExampleSubcommand),
-
-    /// Broadcast event for new name to Nostr relays.
-    BroadcastNewName {
-        /// The namespace ID for the name to broadcast.
-        namespace_id: String,
-
-        /// The private key used to the sign the nostr event. Must be the same private key that belongs to the public key used to create the name.
-        privkey: String,
-    },
+    New(NewSubcommand),
 
     /// Scan and index the blockchain.
     Index,
@@ -142,7 +126,26 @@ impl Default for Subcommand {
     }
 }
 
+// #[derive(clap::Subcommand, Debug, Clone)]
+// pub enum ExampleSubcommand {
+//     Create,
+// }
+
 #[derive(clap::Subcommand, Debug, Clone)]
-pub enum ExampleSubcommand {
-    Create,
+pub enum NewSubcommand {
+    /// Create a new, unsigned transaction using a simple input document.
+    /// Use `indigo new example` to create a sample document.
+    Tx { document: PathBuf },
+
+    /// Broadcast the new name transaction to Nostr relays.
+    Broadcast {
+        /// The namespace ID for the name to broadcast.
+        namespace_id: String,
+
+        /// The private key used to the sign the nostr event. Must be the same private key that belongs to the public key used to create the name.
+        privkey: String,
+    },
+
+    /// Print an example document for new names.
+    Example,
 }

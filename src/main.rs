@@ -43,17 +43,15 @@ fn main() -> anyhow::Result<()> {
 
     match &cli.subcommand {
         config::Subcommand::Noop => {}
-        config::Subcommand::NewNameTx { document } => {
-            subcommands::create_new_tx(&cli, document)?;
-        }
-        config::Subcommand::Example(example) => match example {
-            config::ExampleSubcommand::Create => subcommands::example_create()?,
-        },
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
-        config::Subcommand::BroadcastNewName {
-            namespace_id,
-            privkey,
-        } => subcommands::broadcast_new_name(&cli, namespace_id, privkey)?,
+        config::Subcommand::New(new) => match new {
+            config::NewSubcommand::Tx { document } => subcommands::create_new_tx(&cli, document)?,
+            config::NewSubcommand::Broadcast {
+                namespace_id,
+                privkey,
+            } => subcommands::broadcast_new_name(&cli, namespace_id, privkey)?,
+            config::NewSubcommand::Example => subcommands::example_create()?,
+        },
         config::Subcommand::Index => subcommands::index_blockchain(&cli)?,
     }
 
