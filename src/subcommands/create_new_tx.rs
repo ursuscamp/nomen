@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 use anyhow::anyhow;
 use bitcoin::{
@@ -6,24 +6,33 @@ use bitcoin::{
     TxOut, Txid, Witness,
 };
 use bitcoincore_rpc::{RawTx, RpcApi};
+use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
 use crate::{
     config::Config,
+    documents::{self, ExampleDocument},
     name::{self, Name},
 };
 
-pub fn create_new_tx(
-    config: &Config,
-    name: &String,
-    input: &String,
-    address: &String,
-    pubkey: &String,
-    fee_rate: &usize,
-) -> anyhow::Result<()> {
-    let name = get_valid_name(pubkey, name)?;
+pub fn example_create() -> anyhow::Result<()> {
+    let doc = documents::Create::create_example();
+    let doc = serde_json::to_string_pretty(&doc)?;
+    println!("{doc}");
+    Ok(())
+}
 
-    let (txid, vout, address) = coerce_inputs(input, address)?;
+/// (FQDN, Pubkey, Sub-Children)
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+struct ChildName((String, String, Vec<ChildName>));
+
+pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> {
+    let document: documents::Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
+
+    let name = get_valid_name(&document.pubkey, &document.name)?;
+
+    let (txid, vout, address) = coerce_inputs(&document.txid, document.vout, &document.address)?;
 
     let (txin, new_txout) = input_and_new_output(config, txid, vout, address)?;
 
@@ -31,7 +40,7 @@ pub fn create_new_tx(
 
     let mut new_tx = create_transaction(txin, new_txout, op_out);
 
-    let fee = calculate_fee(&new_tx, fee_rate);
+    let fee = calculate_fee(&new_tx, &document.fee_rate);
     new_tx.output[0].value -= fee; // Adjust transaction for estimated fee
 
     println!(
@@ -55,14 +64,13 @@ fn create_transaction(txin: TxIn, new_txout: TxOut, op_out: TxOut) -> Transactio
 }
 
 fn coerce_inputs(
-    input: &String,
+    txid: &String,
+    vout: u64,
     address: &String,
 ) -> Result<(Txid, usize, Address), anyhow::Error> {
-    let mut input = input.split(':');
-    let txid: Txid = input.next().ok_or(anyhow!("Invalid input"))?.parse()?;
-    let vout: usize = input.next().ok_or(anyhow!("Invalid input"))?.parse()?;
+    let txid: Txid = txid.parse()?;
     let address = Address::from_str(&address)?;
-    Ok((txid, vout, address))
+    Ok((txid, vout as usize, address))
 }
 
 fn input_and_new_output(

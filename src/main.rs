@@ -1,12 +1,13 @@
 #![allow(unused)]
 
 mod config;
+mod documents;
 mod hash160;
 mod name;
 mod nostr;
 mod subcommands;
 
-use std::{borrow::BorrowMut, str::FromStr};
+use std::{borrow::BorrowMut, path::PathBuf, str::FromStr};
 
 use bitcoin::{
     blockdata::{
@@ -42,15 +43,12 @@ fn main() -> anyhow::Result<()> {
 
     match &cli.subcommand {
         config::Subcommand::Noop => {}
-        config::Subcommand::NewNameTx {
-            name,
-            input,
-            address,
-            pubkey,
-            fee_rate,
-        } => {
-            subcommands::create_new_tx(&cli, name, input, address, pubkey, fee_rate)?;
+        config::Subcommand::NewNameTx { document } => {
+            subcommands::create_new_tx(&cli, document)?;
         }
+        config::Subcommand::Example(example) => match example {
+            config::ExampleSubcommand::Create => subcommands::example_create()?,
+        },
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::BroadcastNewName {
             namespace_id,

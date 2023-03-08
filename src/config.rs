@@ -1,4 +1,7 @@
-use std::{ops::Sub, path::PathBuf};
+use std::{
+    ops::Sub,
+    path::{Path, PathBuf},
+};
 
 use anyhow::anyhow;
 use bitcoin::Network;
@@ -110,22 +113,15 @@ pub enum Subcommand {
 
     /// Create a transaction to publish a new name to the blockchain.
     NewNameTx {
-        /// The top-level name to publish to the blockchain
-        name: String,
-
-        /// The input to use, in the form of "txid:vout"
-        input: String,
-
-        /// Output address for the coins
-        address: String,
-
-        /// Pubkey for name to register (in hex)
-        pubkey: String,
-
-        /// Fee rate to use for spend (in sats/vB)
-        #[arg(long, default_value = "3")]
-        fee_rate: usize,
+        /// Path to a document describing the name to create.
+        /// Use `indigo example create` to output an example document.
+        document: PathBuf,
     },
+
+    /// Output example documents
+    #[command(subcommand)]
+    #[serde(skip)]
+    Example(ExampleSubcommand),
 
     /// Broadcast event for new name to Nostr relays.
     BroadcastNewName {
@@ -144,4 +140,9 @@ impl Default for Subcommand {
     fn default() -> Self {
         Subcommand::Noop
     }
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum ExampleSubcommand {
+    Create,
 }

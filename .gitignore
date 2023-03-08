@@ -3,3 +3,4 @@ cookie
 .auth*
 .bitcoin
 .indigo.toml
+create.json
