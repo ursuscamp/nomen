@@ -122,7 +122,9 @@ pub enum Subcommand {
     New(NewSubcommand),
 
     /// Scan and index the blockchain.
-    Index,
+    #[command(subcommand)]
+    #[serde(skip)]
+    Index(IndexSubcommand),
 
     /// Useful debugging commands
     #[command(subcommand)]
@@ -135,11 +137,6 @@ impl Default for Subcommand {
         Subcommand::Noop
     }
 }
-
-// #[derive(clap::Subcommand, Debug, Clone)]
-// pub enum ExampleSubcommand {
-//     Create,
-// }
 
 #[derive(clap::Subcommand, Debug, Clone)]
 pub enum NewSubcommand {
@@ -163,4 +160,13 @@ pub enum NewSubcommand {
 #[derive(clap::Subcommand, Debug, Clone)]
 pub enum DebugSubcommand {
     ListNamespaces,
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum IndexSubcommand {
+    /// Index the blockchain and look for new namespaces.
+    Blockchain,
+
+    /// Query relays for missing namespace events.
+    Relays,
 }

@@ -28,7 +28,7 @@ impl Event {
                 .expect("unable to calculated system time")
                 .as_secs(),
             tags: vec![vec!["d".to_string(), namespace_id.to_string()]],
-            content: String::new(),
+            content: "[]".into(),
             ..Default::default()
         }
     }

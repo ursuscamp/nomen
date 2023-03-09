@@ -55,7 +55,10 @@ fn main() -> anyhow::Result<()> {
             } => subcommands::broadcast_new_name(&cli, namespace_id, privkey)?,
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
-        config::Subcommand::Index => subcommands::index_blockchain(&cli)?,
+        config::Subcommand::Index(index) => match index {
+            config::IndexSubcommand::Blockchain => subcommands::index_blockchain(&cli)?,
+            config::IndexSubcommand::Relays => subcommands::index_relays(&cli)?,
+        },
         config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,
     }
 

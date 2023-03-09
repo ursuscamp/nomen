@@ -1,8 +1,9 @@
 use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
+use tokio_tungstenite::tungstenite::connect;
 
-use crate::{config::Config, db};
+use crate::{config::Config, db, nostr::Event};
 
 pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
     let mut height = starting_blockheight(config.network.unwrap())?;

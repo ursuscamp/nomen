@@ -28,15 +28,15 @@ pub fn namespaces() -> anyhow::Result<sled::Tree> {
 
 #[derive(Encode, Decode, Default)]
 pub struct Namespace {
-    status: IndexStatus,
-    name: String,
-    nsid: Vec<u8>,
-    prev_nsid: Option<Vec<u8>>,
-    blockhash: Vec<u8>,
-    txid: Vec<u8>,
-    vout: usize,
-    pubkey: Vec<u8>,
-    children: Vec<Vec<u8>>,
+    pub status: IndexStatus,
+    pub name: String,
+    pub nsid: Vec<u8>,
+    pub prev_nsid: Option<Vec<u8>>,
+    pub blockhash: Vec<u8>,
+    pub txid: Vec<u8>,
+    pub vout: usize,
+    pub pubkey: Vec<u8>,
+    pub children: Vec<Vec<u8>>,
 }
 
 impl Namespace {
@@ -85,7 +85,7 @@ impl std::fmt::Debug for Namespace {
     }
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, PartialEq, Eq)]
 pub enum IndexStatus {
     /// Detected on blockchain, not verified.
     Detected,
