@@ -16,6 +16,10 @@ pub struct Config {
     #[serde(skip)]
     pub config: Option<PathBuf>,
 
+    /// Path for index data.
+    #[arg(short, long, default_value = ".indigo-data")]
+    pub data: Option<PathBuf>,
+
     /// Location to Bitcoin Core cookie file.
     #[arg(long)]
     pub cookie: Option<PathBuf>,
@@ -54,6 +58,7 @@ impl Config {
     pub fn merge_config_file(&self, config_file: &Config) -> Config {
         Config {
             config: self.config.clone(),
+            data: self.data.clone(),
             cookie: self.cookie.clone().or(config_file.cookie.clone()),
             rpcuser: self.rpcuser.clone().or(config_file.rpcuser.clone()),
             rpcpass: self.rpcpass.clone().or(config_file.rpcpass.clone()),
@@ -118,6 +123,11 @@ pub enum Subcommand {
 
     /// Scan and index the blockchain.
     Index,
+
+    /// Useful debugging commands
+    #[command(subcommand)]
+    #[serde(skip)]
+    Debug(DebugSubcommand),
 }
 
 impl Default for Subcommand {
@@ -148,4 +158,9 @@ pub enum NewSubcommand {
 
     /// Print an example document for new names.
     Example,
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum DebugSubcommand {
+    ListNamespaces,
 }

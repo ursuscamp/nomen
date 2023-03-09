@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use bitcoin::{hashes::hex::ToHex, Network};
+use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
 
-use crate::config::Config;
+use crate::{config::Config, db};
 
 pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
     let mut height = starting_blockheight(config.network.unwrap())?;
@@ -18,13 +18,18 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
         for txid in blockinfo.tx {
             let tx = client.get_raw_transaction(&txid, None)?;
 
-            for output in tx.output {
+            for (vout, output) in tx.output.into_iter().enumerate() {
                 if output.script_pubkey.is_op_return() {
                     let b = &output.script_pubkey.as_bytes()[2..];
                     if b.starts_with(b"ind") {
                         let b = &b[3..];
                         match parse_ind_output(&b) {
-                            Ok(b) => log::info!("IND output found: {}", b.to_hex()),
+                            Ok(b) => {
+                                match index_output(b, &blockhash, &txid, vout) {
+                                    Err(err) => log::error!("Index error: {err}"),
+                                    _ => {}
+                                };
+                            }
                             Err(e) => log::error!("Index error: {e}"),
                         }
                     }
@@ -35,6 +40,29 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
         blockhash = next_hash;
         blockinfo = client.get_block_info(&blockhash)?;
     }
+    Ok(())
+}
+
+fn index_output(
+    bytes: Vec<u8>,
+    blockhash: &BlockHash,
+    txid: &Txid,
+    vout: usize,
+) -> anyhow::Result<()> {
+    let nsid = bytes.to_hex();
+    log::info!("IND output found: {}", nsid);
+    if bytes.len() != 20 {
+        return Err(anyhow::anyhow!("Unexpected IND length"));
+    }
+
+    let nstree = db::namespaces()?;
+    if nstree.contains_key(&bytes)? {
+        log::info!("NSID {nsid} already index, skipping");
+        return Ok(());
+    }
+
+    let namespace = db::Namespace::new_detected(&nsid, None, blockhash, txid, vout)?;
+    nstree.insert(&bytes, namespace.encode()?)?;
     Ok(())
 }
 

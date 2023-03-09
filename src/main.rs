@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 mod config;
+mod db;
 mod documents;
 mod hash160;
 mod name;
@@ -29,6 +30,8 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
     let mut cli = Config::parse();
 
+    db::initialize(cli.data.as_ref().unwrap())?;
+
     if let Some(config) = &cli.config {
         if config.is_file() {
             let config = std::fs::read_to_string(config)?;
@@ -53,7 +56,9 @@ fn main() -> anyhow::Result<()> {
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
         config::Subcommand::Index => subcommands::index_blockchain(&cli)?,
+        config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,
     }
 
+    db::flush_all()?;
     Ok(())
 }
