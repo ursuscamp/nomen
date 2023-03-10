@@ -4,7 +4,6 @@ mod config;
 mod db;
 mod documents;
 mod hash160;
-mod merkle;
 mod name;
 mod nostr;
 mod nsid;

@@ -13,6 +13,7 @@ use crate::{
     config::Config,
     documents::{self, ExampleDocument},
     name::{self, Name},
+    pubkey::Pubkey,
 };
 
 pub fn example_create() -> anyhow::Result<()> {
@@ -109,8 +110,8 @@ fn calculate_fee(new_tx: &Transaction, fee_rate: &usize) -> u64 {
 fn op_return_output(name: Name) -> TxOut {
     let mut op_return = format!("ind\x00\x00").as_bytes().to_vec();
     let namespace_id = name.namespace_id();
-    log::debug!("Namespace id for {}: {}", name.name, namespace_id.to_hex());
-    op_return.extend(name.namespace_id());
+    log::debug!("Namespace id for {}: {}", name.0, namespace_id.to_hex());
+    op_return.extend(name.namespace_id().as_ref());
     let op_return = Script::new_op_return(&op_return);
     let op_out = TxOut {
         value: 0,
@@ -120,14 +121,9 @@ fn op_return_output(name: Name) -> TxOut {
 }
 
 fn get_valid_name(pubkey: &String, name: &String) -> anyhow::Result<Name> {
-    let mut pkbin = [0; 32];
-    hex::decode_to_slice(&pubkey, &mut pkbin)?;
-    let name = Name {
-        parent_name: String::new(),
-        name: name.clone(),
-        pubkey: pkbin,
-        names: vec![],
-    };
-    name::Validator::new(&name).validate()?;
-    Ok(name)
+    Ok(Name(
+        name.clone(),
+        Pubkey::from_str(pubkey.as_ref())?,
+        vec![],
+    ))
 }
