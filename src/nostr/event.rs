@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-use crate::pubkey::Pubkey;
+use crate::{name::RawNameRow, pubkey::Pubkey};
 
 pub static BROADCAST_NEW_NAME: u64 = 38300;
 
@@ -22,7 +22,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new_broadcast_name(namespace_id: &str, name: &str) -> Event {
+    pub fn new_broadcast_name(namespace_id: &str, name: &str, children: Vec<RawNameRow>) -> Event {
         Event {
             kind: BROADCAST_NEW_NAME,
             created_at: SystemTime::now()
@@ -34,7 +34,7 @@ impl Event {
                 namespace_id.to_string(),
                 name.to_string(),
             ]],
-            content: "[]".into(),
+            content: serde_json::to_string(&children).expect("children should seriealize"),
             ..Default::default()
         }
     }

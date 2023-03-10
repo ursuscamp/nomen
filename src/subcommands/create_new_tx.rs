@@ -32,6 +32,7 @@ pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> 
     let document: documents::Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
 
     let name = get_valid_name(&document.pubkey, &document.name)?;
+    let nsid = name.namespace_id();
 
     let (txid, vout, address) = coerce_inputs(&document.txid, document.vout, &document.address)?;
 
@@ -44,6 +45,7 @@ pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> 
     let fee = calculate_fee(&new_tx, &document.fee_rate);
     new_tx.output[0].value -= fee; // Adjust transaction for estimated fee
 
+    println!("Namespace ID: {}", Paint::green(nsid));
     println!(
         "{}",
         Paint::green(

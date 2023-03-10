@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{ops::Deref, path::Path};
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -12,12 +12,18 @@ pub fn broadcast_new_name(
     privkey: &String,
 ) -> anyhow::Result<()> {
     let create: Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
-    let event =
-        Event::new_broadcast_name(&create.namespace_id(), &create.name).finalize(&privkey)?;
-    println!("{event:#?}");
-    // let event = serde_json::to_string(&event)?;
+    let event = Event::new_broadcast_name(
+        &create.namespace_id()?.to_string(),
+        &create.name,
+        create
+            .children
+            .iter()
+            .map(Clone::clone)
+            .map(Into::into)
+            .collect(),
+    )
+    .finalize(&privkey)?;
     let envelope = json!(["EVENT", event]).to_string();
-    println!("{envelope}");
 
     let relays = config.relay.as_ref().unwrap();
     for relay in relays {

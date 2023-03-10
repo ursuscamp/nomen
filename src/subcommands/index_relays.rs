@@ -55,6 +55,7 @@ fn search_relays(relays: &mut [WS], nsid: &str) -> anyhow::Result<Option<Event>>
         relay.write_message(Message::text(filter))?;
         let recv = relay.read_message()?;
         println!("Message: {recv}");
+        // let name: Name = recv.into_text()?
         relay.write_message(Message::text(json!(["CLOSE", nsid]).to_string()))?;
     }
 

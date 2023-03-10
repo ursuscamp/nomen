@@ -1,27 +1,18 @@
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
 
+use crate::{
+    name::{Name, RawNameRow},
+    nsid::Nsid,
+};
+
 use super::ExampleDocument;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChildCreate {
     pub name: String,
     pub pubkey: String,
     pub children: Vec<ChildCreate>,
 }
-
-// impl ChildCreate {
-//     pub fn namespace_id(&self, parent_name: &str) -> anyhow::Result<[u; 20]> {
-//         let fqdn = if parent_name.is_empty() {
-//             self.name.clone()
-//         } else {
-//             format!("{}.{}", self.name, parent_name)
-//         };
-
-//         if self.children.is_empty() {
-
-//         }
-//     }
-// }
 
 impl ExampleDocument for ChildCreate {
     fn create_example() -> Self {
@@ -33,7 +24,14 @@ impl ExampleDocument for ChildCreate {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl From<ChildCreate> for RawNameRow {
+    fn from(child: ChildCreate) -> Self {
+        let children: Vec<RawNameRow> = child.children.into_iter().map(|c| c.into()).collect();
+        RawNameRow(child.name, child.pubkey, children)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Create {
     pub name: String,
     pub txid: String,
@@ -43,9 +41,11 @@ pub struct Create {
     pub fee_rate: usize,
     pub children: Vec<ChildCreate>,
 }
+
 impl Create {
-    pub(crate) fn namespace_id(&self) -> String {
-        todo!()
+    pub(crate) fn namespace_id(&self) -> anyhow::Result<Nsid> {
+        let name: Name = self.clone().try_into()?;
+        Ok(name.namespace_id())
     }
 }
 
