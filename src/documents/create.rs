@@ -9,6 +9,20 @@ pub struct ChildCreate {
     pub children: Vec<ChildCreate>,
 }
 
+// impl ChildCreate {
+//     pub fn namespace_id(&self, parent_name: &str) -> anyhow::Result<[u; 20]> {
+//         let fqdn = if parent_name.is_empty() {
+//             self.name.clone()
+//         } else {
+//             format!("{}.{}", self.name, parent_name)
+//         };
+
+//         if self.children.is_empty() {
+
+//         }
+//     }
+// }
+
 impl ExampleDocument for ChildCreate {
     fn create_example() -> Self {
         ChildCreate {
@@ -28,6 +42,11 @@ pub struct Create {
     pub pubkey: String,
     pub fee_rate: usize,
     pub children: Vec<ChildCreate>,
+}
+impl Create {
+    pub(crate) fn namespace_id(&self) -> String {
+        todo!()
+    }
 }
 
 impl ExampleDocument for Create {

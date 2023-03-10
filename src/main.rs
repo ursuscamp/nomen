@@ -4,8 +4,11 @@ mod config;
 mod db;
 mod documents;
 mod hash160;
+mod merkle;
 mod name;
 mod nostr;
+mod nsid;
+mod pubkey;
 mod subcommands;
 
 use std::{borrow::BorrowMut, path::PathBuf, str::FromStr};
@@ -49,10 +52,9 @@ fn main() -> anyhow::Result<()> {
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::New(new) => match new {
             config::NewSubcommand::Tx { document } => subcommands::create_new_tx(&cli, document)?,
-            config::NewSubcommand::Broadcast {
-                namespace_id,
-                privkey,
-            } => subcommands::broadcast_new_name(&cli, namespace_id, privkey)?,
+            config::NewSubcommand::Broadcast { document, privkey } => {
+                subcommands::broadcast_new_name(&cli, document, privkey)?
+            }
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
         config::Subcommand::Index(index) => match index {

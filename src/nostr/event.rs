@@ -6,31 +6,39 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
-static BROADCAST_NEW_NAME: u64 = 38300;
+pub static BROADCAST_NEW_NAME: u64 = 38300;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Event {
-    id: String,
-    pubkey: String,
-    created_at: u64,
-    kind: u64,
-    tags: Vec<Vec<String>>,
-    content: String,
-    sig: String,
+    pub id: String,
+    pub pubkey: String,
+    pub created_at: u64,
+    pub kind: u64,
+    pub tags: Vec<Vec<String>>,
+    pub content: String,
+    pub sig: String,
 }
 
 impl Event {
-    pub fn new_broadcast_name(namespace_id: &str) -> Event {
+    pub fn new_broadcast_name(namespace_id: &str, name: &str) -> Event {
         Event {
             kind: BROADCAST_NEW_NAME,
             created_at: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .expect("unable to calculated system time")
                 .as_secs(),
-            tags: vec![vec!["d".to_string(), namespace_id.to_string()]],
+            tags: vec![vec![
+                "d".to_string(),
+                namespace_id.to_string(),
+                name.to_string(),
+            ]],
             content: "[]".into(),
             ..Default::default()
         }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        todo!()
     }
 
     pub fn pubkey(mut self, pubkey: &str) -> Event {

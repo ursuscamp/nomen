@@ -146,10 +146,10 @@ pub enum NewSubcommand {
 
     /// Broadcast the new name transaction to Nostr relays.
     Broadcast {
-        /// The namespace ID for the name to broadcast.
-        namespace_id: String,
+        /// The same document used to create the name.
+        document: PathBuf,
 
-        /// The private key used to the sign the nostr event. Must be the same private key that belongs to the public key used to create the name.
+        /// Private key to sign the Nostr event
         privkey: String,
     },
 
