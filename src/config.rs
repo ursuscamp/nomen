@@ -4,10 +4,13 @@ use std::{
 };
 
 use anyhow::anyhow;
-use bitcoin::Network;
+use bitcoin::{hashes::hex::ToHex, Network};
 use bitcoincore_rpc::RpcApi;
 use clap::Parser;
-use nostr_sdk::prelude::FromSkStr;
+use nostr_sdk::{
+    prelude::{FromSkStr, ToBech32},
+    Options,
+};
 use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
 
@@ -114,13 +117,22 @@ impl Config {
         sk: &str,
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
         let keys = nostr_sdk::Keys::from_sk_str(sk)?;
-        let mut client = nostr_sdk::Client::new(&keys);
+        let mut client =
+            nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
         let relays = self.relay.clone().expect("No relays added");
         for relay in relays {
             client.add_relay(relay, None).await?;
         }
         client.connect().await;
         Ok((keys, client))
+    }
+
+    pub async fn nostr_random_client(
+        &self,
+    ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
+        let keys = nostr_sdk::Keys::generate();
+        let sk = keys.secret_key()?.to_bech32()?;
+        self.nostr_client(&sk).await
     }
 }
 

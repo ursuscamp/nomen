@@ -34,7 +34,7 @@ impl Event {
                 namespace_id.to_string(),
                 name.to_string(),
             ]],
-            content: serde_json::to_string(&children).expect("children should seriealize"),
+            content: serde_json::to_string(&children).expect("children should serialize"),
             ..Default::default()
         }
     }

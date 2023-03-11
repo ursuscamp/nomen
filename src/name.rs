@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    documents::Create,
+    documents::{ChildCreate, Create},
     hash160::{self, Hash160},
     nostr::{Event, BROADCAST_NEW_NAME},
     nsid::Nsid,
@@ -64,6 +64,38 @@ fn merkle_root(ids: &[Nsid]) -> Nsid {
     queue.first().copied().unwrap()
 }
 
+impl TryFrom<Create> for Name {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Create) -> Result<Self, Self::Error> {
+        Ok(Name(
+            value.name.clone(),
+            Pubkey::from_str(&value.pubkey)?,
+            value
+                .children
+                .into_iter()
+                .map(|child| child.try_into())
+                .collect::<anyhow::Result<_>>()?,
+        ))
+    }
+}
+
+impl TryFrom<ChildCreate> for Name {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ChildCreate) -> Result<Self, Self::Error> {
+        Ok(Name(
+            value.name.clone(),
+            Pubkey::from_str(&value.pubkey)?,
+            value
+                .children
+                .into_iter()
+                .map(|child| child.try_into())
+                .collect::<anyhow::Result<_>>()?,
+        ))
+    }
+}
+
 impl TryFrom<Event> for Name {
     type Error = anyhow::Error;
 
@@ -88,23 +120,23 @@ impl TryFrom<Event> for Name {
     }
 }
 
-impl TryFrom<Create> for Name {
-    type Error = anyhow::Error;
+// impl TryFrom<Create> for Name {
+//     type Error = anyhow::Error;
 
-    fn try_from(create: Create) -> Result<Self, Self::Error> {
-        let children: Vec<RawNameRow> = create.children.into_iter().map(|rnr| rnr.into()).collect();
-        let children = children
-            .into_iter()
-            .map(|n| -> anyhow::Result<Name> { n.try_into() })
-            .collect::<anyhow::Result<_>>()?;
-        Ok(Name(
-            create.name.clone(),
-            Pubkey::from_str(&create.pubkey)?,
-            children,
-        ))
-        // Ok(Name(value.name, Pubkey::from_str(&value.pub)?, value.children.iter().map(|f| -> RawNameRow {f.into()}).collect()))
-    }
-}
+//     fn try_from(create: Create) -> Result<Self, Self::Error> {
+//         let children: Vec<RawNameRow> = create.children.into_iter().map(|rnr| rnr.into()).collect();
+//         let children = children
+//             .into_iter()
+//             .map(|n| -> anyhow::Result<Name> { n.try_into() })
+//             .collect::<anyhow::Result<_>>()?;
+//         Ok(Name(
+//             create.name.clone(),
+//             Pubkey::from_str(&create.pubkey)?,
+//             children,
+//         ))
+//         // Ok(Name(value.name, Pubkey::from_str(&value.pub)?, value.children.iter().map(|f| -> RawNameRow {f.into()}).collect()))
+//     }
+// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RawNameRow(pub String, pub String, pub Vec<RawNameRow>);

@@ -1,6 +1,6 @@
 mod create;
 
-pub use create::Create;
+pub use create::*;
 
 pub trait ExampleDocument {
     fn create_example() -> Self;

@@ -11,7 +11,7 @@ use yansi::Paint;
 
 use crate::{
     config::Config,
-    documents::{self, ExampleDocument},
+    documents::{self, Create, ExampleDocument},
     name::{self, Name},
     pubkey::Pubkey,
 };
@@ -31,7 +31,7 @@ struct ChildName((String, String, Vec<ChildName>));
 pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> {
     let document: documents::Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
 
-    let name = get_valid_name(&document.pubkey, &document.name)?;
+    let name = get_valid_name(&document)?;
     let nsid = name.namespace_id();
 
     let (txid, vout, address) = coerce_inputs(&document.txid, document.vout, &document.address)?;
@@ -122,10 +122,13 @@ fn op_return_output(name: Name) -> TxOut {
     op_out
 }
 
-fn get_valid_name(pubkey: &String, name: &String) -> anyhow::Result<Name> {
-    Ok(Name(
-        name.clone(),
-        Pubkey::from_str(pubkey.as_ref())?,
-        vec![],
-    ))
+fn get_valid_name(create: &Create) -> anyhow::Result<Name> {
+    create.clone().try_into()
 }
+// fn get_valid_name(pubkey: &String, name: &String) -> anyhow::Result<Name> {
+//     Ok(Name(
+//         name.clone(),
+//         Pubkey::from_str(pubkey.as_ref())?,
+//         vec![],
+//     ))
+// }
