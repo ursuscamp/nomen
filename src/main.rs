@@ -5,10 +5,8 @@ mod db;
 mod documents;
 mod hash160;
 mod name;
-mod nostr;
-mod nsid;
-mod pubkey;
 mod subcommands;
+mod util;
 
 use std::{borrow::BorrowMut, path::PathBuf, str::FromStr};
 

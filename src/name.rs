@@ -7,9 +7,7 @@ use serde_json::Value;
 use crate::{
     documents::{ChildCreate, Create},
     hash160::{self, Hash160},
-    nostr::{Event, BROADCAST_NEW_NAME},
-    nsid::Nsid,
-    pubkey::Pubkey,
+    util::{Nsid, Pubkey},
 };
 
 #[derive(Debug)]
@@ -95,48 +93,6 @@ impl TryFrom<ChildCreate> for Name {
         ))
     }
 }
-
-impl TryFrom<Event> for Name {
-    type Error = anyhow::Error;
-
-    fn try_from(event: Event) -> Result<Self, Self::Error> {
-        let pubkey = Pubkey::from_str(&event.pubkey)?;
-        let d_tag = event
-            .tags
-            .iter()
-            .find(|t| t.first().map(AsRef::as_ref) == Some("d"))
-            .ok_or(anyhow!("Invalid or missing d tag"))?;
-        let name = d_tag
-            .iter()
-            .nth(2)
-            .ok_or(anyhow!("Invalid or missing d tag"))?;
-        let content: Vec<RawNameRow> = serde_json::from_str(&event.content)?;
-        let children: Vec<Name> = content
-            .into_iter()
-            .map(|rnr| rnr.try_into())
-            .collect::<anyhow::Result<_>>()?;
-
-        Ok(Name(name.clone(), pubkey, children))
-    }
-}
-
-// impl TryFrom<Create> for Name {
-//     type Error = anyhow::Error;
-
-//     fn try_from(create: Create) -> Result<Self, Self::Error> {
-//         let children: Vec<RawNameRow> = create.children.into_iter().map(|rnr| rnr.into()).collect();
-//         let children = children
-//             .into_iter()
-//             .map(|n| -> anyhow::Result<Name> { n.try_into() })
-//             .collect::<anyhow::Result<_>>()?;
-//         Ok(Name(
-//             create.name.clone(),
-//             Pubkey::from_str(&create.pubkey)?,
-//             children,
-//         ))
-//         // Ok(Name(value.name, Pubkey::from_str(&value.pub)?, value.children.iter().map(|f| -> RawNameRow {f.into()}).collect()))
-//     }
-// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RawNameRow(pub String, pub String, pub Vec<RawNameRow>);

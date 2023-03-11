@@ -2,7 +2,7 @@ use serde::{de::IntoDeserializer, Deserialize, Serialize};
 
 use crate::{
     name::{Name, RawNameRow},
-    nsid::Nsid,
+    util::Nsid,
 };
 
 use super::ExampleDocument;

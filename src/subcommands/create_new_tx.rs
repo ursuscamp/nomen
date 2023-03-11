@@ -13,7 +13,6 @@ use crate::{
     config::Config,
     documents::{self, Create, ExampleDocument},
     name::{self, Name},
-    pubkey::Pubkey,
 };
 
 pub fn example_create() -> anyhow::Result<()> {
@@ -125,10 +124,3 @@ fn op_return_output(name: Name) -> TxOut {
 fn get_valid_name(create: &Create) -> anyhow::Result<Name> {
     create.clone().try_into()
 }
-// fn get_valid_name(pubkey: &String, name: &String) -> anyhow::Result<Name> {
-//     Ok(Name(
-//         name.clone(),
-//         Pubkey::from_str(pubkey.as_ref())?,
-//         vec![],
-//     ))
-// }
