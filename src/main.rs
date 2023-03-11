@@ -55,6 +55,10 @@ async fn main() -> anyhow::Result<()> {
             }
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
+        config::Subcommand::Records(records) => match records {
+            config::RecordsSubcommand::Broadcast { document, privkey } => todo!(),
+            config::RecordsSubcommand::Example => subcommands::example_records()?,
+        },
         config::Subcommand::Index(index) => match index {
             config::IndexSubcommand::Blockchain {
                 confirmations,
@@ -66,7 +70,6 @@ async fn main() -> anyhow::Result<()> {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
             config::DebugSubcommand::NamesIndex => subcommands::names_index()?,
         },
-        // config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,
     }
 
     db::flush_all()?;

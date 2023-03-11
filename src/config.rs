@@ -149,6 +149,11 @@ pub enum Subcommand {
     #[serde(skip)]
     New(NewSubcommand),
 
+    /// Broadcast records updates
+    #[command(subcommand)]
+    #[serde(skip)]
+    Records(RecordsSubcommand),
+
     /// Scan and index the blockchain.
     #[command(subcommand)]
     #[serde(skip)]
