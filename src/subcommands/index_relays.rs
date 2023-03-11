@@ -13,6 +13,7 @@ use crate::{
     config::Config,
     db::{self, names_nsid, IndexStatus, NamespaceModel},
     name::Namespace,
+    util::NamespaceNostrKind,
 };
 
 pub async fn index_relays(config: &Config) -> anyhow::Result<()> {
@@ -45,7 +46,9 @@ pub async fn index_relays(config: &Config) -> anyhow::Result<()> {
 
 async fn search_relays(client: &Client, nsid: &str) -> anyhow::Result<Namespace> {
     log::debug!("Searching for events for nsid {nsid}");
-    let filters = Filter::new().kind(38300.into()).replaceable_event(nsid);
+    let filters = Filter::new()
+        .kind(NamespaceNostrKind::Name.into())
+        .replaceable_event(nsid);
     client
         .get_events_of(vec![filters], Some(Duration::from_secs(1)))
         .await?

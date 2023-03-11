@@ -9,7 +9,7 @@ use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{config::Config, documents::Create};
+use crate::{config::Config, documents::Create, util::NamespaceNostrKind};
 
 pub async fn broadcast_new_name(
     config: &Config,
@@ -29,7 +29,7 @@ pub async fn broadcast_new_name(
 
 fn new_event(create: &Create, privkey: &str) -> anyhow::Result<Event> {
     let keys = Keys::from_sk_str(privkey)?;
-    let kind = 38300.into();
+    let kind = NamespaceNostrKind::Name.into();
     let nsid = create.namespace_id()?.to_hex();
     let dtag = Tag::Generic(TagKind::D, vec![nsid]);
     let indtag = Tag::Generic("ind".into(), vec![create.name.clone()]);

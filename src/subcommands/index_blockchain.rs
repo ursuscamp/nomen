@@ -53,6 +53,8 @@ pub fn index_blockchain(
         blockhash = next_hash;
         blockinfo = client.get_block_info(&blockhash)?;
     }
+
+    log::info!("Blockchain index complete.");
     Ok(())
 }
 
