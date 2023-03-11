@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use bitcoin::hashes::hex::ToHex;
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 
-#[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From)]
+#[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
 pub struct Nsid([u8; 20]);
 
 impl FromStr for Nsid {

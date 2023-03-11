@@ -12,7 +12,7 @@ use yansi::Paint;
 use crate::{
     config::Config,
     documents::{self, Create, ExampleDocument},
-    name::{self, Name},
+    name::{self, Namespace},
 };
 
 pub fn example_create() -> anyhow::Result<()> {
@@ -108,7 +108,7 @@ fn calculate_fee(new_tx: &Transaction, fee_rate: &usize) -> u64 {
     fee
 }
 
-fn op_return_output(name: Name) -> TxOut {
+fn op_return_output(name: Namespace) -> TxOut {
     let mut op_return = format!("ind\x00\x00").as_bytes().to_vec();
     let namespace_id = name.namespace_id();
     log::debug!("Namespace id for {}: {}", name.0, namespace_id.to_hex());
@@ -121,6 +121,6 @@ fn op_return_output(name: Name) -> TxOut {
     op_out
 }
 
-fn get_valid_name(create: &Create) -> anyhow::Result<Name> {
+fn get_valid_name(create: &Create) -> anyhow::Result<Namespace> {
     create.clone().try_into()
 }

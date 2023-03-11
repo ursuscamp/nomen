@@ -1,6 +1,6 @@
 use bitcoin::hashes::hex::ToHex;
 
-use crate::db::{self, Namespace};
+use crate::db::{self, NamespaceModel};
 
 pub fn list_namespaces() -> anyhow::Result<()> {
     println!("Listing namespaces:");
@@ -8,7 +8,7 @@ pub fn list_namespaces() -> anyhow::Result<()> {
     for result in nstree.into_iter() {
         let (nsid, nsdoc) = result?;
         let nsid = nsid.to_hex();
-        let namespace = Namespace::decode(&nsdoc)?;
+        let namespace = NamespaceModel::decode(&nsdoc)?;
         println!("{namespace:?}");
     }
 

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use once_cell::sync::OnceCell;
 
-use crate::name::Name;
+use crate::name::Namespace;
 
 static DB: OnceCell<sled::Db> = OnceCell::new();
 
@@ -27,7 +27,7 @@ pub fn namespaces() -> anyhow::Result<sled::Tree> {
 }
 
 #[derive(Encode, Decode, Default)]
-pub struct Namespace {
+pub struct NamespaceModel {
     pub status: IndexStatus,
     pub name: String,
     pub nsid: Vec<u8>,
@@ -39,17 +39,17 @@ pub struct Namespace {
     pub children: Vec<Vec<u8>>,
 }
 
-impl Namespace {
+impl NamespaceModel {
     pub fn new_detected(
         nsid: &str,
         prev_nsid: Option<&str>,
         blockhash: &BlockHash,
         txid: &Txid,
         vout: usize,
-    ) -> anyhow::Result<Namespace> {
+    ) -> anyhow::Result<NamespaceModel> {
         let nsid = hex::decode(nsid)?;
         let prev_nsid = prev_nsid.map(|s| hex::decode(s)).transpose()?;
-        Ok(Namespace {
+        Ok(NamespaceModel {
             nsid,
             prev_nsid,
             blockhash: blockhash.to_vec(),
@@ -63,13 +63,13 @@ impl Namespace {
         bincode::encode_to_vec(self, bincode::config::standard())
     }
 
-    pub fn decode(bytes: &[u8]) -> Result<Namespace, bincode::error::DecodeError> {
+    pub fn decode(bytes: &[u8]) -> Result<NamespaceModel, bincode::error::DecodeError> {
         let (ns, _) = bincode::decode_from_slice::<Self, _>(bytes, bincode::config::standard())?;
         Ok(ns)
     }
 }
 
-impl std::fmt::Debug for Namespace {
+impl std::fmt::Debug for NamespaceModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Namespace")
             .field("status", &self.status)

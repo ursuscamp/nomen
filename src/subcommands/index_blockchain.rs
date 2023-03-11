@@ -61,7 +61,7 @@ fn index_output(
         return Ok(());
     }
 
-    let namespace = db::Namespace::new_detected(&nsid, None, blockhash, txid, vout)?;
+    let namespace = db::NamespaceModel::new_detected(&nsid, None, blockhash, txid, vout)?;
     nstree.insert(&bytes, namespace.encode()?)?;
     Ok(())
 }

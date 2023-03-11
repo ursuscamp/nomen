@@ -1,7 +1,7 @@
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
 
 use crate::{
-    name::{Name, RawNameRow},
+    name::{Namespace, RawNameRow},
     util::Nsid,
 };
 
@@ -44,7 +44,7 @@ pub struct Create {
 
 impl Create {
     pub(crate) fn namespace_id(&self) -> anyhow::Result<Nsid> {
-        let name: Name = self.clone().try_into()?;
+        let name: Namespace = self.clone().try_into()?;
         Ok(name.namespace_id())
     }
 }

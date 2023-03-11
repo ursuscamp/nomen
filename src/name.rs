@@ -1,6 +1,10 @@
 use std::str::FromStr;
 
 use anyhow::anyhow;
+use nostr_sdk::{
+    prelude::{tag, TagKind},
+    Event, Tag,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -10,10 +14,10 @@ use crate::{
     util::{Nsid, Pubkey},
 };
 
-#[derive(Debug)]
-pub struct Name(pub String, pub Pubkey, pub Vec<Name>);
+#[derive(Debug, Clone)]
+pub struct Namespace(pub String, pub Pubkey, pub Vec<Namespace>);
 
-impl Name {
+impl Namespace {
     pub fn namespace_id(&self) -> Nsid {
         println!("self: {self:?}");
         self.namespace_id_("")
@@ -41,6 +45,76 @@ impl Name {
     }
 }
 
+impl TryFrom<Event> for Namespace {
+    type Error = anyhow::Error;
+
+    fn try_from(event: Event) -> Result<Self, Self::Error> {
+        let nsid: Nsid = get_d_tag(&event).ok_or(anyhow!("Missing d tag"))?.parse()?;
+        let name = get_ind_tag(&event)
+            .ok_or(anyhow!("Missing ind tag"))?
+            .clone();
+        let children = get_names(&event)?;
+        let pubkey = event.pubkey.into();
+        let namespace = Namespace(name, pubkey, children);
+
+        if namespace.namespace_id() != nsid {
+            return Err(anyhow!("Invalid namespace id"));
+        }
+
+        Ok(namespace)
+    }
+}
+
+impl TryFrom<Create> for Namespace {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Create) -> Result<Self, Self::Error> {
+        Ok(Namespace(
+            value.name.clone(),
+            Pubkey::from_str(&value.pubkey)?,
+            value
+                .children
+                .into_iter()
+                .map(|child| child.try_into())
+                .collect::<anyhow::Result<_>>()?,
+        ))
+    }
+}
+
+impl TryFrom<ChildCreate> for Namespace {
+    type Error = anyhow::Error;
+
+    fn try_from(value: ChildCreate) -> Result<Self, Self::Error> {
+        Ok(Namespace(
+            value.name.clone(),
+            Pubkey::from_str(&value.pubkey)?,
+            value
+                .children
+                .into_iter()
+                .map(|child| child.try_into())
+                .collect::<anyhow::Result<_>>()?,
+        ))
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct RawNameRow(pub String, pub String, pub Vec<RawNameRow>);
+
+impl TryFrom<RawNameRow> for Namespace {
+    type Error = anyhow::Error;
+
+    fn try_from(value: RawNameRow) -> Result<Self, Self::Error> {
+        let pubkey = Pubkey::from_str(&value.1)?;
+        let children: Vec<Namespace> = value
+            .2
+            .into_iter()
+            .map(|row| row.try_into())
+            .collect::<anyhow::Result<_>>()?;
+
+        Ok(Namespace(value.0, pubkey, children))
+    }
+}
+
 fn merkle_root(ids: &[Nsid]) -> Nsid {
     let mut queue = ids.to_vec();
     if queue.len() % 2 != 0 {
@@ -62,54 +136,26 @@ fn merkle_root(ids: &[Nsid]) -> Nsid {
     queue.first().copied().unwrap()
 }
 
-impl TryFrom<Create> for Name {
-    type Error = anyhow::Error;
-
-    fn try_from(value: Create) -> Result<Self, Self::Error> {
-        Ok(Name(
-            value.name.clone(),
-            Pubkey::from_str(&value.pubkey)?,
-            value
-                .children
-                .into_iter()
-                .map(|child| child.try_into())
-                .collect::<anyhow::Result<_>>()?,
-        ))
-    }
+fn get_d_tag(event: &Event) -> Option<&String> {
+    event.tags.iter().find_map(|t| match t {
+        Tag::Identifier(id) => Some(id),
+        _ => None,
+    })
 }
 
-impl TryFrom<ChildCreate> for Name {
-    type Error = anyhow::Error;
-
-    fn try_from(value: ChildCreate) -> Result<Self, Self::Error> {
-        Ok(Name(
-            value.name.clone(),
-            Pubkey::from_str(&value.pubkey)?,
-            value
-                .children
-                .into_iter()
-                .map(|child| child.try_into())
-                .collect::<anyhow::Result<_>>()?,
-        ))
-    }
+fn get_ind_tag(event: &Event) -> Option<&String> {
+    event.tags.iter().find_map(|t| match t {
+        Tag::Generic(TagKind::Custom(tagname), strs) if tagname == "ind" => strs.first(),
+        _ => None,
+    })
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct RawNameRow(pub String, pub String, pub Vec<RawNameRow>);
-
-impl TryFrom<RawNameRow> for Name {
-    type Error = anyhow::Error;
-
-    fn try_from(value: RawNameRow) -> Result<Self, Self::Error> {
-        let pubkey = Pubkey::from_str(&value.1)?;
-        let children: Vec<Name> = value
-            .2
-            .into_iter()
-            .map(|row| row.try_into())
-            .collect::<anyhow::Result<_>>()?;
-
-        Ok(Name(value.0, pubkey, children))
-    }
+fn get_names(event: &Event) -> anyhow::Result<Vec<Namespace>> {
+    let children: Vec<ChildCreate> = serde_json::from_str(&event.content)?;
+    Ok(children
+        .into_iter()
+        .map(|cc| cc.try_into())
+        .collect::<anyhow::Result<_>>()?)
 }
 
 #[cfg(test)]
@@ -127,12 +173,12 @@ mod tests {
 
     #[test]
     fn test_namespace_id() {
-        let name = Name(
+        let name = Namespace(
             "com".into(),
             [0; 32].into(),
             vec![
-                Name("amazon".into(), [0; 32].into(), vec![]),
-                Name("google".into(), [0; 32].into(), vec![]),
+                Namespace("amazon".into(), [0; 32].into(), vec![]),
+                Namespace("google".into(), [0; 32].into(), vec![]),
             ],
         );
         let nsid = name.namespace_id();

@@ -1,5 +1,6 @@
 use std::{fmt::Debug, str::FromStr};
 
+use bitcoin::XOnlyPublicKey;
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 
 #[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From)]
@@ -20,5 +21,11 @@ impl Debug for Pubkey {
         f.debug_tuple("Pubkey")
             .field(&hex::encode(&self.0))
             .finish()
+    }
+}
+
+impl From<XOnlyPublicKey> for Pubkey {
+    fn from(value: XOnlyPublicKey) -> Self {
+        Pubkey(value.serialize())
     }
 }
