@@ -4,18 +4,17 @@ use bitcoincore_rpc::RpcApi;
 
 use crate::{config::Config, db};
 
-pub fn index_blockchain(config: &Config, confirmations: usize) -> anyhow::Result<()> {
-    let height = db::misc_setting::<u64>("index_height")?
-        .map(Result::Ok)
-        .or_else(|| Some(starting_blockheight(config.network.unwrap())))
-        .expect("starting height")?
-        + 1;
-
+pub fn index_blockchain(
+    config: &Config,
+    confirmations: usize,
+    height: Option<usize>,
+) -> anyhow::Result<()> {
+    let height = index_height(height, config)?;
     log::info!("Starting index from block height: {height}");
 
     let client = config.rpc_client()?;
 
-    let mut blockhash = client.get_block_hash(height)?;
+    let mut blockhash = client.get_block_hash(height as u64)?;
     let mut blockinfo = client.get_block_info(&blockhash)?;
     while let Some(next_hash) = blockinfo.nextblockhash {
         if (blockinfo.confirmations as usize) < confirmations {
@@ -57,6 +56,19 @@ pub fn index_blockchain(config: &Config, confirmations: usize) -> anyhow::Result
     Ok(())
 }
 
+fn index_height(height: Option<usize>, config: &Config) -> Result<usize, anyhow::Error> {
+    Ok(height
+        .map(Result::Ok)
+        .or_else(|| {
+            db::misc_setting::<usize>("index_height")
+                .ok()
+                .flatten()
+                .map(Result::Ok)
+        })
+        .or_else(|| Some(starting_blockheight(config.network.unwrap())))
+        .expect("starting height")?)
+}
+
 fn index_output(
     bytes: Vec<u8>,
     blockhash: &BlockHash,
@@ -88,7 +100,7 @@ fn log_height(height: u64) {
     }
 }
 
-fn starting_blockheight(network: Network) -> anyhow::Result<u64> {
+fn starting_blockheight(network: Network) -> anyhow::Result<usize> {
     match network {
         Network::Bitcoin => Err(anyhow!("Unsupported network {}", network)),
         Network::Testnet => Err(anyhow!("Unsupported network {}", network)),

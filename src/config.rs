@@ -197,6 +197,10 @@ pub enum IndexSubcommand {
         /// Minimum block confirmations for indexer
         #[arg(short, long, default_value = "3")]
         confirmations: usize,
+
+        /// Starting block height to index. Do not specify to index from last indexed height.
+        #[arg(long)]
+        height: Option<usize>,
     },
 
     /// Query relays for missing namespace events.
