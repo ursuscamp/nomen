@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
-use tokio_tungstenite::tungstenite::connect;
 
 use crate::{config::Config, db, nostr::Event};
 

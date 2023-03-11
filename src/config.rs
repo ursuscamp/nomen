@@ -7,6 +7,8 @@ use anyhow::anyhow;
 use bitcoin::Network;
 use bitcoincore_rpc::RpcApi;
 use clap::Parser;
+use nostr_sdk::prelude::FromSkStr;
+use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
@@ -105,6 +107,20 @@ impl Config {
             bitcoincore_rpc::Auth::None
         };
         Ok(bitcoincore_rpc::Client::new(&url, auth)?)
+    }
+
+    pub async fn nostr_client(
+        &self,
+        sk: &str,
+    ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
+        let keys = nostr_sdk::Keys::from_sk_str(sk)?;
+        let mut client = nostr_sdk::Client::new(&keys);
+        let relays = self.relay.clone().expect("No relays added");
+        for relay in relays {
+            client.add_relay(relay, None).await?;
+        }
+        client.connect().await;
+        Ok((keys, client))
     }
 }
 

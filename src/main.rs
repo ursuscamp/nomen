@@ -28,7 +28,8 @@ use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
 use config::Config;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     env_logger::init();
     let mut cli = Config::parse();
 
@@ -52,7 +53,7 @@ fn main() -> anyhow::Result<()> {
         config::Subcommand::New(new) => match new {
             config::NewSubcommand::Tx { document } => subcommands::create_new_tx(&cli, document)?,
             config::NewSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_new_name(&cli, document, privkey)?
+                subcommands::broadcast_new_name(&cli, document, privkey).await?
             }
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
