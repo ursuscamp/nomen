@@ -56,7 +56,9 @@ async fn main() -> anyhow::Result<()> {
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
         config::Subcommand::Index(index) => match index {
-            config::IndexSubcommand::Blockchain => subcommands::index_blockchain(&cli)?,
+            config::IndexSubcommand::Blockchain { confirmations } => {
+                subcommands::index_blockchain(&cli, *confirmations)?
+            }
             config::IndexSubcommand::Relays => subcommands::index_relays(&cli).await?,
         },
         config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,

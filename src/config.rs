@@ -193,7 +193,11 @@ pub enum DebugSubcommand {
 #[derive(clap::Subcommand, Debug, Clone)]
 pub enum IndexSubcommand {
     /// Index the blockchain and look for new namespaces.
-    Blockchain,
+    Blockchain {
+        /// Minimum block confirmations for indexer
+        #[arg(short, long, default_value = "3")]
+        confirmations: usize,
+    },
 
     /// Query relays for missing namespace events.
     Relays,

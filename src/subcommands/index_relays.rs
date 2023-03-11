@@ -4,10 +4,14 @@ use anyhow::anyhow;
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::{Client, Event, Filter};
 use serde_json::json;
+use sled::{
+    transaction::{ConflictableTransactionError, TransactionError},
+    Transactional,
+};
 
 use crate::{
     config::Config,
-    db::{self, IndexStatus, NamespaceModel},
+    db::{self, names_nsid, IndexStatus, NamespaceModel},
     name::Namespace,
 };
 
@@ -18,11 +22,19 @@ pub async fn index_relays(config: &Config) -> anyhow::Result<()> {
     for item in nstree.into_iter() {
         let (nsid, model) = item?;
         let nsidh = nsid.to_hex();
-        let ns = NamespaceModel::decode(&model)?;
+        let mut model = NamespaceModel::decode(&model)?;
 
-        if ns.status == IndexStatus::Detected {
+        if model.status == IndexStatus::Detected {
             match search_relays(&client, &nsidh).await {
-                Ok(ns) => log::debug!("Namespace found: {ns:?}"),
+                Ok(ns) => {
+                    log::debug!("Namespace found: {ns:?}");
+                    let mut model = model.clone();
+                    model.status = IndexStatus::Indexed;
+                    let encmodel = model.encode()?;
+                    let names_nsid = names_nsid()?;
+                    names_nsid.insert(&ns.0, ns.namespace_id().as_ref())?;
+                    nstree.insert(model.nsid, encmodel);
+                }
                 Err(e) => log::error!("{e}"),
             }
         }

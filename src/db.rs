@@ -26,7 +26,12 @@ pub fn namespaces() -> anyhow::Result<sled::Tree> {
     Ok(db().open_tree("namespaces")?)
 }
 
-#[derive(Encode, Decode, Default)]
+/// Names -> NSID index
+pub fn names_nsid() -> anyhow::Result<sled::Tree> {
+    Ok(db().open_tree("names_nsid")?)
+}
+
+#[derive(Encode, Decode, Default, Clone)]
 pub struct NamespaceModel {
     pub status: IndexStatus,
     pub name: String,
@@ -85,7 +90,7 @@ impl std::fmt::Debug for NamespaceModel {
     }
 }
 
-#[derive(Debug, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, PartialEq, Eq, Clone, Copy)]
 pub enum IndexStatus {
     /// Detected on blockchain, not verified.
     Detected,
@@ -107,4 +112,22 @@ impl Default for IndexStatus {
     fn default() -> Self {
         IndexStatus::Detected
     }
+}
+
+pub fn misc_setting<D: bincode::Decode>(name: &str) -> anyhow::Result<Option<D>> {
+    let misctree = db().open_tree("misc")?;
+    Ok(misctree
+        .get(name)?
+        .map(|v| bincode::decode_from_slice::<D, _>(&v, bincode::config::standard()))
+        .transpose()?
+        .map(|o| o.0))
+}
+
+pub fn set_misc_setting<D: bincode::Encode>(name: &str, value: &D) -> anyhow::Result<()> {
+    let misctree = db().open_tree("misc")?;
+    misctree.insert(
+        name,
+        bincode::encode_to_vec(value, bincode::config::standard())?,
+    )?;
+    Ok(())
 }

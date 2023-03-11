@@ -4,8 +4,13 @@ use bitcoincore_rpc::RpcApi;
 
 use crate::{config::Config, db};
 
-pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
-    let mut height = starting_blockheight(config.network.unwrap())?;
+pub fn index_blockchain(config: &Config, confirmations: usize) -> anyhow::Result<()> {
+    let height = db::misc_setting::<u64>("index_height")?
+        .map(Result::Ok)
+        .or_else(|| Some(starting_blockheight(config.network.unwrap())))
+        .expect("starting height")?
+        + 1;
+
     log::info!("Starting index from block height: {height}");
 
     let client = config.rpc_client()?;
@@ -13,6 +18,13 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
     let mut blockhash = client.get_block_hash(height)?;
     let mut blockinfo = client.get_block_info(&blockhash)?;
     while let Some(next_hash) = blockinfo.nextblockhash {
+        if (blockinfo.confirmations as usize) < confirmations {
+            log::info!(
+                "Minimum confirmations not met at block height {}.",
+                blockinfo.height
+            );
+            break; // Minimum confirmations required.
+        }
         log_height(blockinfo.height as u64);
 
         for txid in blockinfo.tx {
@@ -36,6 +48,8 @@ pub fn index_blockchain(config: &Config) -> anyhow::Result<()> {
                 }
             }
         }
+
+        db::set_misc_setting("index_height", &blockinfo.height)?;
 
         blockhash = next_hash;
         blockinfo = client.get_block_info(&blockhash)?;
