@@ -3,4 +3,4 @@ rpcpass="regtest"
 rpchost="localhost"
 rpcport=18443
 network="regtest"
-relay=["ws://localhost:8080"]
+relay=["ws://127.0.0.1:8080"]
