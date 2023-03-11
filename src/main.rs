@@ -62,7 +62,11 @@ async fn main() -> anyhow::Result<()> {
             } => subcommands::index_blockchain(&cli, *confirmations, *height)?,
             config::IndexSubcommand::Relays => subcommands::index_relays(&cli).await?,
         },
-        config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,
+        config::Subcommand::Debug(debug) => match debug {
+            config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
+            config::DebugSubcommand::NamesIndex => subcommands::names_index()?,
+        },
+        // config::Subcommand::Debug(debug) => subcommands::list_namespaces()?,
     }
 
     db::flush_all()?;

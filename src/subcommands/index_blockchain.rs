@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
 
-use crate::{config::Config, db};
+use crate::{config::Config, db, name::Namespace};
 
 pub fn index_blockchain(
     config: &Config,

@@ -186,8 +186,24 @@ pub enum NewSubcommand {
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
+pub enum RecordsSubcommand {
+    /// Broadcast a records event to the relays.
+    Broadcast {
+        /// A document representing the records to be relayed.
+        document: PathBuf,
+
+        /// Private key to sign the Nostr event.
+        privkey: String,
+    },
+
+    /// Print an example document to update the name.
+    Example,
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
 pub enum DebugSubcommand {
     ListNamespaces,
+    NamesIndex,
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]

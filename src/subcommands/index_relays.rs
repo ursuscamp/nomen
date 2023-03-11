@@ -6,7 +6,7 @@ use nostr_sdk::{Client, Event, Filter};
 use serde_json::json;
 use sled::{
     transaction::{ConflictableTransactionError, TransactionError},
-    Transactional,
+    Transactional, Tree,
 };
 
 use crate::{
@@ -33,7 +33,7 @@ pub async fn index_relays(config: &Config) -> anyhow::Result<()> {
                     model.status = IndexStatus::Indexed;
                     let encmodel = model.encode()?;
                     let names_nsid = names_nsid()?;
-                    names_nsid.insert(&ns.0, ns.namespace_id().as_ref())?;
+                    index_namespace_tree(&names_nsid, &ns, "")?;
                     nstree.insert(model.nsid, encmodel);
                 }
                 Err(e) => log::error!("{e}"),
@@ -59,4 +59,23 @@ async fn search_relays(client: &Client, nsid: &str) -> anyhow::Result<Namespace>
         .first()
         .cloned()
         .ok_or(anyhow!("No name events found"))
+}
+
+fn index_namespace_tree(
+    tree: &Tree,
+    namespace: &Namespace,
+    parent_name: &str,
+) -> anyhow::Result<()> {
+    let fqdn = if parent_name.is_empty() {
+        namespace.0.clone()
+    } else {
+        format!("{}.{}", namespace.0, parent_name)
+    };
+
+    tree.insert(&fqdn, namespace.namespace_id().as_ref())?;
+    for child in &namespace.2 {
+        index_namespace_tree(tree, child, &fqdn);
+    }
+
+    Ok(())
 }
