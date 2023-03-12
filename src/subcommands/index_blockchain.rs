@@ -36,7 +36,16 @@ pub async fn index_blockchain(
                         let b = &b[3..];
                         match parse_ind_output(&b) {
                             Ok(b) => {
-                                match index_output(b, &blockhash, &txid, vout) {
+                                match index_output(
+                                    config,
+                                    b,
+                                    &blockhash,
+                                    &txid,
+                                    vout,
+                                    blockinfo.height,
+                                )
+                                .await
+                                {
                                     Err(err) => log::error!("Index error: {err}"),
                                     _ => {}
                                 };
@@ -66,11 +75,13 @@ async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, a
         .expect("starting height")?)
 }
 
-fn index_output(
+async fn index_output(
+    config: &Config,
     bytes: Vec<u8>,
     blockhash: &BlockHash,
     txid: &Txid,
     vout: usize,
+    height: usize,
 ) -> anyhow::Result<()> {
     let nsid = bytes.to_hex();
     log::info!("IND output found: {}", nsid);
@@ -78,14 +89,13 @@ fn index_output(
         return Err(anyhow::anyhow!("Unexpected IND length"));
     }
 
-    let nstree = db::namespaces()?;
-    if nstree.contains_key(&bytes)? {
-        log::info!("NSID {nsid} already index, skipping");
+    let conn = config.sqlite().await?;
+    if db::namespace_exists(&conn, nsid.clone()).await? {
+        log::debug!("Namespace {nsid} already exists, skipping.");
         return Ok(());
     }
 
-    let namespace = db::NamespaceModel::new_detected(&nsid, None, blockhash, txid, vout)?;
-    nstree.insert(&bytes, namespace.encode()?)?;
+    db::discover_namespace(&conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
     Ok(())
 }
 

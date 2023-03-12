@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, str::FromStr};
 
 use anyhow::anyhow;
 use nostr_sdk::{
@@ -8,7 +8,7 @@ use nostr_sdk::{
 
 use crate::{
     config::Config,
-    db::names_nsid,
+    db,
     documents::{self, ExampleDocument},
     util::{NamespaceNostrKind, Nsid},
 };
@@ -28,7 +28,9 @@ pub async fn broadcast_records(
     let records: documents::Records = serde_json::from_str(&std::fs::read_to_string(document)?)?;
     let (keys, client) = config.nostr_client(privkey).await?;
     let kind = NamespaceNostrKind::Record.into();
-    let nsid = nsid(&records.name)?.ok_or(anyhow!("Namespace not found for name"))?;
+    let nsid = nsid(&config, &records.name)
+        .await?
+        .ok_or(anyhow!("Namespace not found for name"))?;
     let dtag = Tag::Generic(TagKind::D, vec![nsid.to_string()]);
     let indtag = Tag::Generic("ind".into(), vec![records.name.clone()]);
     let tags = vec![dtag, indtag];
@@ -39,7 +41,8 @@ pub async fn broadcast_records(
     Ok(())
 }
 
-fn nsid(name: &str) -> anyhow::Result<Option<Nsid>> {
-    let index = names_nsid()?;
-    index.get(&name)?.map(|n| Nsid::from_slice(&n)).transpose()
+async fn nsid(config: &Config, name: &str) -> anyhow::Result<Option<Nsid>> {
+    let conn = config.sqlite().await?;
+    let index = db::nsid_for_name(&conn, name.to_owned()).await?;
+    index.map(|s| Nsid::from_str(&s)).transpose()
 }

@@ -14,12 +14,11 @@ use crate::{
     util::{Nsid, Pubkey},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Namespace(pub String, pub Pubkey, pub Vec<Namespace>);
 
 impl Namespace {
     pub fn namespace_id(&self) -> Nsid {
-        println!("self: {self:?}");
         self.namespace_id_("")
     }
 
@@ -39,7 +38,6 @@ impl Namespace {
         let mr = merkle_root(&nsids);
         data.extend(mr.as_ref());
 
-        println!("fqdn: {fqdn}");
         data.extend(fqdn.as_bytes());
         Hash160::digest(&data).into()
     }

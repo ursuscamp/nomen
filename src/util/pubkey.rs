@@ -2,9 +2,11 @@ use std::{fmt::Debug, str::FromStr};
 
 use bitcoin::XOnlyPublicKey;
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
+use serde::{Deserialize, Serialize};
+use serde_hex::{SerHex, Strict};
 
-#[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From)]
-pub struct Pubkey([u8; 32]);
+#[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Serialize, Deserialize)]
+pub struct Pubkey(#[serde(with = "SerHex::<Strict>")] [u8; 32]);
 
 impl FromStr for Pubkey {
     type Err = anyhow::Error;

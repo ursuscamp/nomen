@@ -4,5 +4,6 @@ cookie
 .bitcoin
 .indigo.toml
 create.json
-.indigo-data/
 records.json
+indigo.db
+.DS_Store

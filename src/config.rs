@@ -23,7 +23,7 @@ pub struct Config {
     pub config: Option<PathBuf>,
 
     /// Path for index data.
-    #[arg(short, long, default_value = ".indigo-data")]
+    #[arg(short, long, default_value = "indigo.db")]
     pub data: Option<PathBuf>,
 
     /// Location to Bitcoin Core cookie file.

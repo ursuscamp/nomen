@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
+async-recursion = "1.0.2"
 # bincode = "2.0.0-rc.2"
 bitcoin = {version = "0.29.2", features = ["base64"] }
 bitcoincore-rpc = "0.16.0"
@@ -25,6 +26,7 @@ ripemd = "0.1.3"
 rusqlite = "0.28.0"
 secp256k1 = { version = "0.26.0", features = ["rand-std"] }
 serde = { version = "1.0.152", features = ["derive"] }
+serde-hex = "0.1.0"
 serde_json = "1.0.94"
 sha2 = "0.10.6"
 # sled = "0.34.7"
