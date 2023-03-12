@@ -4,12 +4,12 @@ use bitcoincore_rpc::RpcApi;
 
 use crate::{config::Config, db, name::Namespace};
 
-pub fn index_blockchain(
+pub async fn index_blockchain(
     config: &Config,
     confirmations: usize,
     height: Option<usize>,
 ) -> anyhow::Result<()> {
-    let height = index_height(height, config)?;
+    let height = index_height(height, config).await?;
     log::info!("Starting index from block height: {height}");
 
     let client = config.rpc_client()?;
@@ -48,8 +48,6 @@ pub fn index_blockchain(
             }
         }
 
-        db::set_misc_setting("index_height", &blockinfo.height)?;
-
         blockhash = next_hash;
         blockinfo = client.get_block_info(&blockhash)?;
     }
@@ -58,15 +56,12 @@ pub fn index_blockchain(
     Ok(())
 }
 
-fn index_height(height: Option<usize>, config: &Config) -> Result<usize, anyhow::Error> {
+async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, anyhow::Error> {
+    let conn = config.sqlite().await?;
+    let db_height = db::next_index_height(&conn).await;
     Ok(height
         .map(Result::Ok)
-        .or_else(|| {
-            db::misc_setting::<usize>("index_height")
-                .ok()
-                .flatten()
-                .map(Result::Ok)
-        })
+        .or(Some(db_height))
         .or_else(|| Some(starting_blockheight(config.network.unwrap())))
         .expect("starting height")?)
 }

@@ -13,6 +13,7 @@ use nostr_sdk::{
 };
 use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
 
 #[derive(Parser, Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -133,6 +134,10 @@ impl Config {
         let keys = nostr_sdk::Keys::generate();
         let sk = keys.secret_key()?.to_bech32()?;
         self.nostr_client(&sk).await
+    }
+
+    pub async fn sqlite(&self) -> anyhow::Result<tokio_rusqlite::Connection> {
+        Ok(Connection::open(&self.data.as_ref().expect("No data configured")).await?)
     }
 }
 

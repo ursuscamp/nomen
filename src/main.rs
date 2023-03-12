@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
     let mut cli = Config::parse();
 
-    db::initialize(cli.data.as_ref().unwrap())?;
+    db::initialize(&cli).await?;
 
     if let Some(config) = &cli.config {
         if config.is_file() {
@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
             config::IndexSubcommand::Blockchain {
                 confirmations,
                 height,
-            } => subcommands::index_blockchain(&cli, *confirmations, *height)?,
+            } => subcommands::index_blockchain(&cli, *confirmations, *height).await?,
             config::IndexSubcommand::Relays => subcommands::index_relays(&cli).await?,
         },
         config::Subcommand::Debug(debug) => match debug {
@@ -74,6 +74,6 @@ async fn main() -> anyhow::Result<()> {
         },
     }
 
-    db::flush_all()?;
+    // db::flush_all()?;
     Ok(())
 }

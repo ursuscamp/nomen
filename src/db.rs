@@ -1,133 +1,80 @@
-use bincode::{error::EncodeError, Decode, Encode};
-use bitcoin::{hashes::hex::ToHex, BlockHash, Txid};
-use std::path::Path;
+use rusqlite::params;
+use tokio_rusqlite::Connection;
 
-use once_cell::sync::OnceCell;
+use crate::config::Config;
 
-use crate::name::Namespace;
+static MIGRATIONS: [&'static str; 2] = [
+    "CREATE TABLE namespaces (nsid PRIMARY KEY, name, pubkey, blockhash, txid, vout, status, children);",
+    "CREATE INDEX namespaces_status_idx ON namespaces(status);",
+];
 
-static DB: OnceCell<sled::Db> = OnceCell::new();
+pub async fn initialize(config: &Config) -> anyhow::Result<()> {
+    let conn = config.sqlite().await?;
 
-pub fn initialize(path: &Path) -> anyhow::Result<()> {
-    DB.get_or_try_init(|| sled::open(path))?;
+    conn.call(|conn| -> anyhow::Result<()> {
+        conn.execute("CREATE TABLE IF NOT EXISTS schema (version);", params![]);
+        let item: usize = conn.query_row(
+            "SELECT COALESCE(MAX(version) + 1, 0) FROM schema",
+            params![],
+            |row| row.get(0),
+        )?;
+
+        for (idx, migration) in MIGRATIONS[item..].into_iter().enumerate() {
+            log::debug!("Migrating schema version {idx}");
+            conn.execute(migration, params![]);
+            conn.execute("INSERT INTO schema (version) VALUES (?)", params![idx]);
+        }
+
+        Ok(())
+    })
+    .await?;
+
     Ok(())
 }
 
-pub fn db() -> sled::Db {
-    DB.get().expect("db not initialized").clone()
-}
+pub async fn discover_namespace(
+    conn: &Connection,
+    nsid: String,
+    blockhash: String,
+    txid: String,
+    vout: u64,
+    height: u64,
+) -> anyhow::Result<()> {
+    conn.call(move |conn| -> anyhow::Result<()> {
+        conn.execute(
+            "INSERT INTO namespaces (nsid, blockhash, txid, vout, height, status) VALUES (?, ?, ?, ?, ?, 'discovered')",
+            params![nsid, blockhash, txid, vout, height],
+        );
+        Ok(())
+    })
+    .await?;
 
-pub fn flush_all() -> anyhow::Result<()> {
-    namespaces()?.flush();
     Ok(())
 }
 
-pub fn namespaces() -> anyhow::Result<sled::Tree> {
-    Ok(db().open_tree("namespaces")?)
-}
-
-/// Names -> NSID index
-pub fn names_nsid() -> anyhow::Result<sled::Tree> {
-    Ok(db().open_tree("names_nsid")?)
-}
-
-#[derive(Encode, Decode, Default, Clone)]
-pub struct NamespaceModel {
-    pub status: IndexStatus,
-    pub name: String,
-    pub nsid: Vec<u8>,
-    pub prev_nsid: Option<Vec<u8>>,
-    pub blockhash: Vec<u8>,
-    pub txid: Vec<u8>,
-    pub vout: usize,
-    pub pubkey: Vec<u8>,
-    pub children: Vec<Vec<u8>>,
-}
-
-impl NamespaceModel {
-    pub fn new_detected(
-        nsid: &str,
-        prev_nsid: Option<&str>,
-        blockhash: &BlockHash,
-        txid: &Txid,
-        vout: usize,
-    ) -> anyhow::Result<NamespaceModel> {
-        let nsid = hex::decode(nsid)?;
-        let prev_nsid = prev_nsid.map(|s| hex::decode(s)).transpose()?;
-        Ok(NamespaceModel {
-            nsid,
-            prev_nsid,
-            blockhash: blockhash.to_vec(),
-            txid: txid.to_vec(),
-            vout,
-            ..Default::default()
+pub async fn next_index_height(conn: &Connection) -> anyhow::Result<usize> {
+    Ok(conn
+        .call(|conn| -> anyhow::Result<usize> {
+            let height: usize = conn.query_row(
+                "SELECT COALESCE(MAX(height) + 1, 0) FROM namespaces;",
+                [],
+                |row| row.get(0),
+            )?;
+            Ok(height)
         })
-    }
-
-    pub fn encode(&self) -> Result<Vec<u8>, EncodeError> {
-        bincode::encode_to_vec(self, bincode::config::standard())
-    }
-
-    pub fn decode(bytes: &[u8]) -> Result<NamespaceModel, bincode::error::DecodeError> {
-        let (ns, _) = bincode::decode_from_slice::<Self, _>(bytes, bincode::config::standard())?;
-        Ok(ns)
-    }
+        .await?)
 }
 
-impl std::fmt::Debug for NamespaceModel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Namespace")
-            .field("status", &self.status)
-            .field("name", &self.name)
-            .field("nsid", &self.nsid.to_hex())
-            .field("prev_nsid", &self.prev_nsid.as_ref().map(|v| v.to_hex()))
-            .field("blockhash", &self.blockhash.to_hex())
-            .field("txid", &self.txid.to_hex())
-            .field("vout", &self.vout)
-            .field("pubkey", &self.pubkey.to_hex())
-            .field("children", &self.children)
-            .finish()
-    }
-}
+pub async fn namespace_exists(conn: &Connection, nsid: String) -> anyhow::Result<bool> {
+    Ok(conn
+        .call(move |conn| -> anyhow::Result<bool> {
+            let count: usize = conn.query_row(
+                "SELECT COUNT(*) FROM namespaces WHERE nsid = ?;",
+                params![nsid],
+                |row| row.get(0),
+            )?;
 
-#[derive(Debug, Encode, Decode, PartialEq, Eq, Clone, Copy)]
-pub enum IndexStatus {
-    /// Detected on blockchain, not verified.
-    Detected,
-
-    /// Record received, not verified.
-    Indexed,
-
-    /// Index record is received, but the name is determined invalid.
-    Invalid,
-
-    /// Name valid and verified.
-    Valid,
-
-    /// Valid name with a recorded record set.
-    RecordSet,
-}
-
-impl Default for IndexStatus {
-    fn default() -> Self {
-        IndexStatus::Detected
-    }
-}
-
-pub fn misc_setting<D: bincode::Decode>(name: &str) -> anyhow::Result<Option<D>> {
-    let misctree = db().open_tree("misc")?;
-    Ok(misctree
-        .get(name)?
-        .map(|v| bincode::decode_from_slice::<D, _>(&v, bincode::config::standard()))
-        .transpose()?
-        .map(|o| o.0))
-}
-
-pub fn set_misc_setting<D: bincode::Encode>(name: &str, value: &D) -> anyhow::Result<()> {
-    let misctree = db().open_tree("misc")?;
-    misctree.insert(
-        name,
-        bincode::encode_to_vec(value, bincode::config::standard())?,
-    )?;
-    Ok(())
+            Ok(count > 0)
+        })
+        .await?)
 }
