@@ -56,7 +56,9 @@ async fn main() -> anyhow::Result<()> {
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
         config::Subcommand::Records(records) => match records {
-            config::RecordsSubcommand::Broadcast { document, privkey } => todo!(),
+            config::RecordsSubcommand::Broadcast { document, privkey } => {
+                subcommands::broadcast_records(&cli, document.as_ref(), privkey.as_str()).await?
+            }
             config::RecordsSubcommand::Example => subcommands::example_records()?,
         },
         config::Subcommand::Index(index) => match index {

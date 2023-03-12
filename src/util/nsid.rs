@@ -10,6 +10,12 @@ use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 #[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
 pub struct Nsid([u8; 20]);
 
+impl Nsid {
+    pub fn from_slice(bytes: &[u8]) -> anyhow::Result<Nsid> {
+        Ok(Nsid(bytes.try_into()?))
+    }
+}
+
 impl FromStr for Nsid {
     type Err = anyhow::Error;
 

@@ -6,8 +6,8 @@ use super::ExampleDocument;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Records {
-    name: String,
-    records: HashMap<String, String>,
+    pub name: String,
+    pub records: HashMap<String, String>,
 }
 
 impl ExampleDocument for Records {
