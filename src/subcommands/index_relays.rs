@@ -1,4 +1,4 @@
-use std::{net::TcpStream, time::Duration};
+use std::{collections::HashMap, net::TcpStream, time::Duration};
 
 use anyhow::anyhow;
 use bitcoin::hashes::hex::ToHex;
@@ -17,6 +17,7 @@ pub async fn index_relays(config: &Config) -> anyhow::Result<()> {
                 log::debug!("Namespace found: {ns:?}");
                 db::update_from_relay(&conn, &ns).await?;
                 index_namespace_tree(&config, &ns, "").await?;
+                search_records(config, ns.0.as_str()).await?;
             }
             Err(e) => log::error!("{e}"),
         }
@@ -61,4 +62,41 @@ async fn index_namespace_tree(
     }
 
     Ok(())
+}
+
+async fn search_records(config: &Config, name: &str) -> anyhow::Result<HashMap<String, String>> {
+    log::debug!("Searching for records for name: {name}");
+    let conn = config.sqlite().await?;
+    let nsid = db::nsid_for_name(&conn, name.to_owned())
+        .await?
+        .ok_or(anyhow!("Name has no associated nsid"))?;
+    let pubkey = db::pubkey_for_nsid(&conn, nsid.to_owned())
+        .await?
+        .ok_or(anyhow!("Nsid has no pubkey"))?;
+
+    let filters = Filter::new()
+        .kind(NamespaceNostrKind::Record.into())
+        .replaceable_event(nsid);
+    let (_keys, client) = config.nostr_random_client().await?;
+    let events = client
+        .get_events_of(vec![filters], Some(Duration::from_secs(1)))
+        .await?;
+    let event = events
+        .into_iter()
+        .filter(|ev| ev.pubkey.to_hex() == pubkey)
+        .nth(0)
+        .ok_or(anyhow!("No matching records events"))?;
+    let records =
+        serde_json::from_str(&event.content).map_err(|e| anyhow!("Invalid content in records"))?;
+
+    log::debug!("Records found for name: {records:?}");
+    db::insert_records(
+        &conn,
+        name.to_owned(),
+        event.created_at.as_u64(),
+        event.content,
+    )
+    .await?;
+
+    Ok(records)
 }

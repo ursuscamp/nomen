@@ -4,10 +4,12 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, util::Nsid};
 
-static MIGRATIONS: [&'static str; 3] = [
+static MIGRATIONS: [&'static str; 5] = [
     "CREATE TABLE namespaces (nsid PRIMARY KEY, name, pubkey, blockhash, txid, vout, height, status, children);",
     "CREATE INDEX namespaces_status_idx ON namespaces(status);",
-    "CREATE TABLE names_nsid (name PRIMARY KEY, nsid);"
+    "CREATE TABLE names_nsid (name PRIMARY KEY, nsid);",
+    "CREATE TABLE records (name PRIMARY KEY, created_at, records);",
+    "CREATE INDEX records_created_at_idx ON records(created_at);"
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
@@ -129,6 +131,33 @@ pub async fn index_name(conn: &Connection, name: String, nsid: String) -> anyhow
         conn.execute(
             "INSERT INTO names_nsid (name, nsid) VALUES (?, ?);",
             params![name, nsid],
+        )?;
+        Ok(())
+    })
+    .await
+}
+
+pub async fn pubkey_for_nsid(conn: &Connection, nsid: String) -> anyhow::Result<Option<String>> {
+    conn.call(move |conn| -> anyhow::Result<Option<String>> {
+        Ok(conn.query_row(
+            "SELECT pubkey FROM namespaces WHERE nsid = ?",
+            params![nsid],
+            |row| row.get(0),
+        )?)
+    })
+    .await
+}
+
+pub async fn insert_records(
+    conn: &Connection,
+    name: String,
+    created_at: u64,
+    records: String,
+) -> anyhow::Result<()> {
+    conn.call(move |conn| {
+        conn.execute(
+            "INSERT INTO records (name, created_at, records) VALUES (?, ?, ?);",
+            params![name, created_at, records],
         )?;
         Ok(())
     })
