@@ -4,12 +4,14 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, util::Nsid};
 
-static MIGRATIONS: [&'static str; 5] = [
-    "CREATE TABLE namespaces (nsid PRIMARY KEY, name, pubkey, blockhash, txid, vout, height, status, children);",
-    "CREATE INDEX namespaces_status_idx ON namespaces(status);",
-    "CREATE TABLE names_nsid (name PRIMARY KEY, nsid);",
+static MIGRATIONS: [&'static str; 7] = [
+    "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
+    "CREATE INDEX blockchain_height_dx ON blockchain(height);",
+    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid);",
+    "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
+    "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
     "CREATE TABLE records (name PRIMARY KEY, created_at, records);",
-    "CREATE INDEX records_created_at_idx ON records(created_at);"
+    "CREATE INDEX records_created_at_idx ON records(created_at);",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
@@ -46,7 +48,7 @@ pub async fn discover_namespace(
 ) -> anyhow::Result<()> {
     conn.call(move |conn| -> anyhow::Result<()> {
         conn.execute(
-            "INSERT INTO namespaces (nsid, blockhash, txid, vout, height, status) VALUES (?, ?, ?, ?, ?, 'discovered')",
+            "INSERT INTO blockchain (nsid, blockhash, txid, vout, height) VALUES (?, ?, ?, ?, ?)",
             params![nsid, blockhash, txid, vout, height],
         );
         Ok(())
@@ -60,7 +62,7 @@ pub async fn next_index_height(conn: &Connection) -> anyhow::Result<usize> {
     Ok(conn
         .call(|conn| -> anyhow::Result<usize> {
             let height: usize = conn.query_row(
-                "SELECT COALESCE(MAX(height), 0) + 1 FROM namespaces;",
+                "SELECT COALESCE(MAX(height), 0) + 1 FROM blockchain;",
                 [],
                 |row| row.get(0),
             )?;
@@ -73,7 +75,7 @@ pub async fn namespace_exists(conn: &Connection, nsid: String) -> anyhow::Result
     Ok(conn
         .call(move |conn| -> anyhow::Result<bool> {
             let count: usize = conn.query_row(
-                "SELECT COUNT(*) FROM namespaces WHERE nsid = ?;",
+                "SELECT COUNT(*) FROM blockchain WHERE nsid = ?;",
                 params![nsid],
                 |row| row.get(0),
             )?;
