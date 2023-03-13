@@ -1,4 +1,5 @@
 use bitcoin::hashes::hex::ToHex;
+use nostr_sdk::Event;
 use rusqlite::params;
 use tokio_rusqlite::Connection;
 
@@ -7,10 +8,10 @@ use crate::{config::Config, name::Namespace, util::Nsid};
 static MIGRATIONS: [&'static str; 7] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
-    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid);",
+    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
-    "CREATE TABLE records (name PRIMARY KEY, created_at, records);",
+    "CREATE TABLE records_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, records);",
     "CREATE INDEX records_created_at_idx ON records(created_at);",
 ];
 
@@ -70,6 +71,64 @@ pub async fn next_index_height(conn: &Connection) -> anyhow::Result<usize> {
         })
         .await?)
 }
+
+pub async fn last_create_event_time(conn: &Connection) -> anyhow::Result<u64> {
+    conn.call(|conn| {
+        let created_at = conn.query_row(
+            "SELECT COALESCE(MAX(created_at), 0) from create_events;",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(created_at)
+    })
+    .await
+}
+
+pub async fn insert_create_event(
+    conn: &Connection,
+    event: Event,
+    ns: Namespace,
+) -> anyhow::Result<()> {
+    conn.call(move |conn| {
+        conn.execute(
+            "INSERT INTO create_events (nsid, pubkey, created_at, event_id, name, children)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(nsid) DO UPDATE SET
+            created_at = excluded.created_at, event_id = excluded.event_id;",
+            params![
+                ns.namespace_id().to_hex(),
+                event.pubkey.to_hex(),
+                event.created_at.as_u64(),
+                event.id.to_hex(),
+                &ns.0,
+                serde_json::to_string(&ns.2)?
+            ],
+        )?;
+        Ok(())
+    })
+    .await
+}
+
+pub async fn index_name_nsid(
+    conn: &Connection,
+    nsid: String,
+    name: String,
+    root: String,
+) -> anyhow::Result<()> {
+    conn.call(move |conn| {
+        // ON CONFLICT DO NOTHING ensure that if someone uploads a conflicting name,
+        // we just wont index it if it already exists
+        conn.execute(
+            "INSERT INTO name_nsid (name, nsid, root) VALUES (?, ?, ?)
+            ON CONFLICT DO NOTHING",
+            params![name, nsid, root],
+        )?;
+        Ok(())
+    })
+    .await
+}
+
+//// OLD AND BUSTED
 
 pub async fn namespace_exists(conn: &Connection, nsid: String) -> anyhow::Result<bool> {
     Ok(conn

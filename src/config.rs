@@ -229,6 +229,9 @@ pub enum IndexSubcommand {
         height: Option<usize>,
     },
 
-    /// Query relays for missing namespace events.
-    Relays,
+    /// Query relays for missing create events.
+    CreateEvents,
+
+    /// Query relays for records
+    RecordsEvents,
 }
