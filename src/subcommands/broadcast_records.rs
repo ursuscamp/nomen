@@ -43,6 +43,8 @@ pub async fn broadcast_records(
 
 async fn nsid(config: &Config, name: &str) -> anyhow::Result<Option<Nsid>> {
     let conn = config.sqlite().await?;
-    let index = db::nsid_for_name(&conn, name.to_owned()).await?;
+    let index = db::nsid_for_name(&conn, name.to_owned())
+        .await
+        .map_err(|_| anyhow!("Query error. Perhaps missing name?"))?;
     index.map(|s| Nsid::from_str(&s)).transpose()
 }

@@ -56,7 +56,7 @@ async fn index_namespace_tree(conn: &Connection, ns: &Namespace) -> anyhow::Resu
             format!("{}.{}", next.0.clone(), parent_name)
         };
         queue.extend(next.2.into_iter().map(|n| (fqdn.clone(), n)));
-        db::index_name_nsid(conn, nsid, fqdn, root.to_hex()).await?;
+        db::index_name_nsid(conn, nsid, fqdn, root.to_hex(), next.1.to_hex()).await?;
     }
     Ok(())
 }

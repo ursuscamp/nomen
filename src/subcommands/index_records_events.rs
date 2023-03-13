@@ -8,6 +8,7 @@ use crate::{
 };
 
 pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
+    log::info!("Starting records index.");
     let conn = config.sqlite().await?;
     let last_records_time = db::last_records_time(&conn).await?;
     log::debug!("Getting all record events sicne {last_records_time}");
@@ -22,7 +23,7 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
         };
         log::debug!("Recording record for event {event:?}");
 
-        db::insert_records_event(
+        let res = db::insert_records_event(
             &conn,
             nsid,
             pubkey,
@@ -31,7 +32,11 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
             name,
             event.content.clone(),
         )
-        .await?;
+        .await;
+
+        if let Err(e) = res {
+            log::error!("Error recording row: {e}");
+        }
     }
 
     Ok(())

@@ -5,15 +5,20 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, util::Nsid};
 
-static MIGRATIONS: [&'static str; 8] = [
+static MIGRATIONS: [&'static str; 9] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
-    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root);",
+    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
     "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
+    "CREATE VIEW name_records_vw AS
+        SELECT re.name, re.records FROM blockchain b
+        JOIN name_nsid nn ON b.nsid = nn.root
+        JOIN create_events ce ON b.nsid = ce.nsid
+        JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
@@ -115,14 +120,15 @@ pub async fn index_name_nsid(
     nsid: String,
     name: String,
     root: String,
+    pubkey: String,
 ) -> anyhow::Result<()> {
     conn.call(move |conn| {
         // ON CONFLICT DO NOTHING ensure that if someone uploads a conflicting name,
         // we just wont index it if it already exists
         conn.execute(
-            "INSERT INTO name_nsid (name, nsid, root) VALUES (?, ?, ?)
+            "INSERT INTO name_nsid (name, nsid, root, pubkey) VALUES (?, ?, ?, ?)
             ON CONFLICT DO NOTHING",
-            params![name, nsid, root],
+            params![name, nsid, root, pubkey],
         )?;
         Ok(())
     })
@@ -216,7 +222,7 @@ pub async fn nsid_for_name(conn: &Connection, name: String) -> anyhow::Result<Op
     Ok(conn
         .call(move |conn| {
             conn.query_row(
-                "SELECT nsid FROM names_nsid WHERE name = ?;",
+                "SELECT nsid FROM name_nsid WHERE name = ?;",
                 params![name],
                 |row| row.get(0),
             )
