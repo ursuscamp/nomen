@@ -67,7 +67,9 @@ async fn main() -> anyhow::Result<()> {
                 height,
             } => subcommands::index_blockchain(&cli, *confirmations, *height).await?,
             config::IndexSubcommand::CreateEvents => subcommands::index_create_events(&cli).await?,
-            config::IndexSubcommand::RecordsEvents => todo!(),
+            config::IndexSubcommand::RecordsEvents => {
+                subcommands::index_records_events(&cli).await?
+            }
         },
         config::Subcommand::Debug(debug) => match debug {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
@@ -75,6 +77,5 @@ async fn main() -> anyhow::Result<()> {
         },
     }
 
-    // db::flush_all()?;
     Ok(())
 }

@@ -95,7 +95,7 @@ async fn index_output(
         return Ok(());
     }
 
-    db::discover_namespace(&conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
+    db::insert_namespace(&conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
     Ok(())
 }
 

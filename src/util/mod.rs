@@ -1,6 +1,8 @@
+mod metadata_extractor;
 mod nsid;
 mod pubkey;
 
+pub use metadata_extractor::*;
 pub use nsid::*;
 pub use pubkey::*;
 

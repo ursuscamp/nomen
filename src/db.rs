@@ -5,14 +5,15 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, util::Nsid};
 
-static MIGRATIONS: [&'static str; 7] = [
+static MIGRATIONS: [&'static str; 8] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
     "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
-    "CREATE TABLE records_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, records);",
-    "CREATE INDEX records_created_at_idx ON records(created_at);",
+    "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
+    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
+    "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
@@ -39,7 +40,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn discover_namespace(
+pub async fn insert_namespace(
     conn: &Connection,
     nsid: String,
     blockhash: String,
@@ -122,6 +123,57 @@ pub async fn index_name_nsid(
             "INSERT INTO name_nsid (name, nsid, root) VALUES (?, ?, ?)
             ON CONFLICT DO NOTHING",
             params![name, nsid, root],
+        )?;
+        Ok(())
+    })
+    .await
+}
+
+pub async fn last_records_time(conn: &Connection) -> anyhow::Result<u64> {
+    conn.call(|conn| {
+        Ok(conn.query_row(
+            "SELECT COALESCE(MAX(created_at), 0) FROM records_events;",
+            [],
+            |row| row.get(0),
+        )?)
+    })
+    .await
+}
+
+// pub async fn valid_name_nsid(
+//     conn: &Connection,
+//     name: String,
+//     nsid: String,
+// ) -> anyhow::Result<bool> {
+//     conn.call(move |conn| {
+//         let count: u64 = conn.query_row(
+//             "SELECT COUNT(*) FROM name_nsid WHERE name = ? AND nsid = ?;",
+//             params![name, nsid],
+//             |row| row.get(0),
+//         )?;
+//         Ok(count > 0)
+//     })
+//     .await
+// }
+
+pub async fn insert_records_event(
+    conn: &Connection,
+    nsid: String,
+    pubkey: String,
+    created_at: u64,
+    event_id: String,
+    name: String,
+    records: String,
+) -> anyhow::Result<()> {
+    conn.call(move |conn| {
+        conn.execute(
+            "INSERT INTO records_events (nsid, pubkey, created_at, event_id, name, records)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (nsid, pubkey) DO UPDATE SET
+            created_at = excluded.created_at,
+            event_id = excluded.event_id,
+            records = excluded.records;",
+            params![nsid, pubkey, created_at, event_id, name, records],
         )?;
         Ok(())
     })
