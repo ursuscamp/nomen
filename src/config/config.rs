@@ -89,6 +89,13 @@ impl Config {
         }
     }
 
+    pub fn server_bind(&self) -> Option<String> {
+        match &self.subcommand {
+            Subcommand::Server { bind } => bind.clone(),
+            _ => None,
+        }
+    }
+
     pub fn rpc_client(&self) -> anyhow::Result<bitcoincore_rpc::Client> {
         let host = self.rpchost.clone().unwrap_or_else(|| "127.0.0.1".into());
         let port = self.rpcport.unwrap_or(8332);
