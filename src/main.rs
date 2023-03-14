@@ -30,19 +30,7 @@ use crate::config::{Config, ConfigFile};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let mut config = config::Config::parse();
-    let mut config_file = ConfigFile::default();
-
-    if let Some(config_name) = &config.config {
-        if config_name.is_file() {
-            let config_str = std::fs::read_to_string(config_name)?;
-            config_file = toml::from_str(&config_str)?;
-        } else {
-            log::info!("Config file not found. Skipping.");
-        }
-    }
-
-    log::debug!("Config loaded: {config:?}");
+    let config = parse_config()?;
 
     db::initialize(&config).await?;
 
@@ -84,4 +72,24 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_config() -> anyhow::Result<Config> {
+    let mut config = config::Config::parse();
+    let config_name = config
+        .config
+        .clone()
+        .unwrap_or_else(|| ".indigo.toml".into());
+
+    if config_name.is_file() {
+        let config_str = std::fs::read_to_string(config_name)?;
+        let config_file = toml::from_str(&config_str)?;
+        config.merge_config_file(config_file);
+    } else {
+        log::info!("Config file not found. Skipping.");
+    }
+
+    log::debug!("Config loaded: {config:?}");
+
+    Ok(config)
 }

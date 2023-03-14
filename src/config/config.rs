@@ -9,13 +9,15 @@ use nostr_sdk::{
 use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
 
+use super::ConfigFile;
+
 #[derive(Parser, Debug, Clone)]
 pub struct Config {
-    /// Location of config file
-    #[arg(short, long, default_value = ".indigo.toml")]
+    /// Location of config file: Default: .indigo.toml
+    #[arg(short, long)]
     pub config: Option<PathBuf>,
 
-    /// Path for index data.
+    /// Path for index data. Default: indigo.db
     #[arg(short, long)]
     pub data: Option<PathBuf>,
 
@@ -53,23 +55,45 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn rpc_client(&self) -> anyhow::Result<bitcoincore_rpc::Client> {
-        let host = &self.rpchost;
-        let port = self.rpcport;
-        let user = &self.rpcuser;
-        let pass = &self.rpcpass;
-        let url = if host.is_some() && port.is_some() {
-            format!("{}.{}", host.as_ref().unwrap(), port.unwrap())
-        } else {
-            String::new()
-        };
-        let auth = if let Some(cookie) = &self.cookie {
+    pub fn merge_config_file(&mut self, cf: ConfigFile) {
+        self.data = self
+            .data
+            .take()
+            .or(cf.data)
+            .or_else(|| Some("indigo.db".into()));
+        self.cookie = self.cookie.take().or(cf.cookie);
+        self.rpcuser = self.rpcuser.take().or(cf.rpcuser);
+        self.rpcpass = self.rpcpass.take().or(cf.rpcpass);
+        self.rpchost = self.rpchost.take().or(cf.rpchost);
+        self.rpcport = self.rpcport.or(cf.rpcport);
+        self.network = self.network.or(cf.network);
+        self.relays = self.relays.take().or(cf.relays);
+        if let Subcommand::Server { bind } = &mut self.subcommand {
+            *bind = bind
+                .take()
+                .or(cf.server.map(|mut s| s.bind.take()).flatten())
+                .or_else(|| Some("0.0.0.0:8080".into()));
+        }
+    }
+
+    pub fn rpc_auth(&self) -> bitcoincore_rpc::Auth {
+        if let Some(cookie) = &self.cookie {
             bitcoincore_rpc::Auth::CookieFile(cookie.clone())
-        } else if user.is_some() && pass.is_some() {
-            bitcoincore_rpc::Auth::UserPass(user.clone().unwrap(), pass.clone().unwrap())
+        } else if self.rpcuser.is_some() || self.rpcpass.is_some() {
+            bitcoincore_rpc::Auth::UserPass(
+                self.rpcuser.clone().expect("RPC user not configured"),
+                self.rpcpass.clone().expect("RPC password not configured"),
+            )
         } else {
             bitcoincore_rpc::Auth::None
-        };
+        }
+    }
+
+    pub fn rpc_client(&self) -> anyhow::Result<bitcoincore_rpc::Client> {
+        let host = self.rpchost.clone().unwrap_or_else(|| "127.0.0.1".into());
+        let port = self.rpcport.unwrap_or(8332);
+        let url = format!("{host}:{port}");
+        let auth = self.rpc_auth();
         Ok(bitcoincore_rpc::Client::new(&url, auth)?)
     }
 
@@ -132,7 +156,7 @@ pub enum Subcommand {
     /// Start the HTTP server
     Server {
         #[arg(short, long)]
-        bind: String,
+        bind: Option<String>,
     },
 }
 
