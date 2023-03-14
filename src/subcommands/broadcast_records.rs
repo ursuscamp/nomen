@@ -7,7 +7,7 @@ use nostr_sdk::{
 };
 
 use crate::{
-    config::Config,
+    config::{Cli, Config},
     db,
     documents::{self, ExampleDocument},
     util::{NamespaceNostrKind, Nsid},

@@ -10,7 +10,12 @@ use nostr_sdk::{Client, Event, Filter};
 use serde_json::json;
 use tokio_rusqlite::Connection;
 
-use crate::{config::Config, db, name::Namespace, util::NamespaceNostrKind};
+use crate::{
+    config::{Cli, Config},
+    db,
+    name::Namespace,
+    util::NamespaceNostrKind,
+};
 
 pub async fn index_create_events(config: &Config) -> anyhow::Result<()> {
     let (_keys, client) = config.nostr_random_client().await?;
