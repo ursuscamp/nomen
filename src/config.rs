@@ -168,6 +168,12 @@ pub enum Subcommand {
     #[command(subcommand)]
     #[serde(skip)]
     Debug(DebugSubcommand),
+
+    /// Start the HTTP server
+    Server {
+        #[arg(short, long, default_value = "0.0.0.0:8000")]
+        bind: String,
+    },
 }
 
 impl Default for Subcommand {
@@ -234,4 +240,10 @@ pub enum IndexSubcommand {
 
     /// Query relays for records
     RecordsEvents,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct ServerArgs {
+    #[arg(short, long, default_value = "0.0.0.0:8000")]
+    bind: String,
 }
