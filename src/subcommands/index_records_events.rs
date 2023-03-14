@@ -2,7 +2,7 @@ use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Filter;
 
 use crate::{
-    config::{Cli, Config},
+    config::Config,
     db,
     util::{MetadataExtractor, NamespaceNostrKind},
 };

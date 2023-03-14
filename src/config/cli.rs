@@ -2,10 +2,15 @@ use std::path::PathBuf;
 
 use bitcoin::Network;
 use clap::Parser;
+use nostr_sdk::{
+    prelude::{FromSkStr, ToBech32},
+    Options,
+};
 use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
 
 #[derive(Parser, Debug, Clone)]
-pub struct Cli {
+pub struct Config {
     /// Location of config file
     #[arg(short, long, default_value = ".indigo.toml")]
     pub config: Option<PathBuf>,
@@ -45,6 +50,55 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub subcommand: Subcommand,
+}
+
+impl Config {
+    pub fn rpc_client(&self) -> anyhow::Result<bitcoincore_rpc::Client> {
+        let host = &self.rpchost;
+        let port = self.rpcport;
+        let user = &self.rpcuser;
+        let pass = &self.rpcpass;
+        let url = if host.is_some() && port.is_some() {
+            format!("{}.{}", host.as_ref().unwrap(), port.unwrap())
+        } else {
+            String::new()
+        };
+        let auth = if let Some(cookie) = &self.cookie {
+            bitcoincore_rpc::Auth::CookieFile(cookie.clone())
+        } else if user.is_some() && pass.is_some() {
+            bitcoincore_rpc::Auth::UserPass(user.clone().unwrap(), pass.clone().unwrap())
+        } else {
+            bitcoincore_rpc::Auth::None
+        };
+        Ok(bitcoincore_rpc::Client::new(&url, auth)?)
+    }
+
+    pub async fn sqlite(&self) -> anyhow::Result<tokio_rusqlite::Connection> {
+        Ok(Connection::open(&self.data.as_ref().expect("No database configured")).await?)
+    }
+
+    pub async fn nostr_client(
+        &self,
+        sk: &str,
+    ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
+        let keys = nostr_sdk::Keys::from_sk_str(sk)?;
+        let mut client =
+            nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
+        let relays = self.relays.as_ref().expect("No relays configured");
+        for relay in relays {
+            client.add_relay(relay, None).await?;
+        }
+        client.connect().await;
+        Ok((keys, client))
+    }
+
+    pub async fn nostr_random_client(
+        &self,
+    ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
+        let keys = nostr_sdk::Keys::generate();
+        let sk = keys.secret_key()?.to_bech32()?;
+        self.nostr_client(&sk).await
+    }
 }
 
 #[derive(clap::Subcommand, Deserialize, Serialize, Debug, Clone)]

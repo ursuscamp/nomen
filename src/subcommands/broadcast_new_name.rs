@@ -9,11 +9,7 @@ use secp256k1::SecretKey;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{
-    config::{Cli, Config},
-    documents::Create,
-    util::NamespaceNostrKind,
-};
+use crate::{config::Config, documents::Create, util::NamespaceNostrKind};
 
 pub async fn broadcast_new_name(
     config: &Config,

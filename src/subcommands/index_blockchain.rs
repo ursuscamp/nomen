@@ -2,11 +2,7 @@ use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
 
-use crate::{
-    config::{Cli, Config},
-    db,
-    name::Namespace,
-};
+use crate::{config::Config, db, name::Namespace};
 
 pub async fn index_blockchain(
     config: &Config,
@@ -75,7 +71,11 @@ async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, a
     Ok(height
         .map(Result::Ok)
         .or(Some(db_height))
-        .or_else(|| Some(starting_blockheight(config.network())))
+        .or_else(|| {
+            Some(starting_blockheight(
+                config.network.expect("No network configured"),
+            ))
+        })
         .expect("starting height")?)
 }
 

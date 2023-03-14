@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use yansi::Paint;
 
 use crate::{
-    config::{Cli, Config},
+    config::Config,
     documents::{self, Create, ExampleDocument},
     name::{self, Namespace},
 };

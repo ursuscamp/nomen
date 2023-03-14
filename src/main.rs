@@ -24,17 +24,16 @@ use bitcoin::{
 };
 use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
-use config::Cli;
 
 use crate::config::{Config, ConfigFile};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
-    let mut cli = Cli::parse();
+    let mut config = config::Config::parse();
     let mut config_file = ConfigFile::default();
 
-    if let Some(config_name) = &cli.config {
+    if let Some(config_name) = &config.config {
         if config_name.is_file() {
             let config_str = std::fs::read_to_string(config_name)?;
             config_file = toml::from_str(&config_str)?;
@@ -43,21 +42,19 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let config = Config::new(cli, config_file);
-
     log::debug!("Config loaded: {config:?}");
 
     db::initialize(&config).await?;
 
-    match config.subcommand() {
+    match &config.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::New(new) => match new {
             config::NewSubcommand::Tx { document } => {
-                subcommands::create_new_tx(&config, document)?
+                subcommands::create_new_tx(&config, &document)?
             }
             config::NewSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_new_name(&config, document, privkey).await?
+                subcommands::broadcast_new_name(&config, &document, &privkey).await?
             }
             config::NewSubcommand::Example => subcommands::example_create()?,
         },
