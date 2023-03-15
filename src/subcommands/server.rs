@@ -1,9 +1,20 @@
-use axum::{routing::get, Router};
+use std::collections::HashMap;
 
-use crate::config::Config;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    routing::get,
+    Json, Router,
+};
+use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
+use toml::map;
+
+use crate::{config::Config, db};
 
 pub async fn start(config: &Config) -> anyhow::Result<()> {
-    let app = Router::new().route("/api/name", get(name));
+    let conn = config.sqlite().await?;
+    let app = Router::new().route("/api/name", get(name)).with_state(conn);
 
     let addr = config
         .server_bind()
@@ -17,6 +28,21 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn name() -> &'static str {
-    "Hello world!"
+#[derive(Deserialize)]
+struct NameQuery {
+    name: String,
+}
+
+async fn name(
+    Query(name): Query<NameQuery>,
+    State(conn): State<Connection>,
+) -> Result<Json<HashMap<String, String>>, StatusCode> {
+    let name = db::name_records(&conn, name.name)
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    match name {
+        Some(map) => Ok(Json(map)),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }

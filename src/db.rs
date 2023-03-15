@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Event;
 use rusqlite::params;
@@ -186,7 +188,17 @@ pub async fn insert_records_event(
     .await
 }
 
-//// OLD AND BUSTED
+pub async fn nsid_for_name(conn: &Connection, name: String) -> anyhow::Result<Option<String>> {
+    Ok(conn
+        .call(move |conn| {
+            conn.query_row(
+                "SELECT nsid FROM name_nsid WHERE name = ?;",
+                params![name],
+                |row| row.get(0),
+            )
+        })
+        .await?)
+}
 
 pub async fn namespace_exists(conn: &Connection, nsid: String) -> anyhow::Result<bool> {
     Ok(conn
@@ -202,83 +214,23 @@ pub async fn namespace_exists(conn: &Connection, nsid: String) -> anyhow::Result
         .await?)
 }
 
-pub async fn discovered_nsids(conn: &Connection) -> anyhow::Result<Vec<String>> {
-    let conn = conn.clone();
-    Ok(conn
-        .call(move |conn| -> anyhow::Result<Vec<String>> {
-            let mut stmt =
-                conn.prepare("SELECT nsid FROM namespaces WHERE status = 'discovered';")?;
-            let results = stmt
-                .query_map([], |row| row.get(0))?
-                .filter(Result::is_ok)
-                .map(Result::unwrap)
-                .collect::<Vec<String>>();
-            Ok(results)
-        })
-        .await?)
-}
-
-pub async fn nsid_for_name(conn: &Connection, name: String) -> anyhow::Result<Option<String>> {
-    Ok(conn
+pub async fn name_records(
+    conn: &Connection,
+    name: String,
+) -> anyhow::Result<Option<HashMap<String, String>>> {
+    let records: Option<String> = conn
         .call(move |conn| {
             conn.query_row(
-                "SELECT nsid FROM name_nsid WHERE name = ?;",
+                r#"SELECT records from name_records_vw where name = ?;"#,
                 params![name],
                 |row| row.get(0),
             )
         })
-        .await?)
-}
+        .await
+        .ok();
 
-pub async fn update_from_relay(conn: &Connection, ns: &Namespace) -> anyhow::Result<()> {
-    let children = serde_json::to_string(&ns.2)?;
-    let pubkey = ns.1.as_ref().to_hex();
-    let name = ns.0.clone();
-    let nsid = ns.namespace_id().to_string();
-    conn.call(move |conn| -> anyhow::Result<()> {
-        conn.execute(
-            "UPDATE namespaces SET name = ?, pubkey = ?, status = \'indexed\', children = ? WHERE nsid = ?;",
-            params![name, pubkey, children, nsid],
-        )?;
-        Ok(())
-    })
-    .await
-}
-
-pub async fn index_name(conn: &Connection, name: String, nsid: String) -> anyhow::Result<()> {
-    conn.call(move |conn| -> anyhow::Result<()> {
-        conn.execute(
-            "INSERT INTO names_nsid (name, nsid) VALUES (?, ?);",
-            params![name, nsid],
-        )?;
-        Ok(())
-    })
-    .await
-}
-
-pub async fn pubkey_for_nsid(conn: &Connection, nsid: String) -> anyhow::Result<Option<String>> {
-    conn.call(move |conn| -> anyhow::Result<Option<String>> {
-        Ok(conn.query_row(
-            "SELECT pubkey FROM namespaces WHERE nsid = ?",
-            params![nsid],
-            |row| row.get(0),
-        )?)
-    })
-    .await
-}
-
-pub async fn insert_records(
-    conn: &Connection,
-    name: String,
-    created_at: u64,
-    records: String,
-) -> anyhow::Result<()> {
-    conn.call(move |conn| {
-        conn.execute(
-            "INSERT INTO records (name, created_at, records) VALUES (?, ?, ?);",
-            params![name, created_at, records],
-        )?;
-        Ok(())
-    })
-    .await
+    let records = records
+        .map(|records| serde_json::from_str(&records))
+        .transpose()?;
+    Ok(records)
 }
