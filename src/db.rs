@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Event;
 use rusqlite::params;
 use tokio_rusqlite::Connection;
 
-use crate::{config::Config, name::Namespace, util::Nsid};
+use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
 
 static MIGRATIONS: [&'static str; 9] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",

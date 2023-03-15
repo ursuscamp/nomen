@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use axum::{
     extract::{Query, State},
@@ -10,9 +10,10 @@ use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
 use toml::map;
 
-use crate::{config::Config, db};
+use crate::{config::Config, db, subcommands};
 
 pub async fn start(config: &Config) -> anyhow::Result<()> {
+    let _indexer = tokio::spawn(indexer(config.clone()));
     let conn = config.sqlite().await?;
     let app = Router::new().route("/api/name", get(name)).with_state(conn);
 
@@ -45,4 +46,16 @@ async fn name(
         Some(map) => Ok(Json(map)),
         None => Err(StatusCode::NOT_FOUND),
     }
+}
+
+async fn indexer(config: Config) -> anyhow::Result<()> {
+    loop {
+        subcommands::index_blockchain(&config, 3, None).await;
+        subcommands::index_create_events(&config).await;
+        subcommands::index_records_events(&config).await;
+
+        tokio::time::sleep(Duration::from_secs(30)).await;
+    }
+
+    Ok(())
 }
