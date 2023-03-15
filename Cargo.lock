@@ -64,17 +64,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-recursion"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b015a331cc64ebd1774ba119538573603427eaace0a1950c423ab971f903796"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -760,18 +749,15 @@ name = "indigo"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-recursion",
  "axum",
  "bitcoin",
  "bitcoincore-rpc",
  "clap",
  "derive_more",
  "env_logger 0.10.0",
- "futures-util",
  "hex",
  "log 0.4.17",
  "nostr-sdk",
- "once_cell",
  "rand 0.8.5",
  "regex 1.7.1",
  "ripemd",
