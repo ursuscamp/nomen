@@ -24,3 +24,5 @@
   - [ ] Tx/Psbt/OP_RETURN only
 - [ ] Debug options: fix/add more
   - [ ] Name lookup.
+- [ ] Switch back to non-modified nostr sdk.
+- [ ] Use clippy instead of check.

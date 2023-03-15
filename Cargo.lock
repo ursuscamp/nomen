@@ -974,7 +974,8 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "nostr"
 version = "0.19.5"
-source = "git+https://github.com/ursuscamp/nostr.git?branch=replaceable-event-filter#9c7b0d26031ca1d2220bcea5467fd215e33503eb"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "377785e61e0da6a13226a4244e8c28b9a858aa0a5ed10830109f61ade1c2a3f2"
 dependencies = [
  "aes",
  "base64 0.21.0",
@@ -1011,7 +1012,8 @@ dependencies = [
 [[package]]
 name = "nostr-sdk"
 version = "0.19.1"
-source = "git+https://github.com/ursuscamp/nostr.git?branch=replaceable-event-filter#9c7b0d26031ca1d2220bcea5467fd215e33503eb"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "481d934879674b590de88216cc809bf60293bce4c89c092b6121e83371ad7d73"
 dependencies = [
  "futures-util",
  "log 0.4.17",
