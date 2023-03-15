@@ -55,7 +55,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn merge_config_file(&mut self, cf: ConfigFile) {
+    pub fn merge_config_file(&mut self, mut cf: ConfigFile) {
         self.data = self
             .data
             .take()
@@ -68,11 +68,24 @@ impl Config {
         self.rpcport = self.rpcport.or(cf.rpcport);
         self.network = self.network.or(cf.network);
         self.relays = self.relays.take().or(cf.relays);
-        if let Subcommand::Server { bind } = &mut self.subcommand {
+        if let Subcommand::Server {
+            bind,
+            confirmations,
+            height,
+        } = &mut self.subcommand
+        {
             *bind = bind
                 .take()
-                .or(cf.server.map(|mut s| s.bind.take()).flatten())
+                .or(cf.server.as_mut().map(|s| s.bind.take()).flatten())
                 .or_else(|| Some("0.0.0.0:8080".into()));
+            *confirmations = confirmations
+                .take()
+                .or(cf
+                    .server
+                    .as_mut()
+                    .map(|mut s| s.confirmations.take())
+                    .flatten())
+                .or_else(|| Some(3));
         }
     }
 
@@ -91,7 +104,7 @@ impl Config {
 
     pub fn server_bind(&self) -> Option<String> {
         match &self.subcommand {
-            Subcommand::Server { bind } => bind.clone(),
+            Subcommand::Server { bind, .. } => bind.clone(),
             _ => None,
         }
     }
@@ -162,8 +175,17 @@ pub enum Subcommand {
 
     /// Start the HTTP server
     Server {
+        /// Address and port to bind.
         #[arg(short, long)]
         bind: Option<String>,
+
+        /// Minimum number of confirmation before adding to index. Default: 3
+        #[arg(long)]
+        confirmations: Option<usize>,
+
+        /// Starting block height to index. Default: most recently scanned block
+        #[arg(long)]
+        height: Option<usize>,
     },
 }
 
@@ -217,11 +239,11 @@ pub enum DebugSubcommand {
 pub enum IndexSubcommand {
     /// Index the blockchain and look for new namespaces.
     Blockchain {
-        /// Minimum block confirmations for indexer
-        #[arg(short, long, default_value = "3")]
+        /// Minimum block confirmations for indexer. Default: 3
+        #[arg(short, long)]
         confirmations: usize,
 
-        /// Starting block height to index. Do not specify to index from last indexed height.
+        /// Starting block height to index. Default: most recently scanned block
         #[arg(long)]
         height: Option<usize>,
     },

@@ -9,3 +9,4 @@
   - [ ] Explore tracing
   - [ ] Review log levels/message
   - [ ] Improve log messages
+- [ ] Simplify config structure

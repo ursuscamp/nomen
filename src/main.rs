@@ -65,7 +65,11 @@ async fn main() -> anyhow::Result<()> {
                 subcommands::index_records_events(&config).await?
             }
         },
-        config::Subcommand::Server { bind } => subcommands::start(&config).await?,
+        config::Subcommand::Server {
+            bind,
+            confirmations,
+            height,
+        } => subcommands::start(&config).await?,
         config::Subcommand::Debug(debug) => match debug {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
             config::DebugSubcommand::NamesIndex => subcommands::names_index()?,

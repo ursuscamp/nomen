@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ServerConfigFile {
     pub bind: Option<String>,
+    pub confirmations: Option<usize>,
+    pub height: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
