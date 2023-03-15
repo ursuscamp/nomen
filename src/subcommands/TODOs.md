@@ -1,12 +1,26 @@
 # TODOs
 
 - [ ] Name validation
-  - [ ] `[a-z\-0-9]{3,}` characters
+  - [x] `[a-z\-0-9]{3,}` characters
   - [ ] Validation when creating a name
-  - [ ] Validate when reading create events
-  - [ ] Validate when reading records events
+  - [x] Validate when reading create events
+  - [x] Validate when reading records events
+  - [ ] Validate when creating create event
+  - [ ] Validate when creating record events
 - [ ] Logging imporovements
   - [ ] Explore tracing
   - [ ] Review log levels/message
   - [ ] Improve log messages
 - [ ] Simplify config structure
+- [ ] Review and improve tests.
+- [ ] Update transactions.
+- [ ] Block explorer.
+  - [ ] Option: disable explorer
+  - [ ] Option: disable api
+  - [ ] Option: disbale index
+- [ ] Transaction output options:
+  - [ ] Raw/Hex
+  - [ ] Output file
+  - [ ] Tx/Psbt/OP_RETURN only
+- [ ] Debug options: fix/add more
+  - [ ] Name lookup.
