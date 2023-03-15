@@ -10,13 +10,16 @@ use nostr_sdk::{Client, Event, Filter};
 use serde_json::json;
 use tokio_rusqlite::Connection;
 
-use crate::{config::Config, db, name::Namespace, util::NamespaceNostrKind};
+use crate::{config::Config, db, name::Namespace, util::NamespaceNostrKind, validators};
 
 pub async fn index_create_events(config: &Config) -> anyhow::Result<()> {
     let (_keys, client) = config.nostr_random_client().await?;
     let conn = config.sqlite().await?;
 
     for event in search_relays(&conn, &client).await? {
+        // Validate event parameters
+        validators::event::create(&event)?;
+
         let ns: Namespace = match event.clone().try_into() {
             Ok(ns) => ns,
             Err(e) => {

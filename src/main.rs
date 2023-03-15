@@ -7,6 +7,7 @@ mod hash160;
 mod name;
 mod subcommands;
 mod util;
+mod validators;
 
 use std::{borrow::BorrowMut, path::PathBuf, str::FromStr};
 

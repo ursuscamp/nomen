@@ -5,6 +5,7 @@ use crate::{
     config::Config,
     db,
     util::{MetadataExtractor, NamespaceNostrKind},
+    validators,
 };
 
 pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
@@ -17,6 +18,9 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
     let events = client.get_events_of(filters, None).await?;
 
     for event in events {
+        // Validate event parameters
+        validators::event::records(&event)?;
+
         let (nsid, pubkey, created_at, event_id, name) = match extract_record_data(&event) {
             Some(value) => value,
             None => continue,

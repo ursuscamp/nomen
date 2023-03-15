@@ -17,11 +17,7 @@ impl MetadataExtractor for Event {
         self.tags
             .iter()
             .filter_map(|tag| match tag {
-                nostr_sdk::Tag::Identifier(tag)
-                    if self.kind == NamespaceNostrKind::Record.into() =>
-                {
-                    Some(Nsid::from_str(&tag))
-                }
+                nostr_sdk::Tag::Identifier(tag) => Some(Nsid::from_str(&tag)),
                 _ => None,
             })
             .filter(Result::is_ok)
@@ -33,9 +29,7 @@ impl MetadataExtractor for Event {
         self.tags
             .iter()
             .filter_map(|tag| match tag {
-                nostr_sdk::Tag::Generic(TagKind::Custom(tk), tag)
-                    if tk == "ind" && self.kind == NamespaceNostrKind::Record.into() =>
-                {
+                nostr_sdk::Tag::Generic(TagKind::Custom(tk), tag) if tk == "ind" => {
                     tag.first().cloned()
                 }
                 _ => None,
