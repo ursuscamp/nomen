@@ -16,9 +16,9 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
     let _indexer = tokio::spawn(indexer(config.clone()));
     let conn = config.sqlite().await?;
     let app = Router::new()
-        .route("/", get(index))
-        .route("/faqs", get(faqs))
-        .route("/api/name", get(name))
+        .route("/", get(site::index))
+        .route("/faqs", get(site::faqs))
+        .route("/api/name", get(api::name))
         .with_state(conn);
 
     let addr = config
@@ -33,41 +33,6 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(askama::Template)]
-#[template(path = "index.html")]
-struct IndexTemplate {}
-
-async fn index() -> IndexTemplate {
-    IndexTemplate {}
-}
-
-#[derive(askama::Template)]
-#[template(path = "faqs.html")]
-struct FaqsTemplate {}
-
-async fn faqs() -> FaqsTemplate {
-    FaqsTemplate {}
-}
-
-#[derive(Deserialize)]
-struct NameQuery {
-    name: String,
-}
-
-async fn name(
-    Query(name): Query<NameQuery>,
-    State(conn): State<Connection>,
-) -> Result<Json<HashMap<String, String>>, StatusCode> {
-    let name = db::name_records(&conn, name.name)
-        .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
-
-    match name {
-        Some(map) => Ok(Json(map)),
-        None => Err(StatusCode::NOT_FOUND),
-    }
-}
-
 async fn indexer(config: Config) -> anyhow::Result<()> {
     loop {
         subcommands::index_blockchain(&config, 3, None).await;
@@ -78,4 +43,55 @@ async fn indexer(config: Config) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+mod site {
+    #[derive(askama::Template)]
+    #[template(path = "index.html")]
+    pub struct IndexTemplate {}
+
+    pub async fn index() -> IndexTemplate {
+        IndexTemplate {}
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "faqs.html")]
+    pub struct FaqsTemplate {}
+
+    pub async fn faqs() -> FaqsTemplate {
+        FaqsTemplate {}
+    }
+}
+
+mod api {
+    use std::collections::HashMap;
+
+    use axum::{
+        extract::{Query, State},
+        http::StatusCode,
+        Json,
+    };
+    use serde::Deserialize;
+    use tokio_rusqlite::Connection;
+
+    use crate::db;
+
+    #[derive(Deserialize)]
+    pub struct NameQuery {
+        name: String,
+    }
+
+    pub async fn name(
+        Query(name): Query<NameQuery>,
+        State(conn): State<Connection>,
+    ) -> Result<Json<HashMap<String, String>>, StatusCode> {
+        let name = db::name_records(&conn, name.name)
+            .await
+            .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+        match name {
+            Some(map) => Ok(Json(map)),
+            None => Err(StatusCode::NOT_FOUND),
+        }
+    }
 }
