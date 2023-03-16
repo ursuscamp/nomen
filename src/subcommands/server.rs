@@ -15,7 +15,11 @@ use crate::{config::Config, db, subcommands};
 pub async fn start(config: &Config) -> anyhow::Result<()> {
     let _indexer = tokio::spawn(indexer(config.clone()));
     let conn = config.sqlite().await?;
-    let app = Router::new().route("/api/name", get(name)).with_state(conn);
+    let app = Router::new()
+        .route("/", get(index))
+        .route("/faqs", get(faqs))
+        .route("/api/name", get(name))
+        .with_state(conn);
 
     let addr = config
         .server_bind()
@@ -27,6 +31,22 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
         .serve(app.into_make_service())
         .await?;
     Ok(())
+}
+
+#[derive(askama::Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {}
+
+async fn index() -> IndexTemplate {
+    IndexTemplate {}
+}
+
+#[derive(askama::Template)]
+#[template(path = "faqs.html")]
+struct FaqsTemplate {}
+
+async fn faqs() -> FaqsTemplate {
+    FaqsTemplate {}
 }
 
 #[derive(Deserialize)]

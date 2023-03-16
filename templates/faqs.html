@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h3>FAQs</h3>
+  <section>
+    <h4>What is Indigo?</h4>
+    <p>
+      Indigo is an open-protocol that aims to solve the "ICANN problem" by providing a registry for global names and identities without any central authority making decisions.
+      The goals of this project are to promote decentralization, censorship resistance and self sovereignty. Controlling your own digital identity without having to ask anyone's
+      permission is a huge, important part of that goal.
+    </p>
+  </section>
+
+  <section>
+    <h4>How does it work?</h4>
+    <p>
+      Indigo is an open protocol with a few, extremely simple rules, built as a layer on top of two established permissionless technologies: Bitcoin and Nostr. Bitcoin provides the
+      decentralized timestamps needed to establish first-come ownership over global names, and Nostr provides the transport method for name data.
+    </p>
+
+    <p>
+      In short, to establish a name:
+      
+      <ol>
+        <li>Create a hash, representing a new global name. This hash can uniquely and provably represent that name, and that name <b><i>only</i></b>. This hash is published to the Bitcoin blockchain, as a permanent record of the claim.</li>
+        <li>
+          Publish metadata for the name as a Nostr event. This contains all of the data necessary to reconstruct the hash, and prove the ownership of that name. That hash includes the public key of the owner, and the Nostr event
+          must be signed by the associated private key, thus creating a cryptographically proven link between the owner and on-chain claim.
+        </li>
+      </ol>
+    </p>
+
+    <p>
+      That is all, in a nutshell! Publish a recognizable hash on the Bitcoin timechain, then broadcast your provable identity to the world. For more technical details, check out the <a href="#">spec</a> (it's very simple and not difficult to understand).
+    </p>
+  </section>
+
+  <section>
+    <h4>How can this possibly scale?</h4>
+
+    <p>
+      Scalability was an important goal of this protocol. Bitcoin transactions won't be affordable forever, and not everyone will be able to make an on-chain transaction just to prove ownership. So how can this possibly scale?
+    </p>
+
+    <p>
+      The answer is <b>namespaces</b>. Each on-chain transaction represents a TOP-LEVEL root to a nested namespace. Each namespace can contain potentially infinite children, grandchildren, great grandchildren, etc. Think of it like <code>com</code>
+      being a root name on chain, and <code>amazon</code> and <code>google</code> being child names. Top level names belong to the root owner of the namespace, and can be operated like a business if they wish, or a charity. They can aggregate namespace updates to the blockchain
+      periodically.
+    </p>
+
+    <p>
+      If you create a name, you can keep it just to yourself forever, or give away names to friends and family, sell them, whatever you want. And it scales because the only thing that gets updated on the blockchain are things that affect ownership. Everything else happens
+      off-chain, always provably linked back to an on-chain fingerprint.
+    </p>
+  </section>
+
+  <section>
+    <h4>If someone else owns a namespace, how is it censorship resistant?</h4>
+
+    <p>
+      After a child namespace is published (as part of a merkle tree in the on-chain hash), it can <b><i>NEVER</i></b> be unpublished.  Namespace can only ever be added, not deleted. Part of that hash includes the public key of the child's owner! Which means that,
+      once a namespace owner provides you with a name, it is associated only with <b>your</b> private key, and only <b>you</b> control it. You can continue to use it forever and the original namespace provider has no say in it.
+    </p>
+  </section>
+
+  <section>
+    <h4>How exactly does Nostr come into this?</h4>
+
+    <p>
+      Because on-chain data is limited and we don't want to pollute it unnecesasrily, we need a secondary protocol for data transport. Rather than create some brand new P2P protocol, we can use the established Nostr network, which already has
+      the necessary cryptographic primitives (and a healthy dose of users that respect a mission of controlling your digital identity).
+    </p>
+
+    <p>
+      Nostr's role in this is quite simple: When a root-level namespace is created, the namespace owner broadcasts a Nostr event referencing that on-chain hash, with all of the data necessary to reproduce the hash. This proves ownership.
+      A second Nostr event is used to update records for any namespaces, or descendants. The records associated with a name just keys and values, similar to DNS records, as a JSON object. For instance:
+    </p>
+
+    <code>
+      {
+        "IP4": "69.420.0.1",
+        "NPUB": "npub1..."
+      }
+    </code>
+
+    <p>
+      Your name can represent you in many different contexts, such as your website, your Nostr identity, or whatever you choose to include. While standards will no doubt exist, this is an open protocol. When you want to update it, just sign and broadcast
+      an updated event using the owner key of the namespace!
+    </p>
+  </section>
+</main>
+{% endblock %}

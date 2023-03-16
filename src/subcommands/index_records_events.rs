@@ -12,7 +12,7 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
     log::info!("Starting records index.");
     let conn = config.sqlite().await?;
     let last_records_time = db::last_records_time(&conn).await?;
-    log::debug!("Getting all record events sicne {last_records_time}");
+    log::debug!("Getting all record events since {last_records_time}");
     let filters = filters(last_records_time);
     let (_keys, client) = config.nostr_random_client().await?;
     let events = client.get_events_of(filters, None).await?;
