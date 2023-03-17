@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h2>Explorer</h2>
+
+  <h3>Records</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Record Type</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for kv in records %}
+      <tr>
+        <td>{{ kv.0 }}</td>
+        <td>{{ kv.1 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</main>
+{% endblock %}

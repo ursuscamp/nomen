@@ -7,7 +7,7 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
 
-static MIGRATIONS: [&'static str; 9] = [
+static MIGRATIONS: [&'static str; 10] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
     "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, pubkey);",
@@ -21,6 +21,10 @@ static MIGRATIONS: [&'static str; 9] = [
         JOIN name_nsid nn ON b.nsid = nn.root
         JOIN create_events ce ON b.nsid = ce.nsid
         JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey;",
+    "CREATE VIEW top_level_names_vw AS
+        SELECT ce.name, ce.nsid FROM blockchain b
+        JOIN name_nsid nn ON b.nsid = nn.nsid
+        JOIN create_events ce ON b.nsid = ce.nsid",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
@@ -148,22 +152,6 @@ pub async fn last_records_time(conn: &Connection) -> anyhow::Result<u64> {
     .await
 }
 
-// pub async fn valid_name_nsid(
-//     conn: &Connection,
-//     name: String,
-//     nsid: String,
-// ) -> anyhow::Result<bool> {
-//     conn.call(move |conn| {
-//         let count: u64 = conn.query_row(
-//             "SELECT COUNT(*) FROM name_nsid WHERE name = ? AND nsid = ?;",
-//             params![name, nsid],
-//             |row| row.get(0),
-//         )?;
-//         Ok(count > 0)
-//     })
-//     .await
-// }
-
 pub async fn insert_records_event(
     conn: &Connection,
     nsid: String,
@@ -233,4 +221,47 @@ pub async fn name_records(
         .map(|records| serde_json::from_str(&records))
         .transpose()?;
     Ok(records)
+}
+
+pub async fn top_level_names(conn: &Connection) -> anyhow::Result<Vec<(String, String)>> {
+    conn.call(|conn| {
+        let mut stmt = conn.prepare(r#"SELECT * FROM top_level_names_vw;"#)?;
+        let mut stmt = stmt.query([])?;
+        let mut rows = Vec::new();
+
+        while let Some(row) = stmt.next()? {
+            rows.push((row.get(0)?, row.get(1)?));
+        }
+
+        Ok(rows)
+    })
+    .await
+}
+
+pub struct NamespaceDetails {
+    pub records: HashMap<String, String>,
+}
+
+pub async fn namespace_details(
+    conn: &Connection,
+    nsid: String,
+) -> anyhow::Result<NamespaceDetails> {
+    let records: String = conn
+        .call(move |conn| -> anyhow::Result<String> {
+            Ok(conn.query_row(
+                "SELECT re.records FROM blockchain b
+                    JOIN name_nsid nn ON b.nsid = nn.root
+                    JOIN create_events ce ON b.nsid = ce.nsid
+                    JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey
+                    WHERE re.nsid = ?;",
+                params![nsid],
+                |row| row.get(0),
+            )?)
+        })
+        .await?;
+
+    let d = NamespaceDetails {
+        records: serde_json::from_str(&records)?,
+    };
+    Ok(d)
 }

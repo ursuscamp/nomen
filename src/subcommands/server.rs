@@ -18,6 +18,8 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(site::index))
         .route("/faqs", get(site::faqs))
+        .route("/explorer", get(site::explorer))
+        .route("/explorer/:nsid", get(site::explore_nsid))
         .route("/api/name", get(api::name))
         .with_state(conn);
 
@@ -46,6 +48,17 @@ async fn indexer(config: Config) -> anyhow::Result<()> {
 }
 
 mod site {
+    use std::collections::HashMap;
+
+    use axum::{
+        extract::{Path, Query, State},
+        http::StatusCode,
+    };
+    use serde::Deserialize;
+    use tokio_rusqlite::Connection;
+
+    use crate::db::{self, NamespaceDetails};
+
     #[derive(askama::Template)]
     #[template(path = "index.html")]
     pub struct IndexTemplate {}
@@ -60,6 +73,51 @@ mod site {
 
     pub async fn faqs() -> FaqsTemplate {
         FaqsTemplate {}
+    }
+
+    #[derive(Deserialize)]
+    pub struct ExplorerQuery {
+        pub nsid: Option<String>,
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "explorer.html")]
+    pub struct ExplorerTemplate {
+        names: Vec<(String, String)>,
+    }
+
+    pub async fn explorer(
+        State(conn): State<Connection>,
+    ) -> axum::response::Result<ExplorerTemplate> {
+        Ok(ExplorerTemplate {
+            names: db::top_level_names(&conn)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        })
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "nsid.html")]
+    pub struct NsidTemplate {
+        records: HashMap<String, String>,
+    }
+
+    impl From<NamespaceDetails> for NsidTemplate {
+        fn from(value: NamespaceDetails) -> Self {
+            NsidTemplate {
+                records: value.records,
+            }
+        }
+    }
+
+    pub async fn explore_nsid(
+        State(conn): State<Connection>,
+        Path(nsid): Path<String>,
+    ) -> axum::response::Result<NsidTemplate> {
+        let details = db::namespace_details(&conn, nsid)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        Ok(details.into())
     }
 }
 
