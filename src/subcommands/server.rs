@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use askama_axum::IntoResponse;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -11,6 +12,27 @@ use tokio_rusqlite::Connection;
 use toml::map;
 
 use crate::{config::Config, db, subcommands};
+
+pub struct WebError(anyhow::Error);
+
+impl IntoResponse for WebError {
+    fn into_response(self) -> askama_axum::Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+impl<E> From<E> for WebError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
 
 pub async fn start(config: &Config) -> anyhow::Result<()> {
     let _indexer = tokio::spawn(indexer(config.clone()));
@@ -57,7 +79,9 @@ mod site {
     use serde::Deserialize;
     use tokio_rusqlite::Connection;
 
-    use crate::db::{self, NamespaceDetails};
+    use crate::db::{self, namespace::NamespaceDetails};
+
+    use super::WebError;
 
     #[derive(askama::Template)]
     #[template(path = "index.html")]
@@ -86,13 +110,9 @@ mod site {
         names: Vec<(String, String)>,
     }
 
-    pub async fn explorer(
-        State(conn): State<Connection>,
-    ) -> axum::response::Result<ExplorerTemplate> {
+    pub async fn explorer(State(conn): State<Connection>) -> Result<ExplorerTemplate, WebError> {
         Ok(ExplorerTemplate {
-            names: db::top_level_names(&conn)
-                .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+            names: db::top_level_names(&conn).await?,
         })
     }
 
@@ -100,12 +120,14 @@ mod site {
     #[template(path = "nsid.html")]
     pub struct NsidTemplate {
         records: HashMap<String, String>,
+        children: Vec<(String, String)>,
     }
 
     impl From<NamespaceDetails> for NsidTemplate {
         fn from(value: NamespaceDetails) -> Self {
             NsidTemplate {
                 records: value.records,
+                children: value.children,
             }
         }
     }
@@ -113,10 +135,8 @@ mod site {
     pub async fn explore_nsid(
         State(conn): State<Connection>,
         Path(nsid): Path<String>,
-    ) -> axum::response::Result<NsidTemplate> {
-        let details = db::namespace_details(&conn, nsid)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    ) -> Result<NsidTemplate, WebError> {
+        let details = db::namespace::details(&conn, nsid).await?;
         Ok(details.into())
     }
 }
@@ -124,6 +144,8 @@ mod site {
 mod api {
     use std::collections::HashMap;
 
+    use anyhow::anyhow;
+    use askama_axum::IntoResponse;
     use axum::{
         extract::{Query, State},
         http::StatusCode,
@@ -134,6 +156,8 @@ mod api {
 
     use crate::db;
 
+    use super::WebError;
+
     #[derive(Deserialize)]
     pub struct NameQuery {
         name: String,
@@ -142,14 +166,9 @@ mod api {
     pub async fn name(
         Query(name): Query<NameQuery>,
         State(conn): State<Connection>,
-    ) -> Result<Json<HashMap<String, String>>, StatusCode> {
-        let name = db::name_records(&conn, name.name)
-            .await
-            .map_err(|_| StatusCode::BAD_REQUEST)?;
+    ) -> Result<Json<HashMap<String, String>>, WebError> {
+        let name = db::name_records(&conn, name.name).await?;
 
-        match name {
-            Some(map) => Ok(Json(map)),
-            None => Err(StatusCode::NOT_FOUND),
-        }
+        Ok(name.map(|m| Json(m)).ok_or_else(|| anyhow!("Not found"))?)
     }
 }

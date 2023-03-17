@@ -48,18 +48,30 @@ async fn index_namespace_tree(conn: &Connection, ns: &Namespace) -> anyhow::Resu
 
     // Use a work queue to push names to process
     let mut queue = VecDeque::new();
-    queue.push_back((String::new(), ns.clone()));
+    queue.push_back((None, String::new(), ns.clone()));
 
     while queue.len() > 0 {
-        let (parent_name, next) = queue.pop_front().unwrap(); // Queue already verified > 0 elements
+        let (parent_nsid, parent_name, next) = queue.pop_front().unwrap(); // Queue already verified > 0 elements
         let nsid = next.namespace_id().to_hex();
         let fqdn = if parent_name.is_empty() {
             next.0.clone()
         } else {
             format!("{}.{}", next.0.clone(), parent_name)
         };
-        queue.extend(next.2.into_iter().map(|n| (fqdn.clone(), n)));
-        db::index_name_nsid(conn, nsid, fqdn, root.to_hex(), next.1.to_hex()).await?;
+        queue.extend(
+            next.2
+                .into_iter()
+                .map(|n| (Some(nsid.clone()), fqdn.clone(), n)),
+        );
+        db::index_name_nsid(
+            conn,
+            nsid,
+            fqdn,
+            root.to_hex(),
+            parent_nsid,
+            next.1.to_hex(),
+        )
+        .await?;
     }
     Ok(())
 }

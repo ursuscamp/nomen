@@ -7,11 +7,12 @@ use tokio_rusqlite::Connection;
 
 use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
 
-static MIGRATIONS: [&'static str; 10] = [
+static MIGRATIONS: [&'static str; 11] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
-    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, pubkey);",
+    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
+    "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
     "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
@@ -126,15 +127,16 @@ pub async fn index_name_nsid(
     nsid: String,
     name: String,
     root: String,
+    parent: Option<String>,
     pubkey: String,
 ) -> anyhow::Result<()> {
     conn.call(move |conn| {
         // ON CONFLICT DO NOTHING ensure that if someone uploads a conflicting name,
         // we just wont index it if it already exists
         conn.execute(
-            "INSERT INTO name_nsid (name, nsid, root, pubkey) VALUES (?, ?, ?, ?)
+            "INSERT INTO name_nsid (name, nsid, root, parent, pubkey) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT DO NOTHING",
-            params![name, nsid, root, pubkey],
+            params![name, nsid, root, parent, pubkey],
         )?;
         Ok(())
     })
@@ -238,30 +240,75 @@ pub async fn top_level_names(conn: &Connection) -> anyhow::Result<Vec<(String, S
     .await
 }
 
-pub struct NamespaceDetails {
-    pub records: HashMap<String, String>,
-}
+pub mod namespace {
+    use std::collections::HashMap;
 
-pub async fn namespace_details(
-    conn: &Connection,
-    nsid: String,
-) -> anyhow::Result<NamespaceDetails> {
-    let records: String = conn
-        .call(move |conn| -> anyhow::Result<String> {
-            Ok(conn.query_row(
-                "SELECT re.records FROM blockchain b
+    use rusqlite::params;
+    use tokio_rusqlite::Connection;
+
+    pub struct NamespaceDetails {
+        pub records: HashMap<String, String>,
+        pub children: Vec<(String, String)>,
+    }
+
+    pub async fn details(conn: &Connection, nsid: String) -> anyhow::Result<NamespaceDetails> {
+        log::debug!("Getting records");
+        let records = records(conn, nsid.clone()).await?;
+
+        log::debug!("Getting children");
+        let nsid = nsid.clone();
+        let children = children(conn, nsid).await?;
+
+        let d = NamespaceDetails {
+            records: serde_json::from_str(&records.unwrap_or(String::from("{}")))?,
+            children,
+        };
+        log::debug!("Finished with queries");
+        Ok(d)
+    }
+
+    async fn children(
+        conn: &Connection,
+        nsid: String,
+    ) -> Result<Vec<(String, String)>, anyhow::Error> {
+        let children: Vec<(String, String)> = conn
+            .call(move |conn| -> anyhow::Result<Vec<(String, String)>> {
+                let mut stmt = conn.prepare(
+                    "SELECT nn.name, nn.nsid FROM blockchain b
                     JOIN name_nsid nn ON b.nsid = nn.root
-                    JOIN create_events ce ON b.nsid = ce.nsid
-                    JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey
-                    WHERE re.nsid = ?;",
-                params![nsid],
-                |row| row.get(0),
-            )?)
-        })
-        .await?;
+                    JOIN create_events ce on b.nsid = ce.nsid
+                    WHERE nn.parent = ?
+                    ORDER BY nn.name;",
+                )?;
+                let mut stmt = stmt.query(params![nsid])?;
+                let mut rows = Vec::new();
 
-    let d = NamespaceDetails {
-        records: serde_json::from_str(&records)?,
-    };
-    Ok(d)
+                while let Some(row) = stmt.next()? {
+                    rows.push((row.get(0)?, row.get(1)?));
+                }
+
+                Ok(rows)
+            })
+            .await?;
+        log::debug!("FOrgotten children: {children:?}");
+        Ok(children)
+    }
+
+    async fn records(conn: &Connection, nsid: String) -> Result<Option<String>, anyhow::Error> {
+        let records: Option<String> = conn
+            .call(move |conn| -> anyhow::Result<String> {
+                Ok(conn.query_row(
+                    "SELECT re.records FROM blockchain b
+                        JOIN name_nsid nn ON b.nsid = nn.root
+                        JOIN create_events ce ON b.nsid = ce.nsid
+                        JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey
+                        WHERE re.nsid = ?;",
+                    params![nsid],
+                    |row| row.get(0),
+                )?)
+            })
+            .await
+            .ok();
+        Ok(records)
+    }
 }

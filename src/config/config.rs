@@ -241,7 +241,7 @@ pub enum IndexSubcommand {
     Blockchain {
         /// Minimum block confirmations for indexer. Default: 3
         #[arg(short, long)]
-        confirmations: usize,
+        confirmations: Option<usize>,
 
         /// Starting block height to index. Default: most recently scanned block
         #[arg(long)]

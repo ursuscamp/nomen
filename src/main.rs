@@ -57,7 +57,9 @@ async fn main() -> anyhow::Result<()> {
             config::IndexSubcommand::Blockchain {
                 confirmations,
                 height,
-            } => subcommands::index_blockchain(&config, *confirmations, *height).await?,
+            } => {
+                subcommands::index_blockchain(&config, confirmations.unwrap_or(3), *height).await?
+            }
             config::IndexSubcommand::CreateEvents => {
                 subcommands::index_create_events(&config).await?
             }
