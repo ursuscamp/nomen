@@ -127,16 +127,29 @@ mod site {
     #[template(path = "nsid.html")]
     pub struct NsidTemplate {
         name: String,
+        record_keys: Vec<String>,
         records: HashMap<String, String>,
         children: Vec<(String, String)>,
+        blockhash: String,
+        txid: String,
+        vout: usize,
+        height: usize,
     }
 
     impl From<NamespaceDetails> for NsidTemplate {
         fn from(value: NamespaceDetails) -> Self {
+            let (blockhash, txid, vout, height) = value.blockdata.unwrap_or_default();
+            let mut record_keys = value.records.keys().cloned().collect::<Vec<_>>();
+            record_keys.sort();
             NsidTemplate {
                 name: value.name.unwrap_or_default(),
+                record_keys,
                 records: value.records,
                 children: value.children,
+                blockhash: blockhash,
+                txid: txid,
+                vout: vout,
+                height: height,
             }
         }
     }
@@ -146,7 +159,7 @@ mod site {
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
         let details = db::namespace::details(&conn, nsid).await?;
-        if details.name.is_none() {
+        if details.name.is_none() || details.blockdata.is_none() {
             return Err(WebError::not_found(anyhow!("NSID not found")));
         }
         Ok(details.into())

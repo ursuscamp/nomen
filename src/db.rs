@@ -243,13 +243,14 @@ pub async fn top_level_names(conn: &Connection) -> anyhow::Result<Vec<(String, S
 pub mod namespace {
     use std::collections::HashMap;
 
-    use rusqlite::params;
+    use rusqlite::{params, OptionalExtension};
     use tokio_rusqlite::Connection;
 
     pub struct NamespaceDetails {
         pub name: Option<String>,
         pub records: HashMap<String, String>,
         pub children: Vec<(String, String)>,
+        pub blockdata: Option<(String, String, usize, usize)>,
     }
 
     pub async fn details(conn: &Connection, nsid: String) -> anyhow::Result<NamespaceDetails> {
@@ -257,13 +258,15 @@ pub mod namespace {
 
         let records = records(conn, nsid.clone()).await?;
 
-        let nsid = nsid.clone();
+        let blockdata = blockchain_data(conn, nsid.clone()).await?;
+
         let children = children(conn, nsid).await?;
 
         let d = NamespaceDetails {
             name,
             records: serde_json::from_str(&records.unwrap_or(String::from("{}")))?,
             children,
+            blockdata,
         };
         Ok(d)
     }
@@ -291,7 +294,6 @@ pub mod namespace {
                 Ok(rows)
             })
             .await?;
-        log::debug!("FOrgotten children: {children:?}");
         Ok(children)
     }
 
@@ -313,18 +315,34 @@ pub mod namespace {
         Ok(records)
     }
 
-    async fn name_for_nsid(
+    async fn name_for_nsid(conn: &Connection, nsid: String) -> rusqlite::Result<Option<String>> {
+        conn.call(move |conn| -> rusqlite::Result<String> {
+            conn.query_row(
+                "SELECT name FROM name_nsid WHERE nsid = ? LIMIT 1;",
+                params![nsid],
+                |row| row.get(0),
+            )
+        })
+        .await
+        .optional()
+    }
+
+    async fn blockchain_data(
         conn: &Connection,
         nsid: String,
-    ) -> anyhow::Result<Option<String>, anyhow::Error> {
-        Ok(conn
-            .call(move |conn| -> anyhow::Result<Option<String>> {
-                Ok(conn.query_row(
-                    "SELECT name FROM name_nsid WHERE nsid = ? LIMIT 1;",
+    ) -> rusqlite::Result<Option<(String, String, usize, usize)>> {
+        conn.call(
+            move |conn| -> rusqlite::Result<(String, String, usize, usize)> {
+                conn.query_row(
+                    "SELECT blockhash, txid, vout, height
+                        FROM blockchain b JOIN name_nsid nn ON b.nsid = nn.root
+                        WHERE nn.nsid = ?;",
                     params![nsid],
-                    |row| row.get(0),
-                )?)
-            })
-            .await?)
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+            },
+        )
+        .await
+        .optional()
     }
 }
