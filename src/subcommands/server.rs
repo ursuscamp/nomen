@@ -13,12 +13,18 @@ use toml::map;
 
 use crate::{config::Config, db, subcommands};
 
-pub struct WebError(anyhow::Error);
+pub struct WebError(anyhow::Error, Option<StatusCode>);
+
+impl WebError {
+    pub fn not_found(err: anyhow::Error) -> WebError {
+        WebError(err, Some(StatusCode::NOT_FOUND))
+    }
+}
 
 impl IntoResponse for WebError {
     fn into_response(self) -> askama_axum::Response {
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
+            self.1.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
             format!("Something went wrong: {}", self.0),
         )
             .into_response()
@@ -30,7 +36,7 @@ where
     E: Into<anyhow::Error>,
 {
     fn from(err: E) -> Self {
-        Self(err.into())
+        Self(err.into(), None)
     }
 }
 
@@ -72,6 +78,7 @@ async fn indexer(config: Config) -> anyhow::Result<()> {
 mod site {
     use std::collections::HashMap;
 
+    use anyhow::anyhow;
     use axum::{
         extract::{Path, Query, State},
         http::StatusCode,
@@ -119,6 +126,7 @@ mod site {
     #[derive(askama::Template)]
     #[template(path = "nsid.html")]
     pub struct NsidTemplate {
+        name: String,
         records: HashMap<String, String>,
         children: Vec<(String, String)>,
     }
@@ -126,6 +134,7 @@ mod site {
     impl From<NamespaceDetails> for NsidTemplate {
         fn from(value: NamespaceDetails) -> Self {
             NsidTemplate {
+                name: value.name.unwrap_or_default(),
                 records: value.records,
                 children: value.children,
             }
@@ -137,6 +146,9 @@ mod site {
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
         let details = db::namespace::details(&conn, nsid).await?;
+        if details.name.is_none() {
+            return Err(WebError::not_found(anyhow!("NSID not found")));
+        }
         Ok(details.into())
     }
 }
@@ -169,6 +181,8 @@ mod api {
     ) -> Result<Json<HashMap<String, String>>, WebError> {
         let name = db::name_records(&conn, name.name).await?;
 
-        Ok(name.map(|m| Json(m)).ok_or_else(|| anyhow!("Not found"))?)
+        Ok(name
+            .map(|m| Json(m))
+            .ok_or_else(|| WebError::not_found(anyhow!("Not found")))?)
     }
 }

@@ -18,7 +18,7 @@ static MIGRATIONS: [&'static str; 11] = [
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
     "CREATE VIEW name_records_vw AS
-        SELECT re.name, re.records FROM blockchain b
+        SELECT re.name, re.records, re.nsid FROM blockchain b
         JOIN name_nsid nn ON b.nsid = nn.root
         JOIN create_events ce ON b.nsid = ce.nsid
         JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey;",
@@ -247,23 +247,24 @@ pub mod namespace {
     use tokio_rusqlite::Connection;
 
     pub struct NamespaceDetails {
+        pub name: Option<String>,
         pub records: HashMap<String, String>,
         pub children: Vec<(String, String)>,
     }
 
     pub async fn details(conn: &Connection, nsid: String) -> anyhow::Result<NamespaceDetails> {
-        log::debug!("Getting records");
+        let name = name_for_nsid(conn, nsid.clone()).await?;
+
         let records = records(conn, nsid.clone()).await?;
 
-        log::debug!("Getting children");
         let nsid = nsid.clone();
         let children = children(conn, nsid).await?;
 
         let d = NamespaceDetails {
+            name,
             records: serde_json::from_str(&records.unwrap_or(String::from("{}")))?,
             children,
         };
-        log::debug!("Finished with queries");
         Ok(d)
     }
 
@@ -310,5 +311,20 @@ pub mod namespace {
             .await
             .ok();
         Ok(records)
+    }
+
+    async fn name_for_nsid(
+        conn: &Connection,
+        nsid: String,
+    ) -> anyhow::Result<Option<String>, anyhow::Error> {
+        Ok(conn
+            .call(move |conn| -> anyhow::Result<Option<String>> {
+                Ok(conn.query_row(
+                    "SELECT name FROM name_nsid WHERE nsid = ? LIMIT 1;",
+                    params![nsid],
+                    |row| row.get(0),
+                )?)
+            })
+            .await?)
     }
 }
