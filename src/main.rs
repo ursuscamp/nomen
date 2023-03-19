@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
     env_logger::init();
     let config = parse_config()?;
 
-    db::initialize(&config).await?;
+    let pool = db::initialize(&config).await?;
 
     match &config.subcommand {
         config::Subcommand::Noop => {}
@@ -49,7 +49,8 @@ async fn main() -> anyhow::Result<()> {
         },
         config::Subcommand::Records(records) => match records {
             config::RecordsSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_records(&config, document.as_ref(), privkey.as_str()).await?
+                subcommands::broadcast_records(&config, &pool, document.as_ref(), privkey.as_str())
+                    .await?
             }
             config::RecordsSubcommand::Example => subcommands::example_records()?,
         },
@@ -58,20 +59,21 @@ async fn main() -> anyhow::Result<()> {
                 confirmations,
                 height,
             } => {
-                subcommands::index_blockchain(&config, confirmations.unwrap_or(3), *height).await?
+                subcommands::index_blockchain(&config, &pool, confirmations.unwrap_or(3), *height)
+                    .await?
             }
             config::IndexSubcommand::CreateEvents => {
-                subcommands::index_create_events(&config).await?
+                subcommands::index_create_events(&config, &pool).await?
             }
             config::IndexSubcommand::RecordsEvents => {
-                subcommands::index_records_events(&config).await?
+                subcommands::index_records_events(&config, &pool).await?
             }
         },
         config::Subcommand::Server {
             bind,
             confirmations,
             height,
-        } => subcommands::start(&config).await?,
+        } => subcommands::start(&config, &pool).await?,
         config::Subcommand::Debug(debug) => match debug {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
             config::DebugSubcommand::NamesIndex => subcommands::names_index()?,

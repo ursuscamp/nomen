@@ -28,3 +28,4 @@
 - [ ] Use clippy instead of check.
 - [ ] Figure out a system to for maximum message sizes, to prevents spam.
 - [ ] Graceful shutdown.
+- [ ] Add timestamp info nsid page in explorer.

@@ -1,5 +1,6 @@
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Filter;
+use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
@@ -8,10 +9,9 @@ use crate::{
     validators,
 };
 
-pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
+pub async fn index_records_events(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
     log::info!("Starting records index.");
-    let mut conn = config.sqlite().await?;
-    let last_records_time = db::last_records_time(&mut conn).await?;
+    let last_records_time = db::last_records_time(conn).await?;
     log::debug!("Getting all record events since {last_records_time}");
     let filters = filters(last_records_time);
     let (_keys, client) = config.nostr_random_client().await?;
@@ -28,7 +28,7 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
         log::debug!("Recording record for event {event:?}");
 
         let res = db::insert_records_event(
-            &mut conn,
+            conn,
             nsid,
             pubkey,
             created_at,

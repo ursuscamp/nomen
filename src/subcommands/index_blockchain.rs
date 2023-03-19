@@ -1,15 +1,17 @@
 use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
+use sqlx::SqlitePool;
 
 use crate::{config::Config, db, name::Namespace};
 
 pub async fn index_blockchain(
     config: &Config,
+    conn: &SqlitePool,
     confirmations: usize,
     height: Option<usize>,
 ) -> anyhow::Result<()> {
-    let height = index_height(height, config).await?;
+    let height = index_height(conn, height, config).await?;
     log::info!("Starting index from block height: {height}");
 
     let client = config.rpc_client()?;
@@ -37,7 +39,7 @@ pub async fn index_blockchain(
                         match parse_ind_output(&b) {
                             Ok(b) => {
                                 match index_output(
-                                    config,
+                                    conn,
                                     b,
                                     &blockhash,
                                     &txid,
@@ -65,9 +67,12 @@ pub async fn index_blockchain(
     Ok(())
 }
 
-async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, anyhow::Error> {
-    let mut conn = config.sqlite().await?;
-    let db_height = db::next_index_height(&mut conn).await;
+async fn index_height(
+    conn: &SqlitePool,
+    height: Option<usize>,
+    config: &Config,
+) -> Result<usize, anyhow::Error> {
+    let db_height = db::next_index_height(conn).await;
     Ok(height
         .map(Result::Ok)
         .or(Some(db_height))
@@ -80,7 +85,7 @@ async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, a
 }
 
 async fn index_output(
-    config: &Config,
+    conn: &SqlitePool,
     bytes: Vec<u8>,
     blockhash: &BlockHash,
     txid: &Txid,
@@ -93,21 +98,12 @@ async fn index_output(
         return Err(anyhow::anyhow!("Unexpected IND length"));
     }
 
-    let mut conn = config.sqlite().await?;
-    if db::namespace_exists(&mut conn, nsid.clone()).await? {
+    if db::namespace_exists(conn, nsid.clone()).await? {
         log::debug!("Namespace {nsid} already exists, skipping.");
         return Ok(());
     }
 
-    db::insert_namespace(
-        &mut conn,
-        nsid,
-        blockhash.to_hex(),
-        txid.to_hex(),
-        vout,
-        height,
-    )
-    .await?;
+    db::insert_namespace(conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
     Ok(())
 }
 

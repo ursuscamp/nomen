@@ -8,6 +8,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use toml::map;
 
 use crate::{config::Config, db, subcommands};
@@ -39,16 +40,15 @@ where
     }
 }
 
-pub async fn start(config: &Config) -> anyhow::Result<()> {
-    let _indexer = tokio::spawn(indexer(config.clone()));
-    let conn = config.sqlite().await?;
+pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
+    let _indexer = tokio::spawn(indexer(config.clone(), conn.clone()));
     let app = Router::new()
         .route("/", get(site::index))
         .route("/faqs", get(site::faqs))
         .route("/explorer", get(site::explorer))
         .route("/explorer/:nsid", get(site::explore_nsid))
         .route("/api/name", get(api::name))
-        .with_state(conn);
+        .with_state(conn.clone());
 
     let addr = config
         .server_bind()
@@ -62,11 +62,11 @@ pub async fn start(config: &Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn indexer(config: Config) -> anyhow::Result<()> {
+async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
     loop {
-        subcommands::index_blockchain(&config, 3, None).await;
-        subcommands::index_create_events(&config).await;
-        subcommands::index_records_events(&config).await;
+        subcommands::index_blockchain(&config, &pool, 3, None).await;
+        subcommands::index_create_events(&config, &pool).await;
+        subcommands::index_records_events(&config, &pool).await;
 
         tokio::time::sleep(Duration::from_secs(30)).await;
     }

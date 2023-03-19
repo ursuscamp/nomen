@@ -27,7 +27,7 @@ static MIGRATIONS: [&'static str; 11] = [
         JOIN create_events ce ON b.nsid = ce.nsid",
 ];
 
-pub async fn initialize(config: &Config) -> anyhow::Result<()> {
+pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     let mut conn = config.sqlite().await?;
 
     sqlx::query("CREATE TABLE IF NOT EXISTS schema (version);")
@@ -48,7 +48,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<()> {
             .await?;
     }
 
-    Ok(())
+    Ok(conn)
 }
 
 pub async fn insert_namespace(

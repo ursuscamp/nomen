@@ -12,11 +12,10 @@ use sqlx::SqlitePool;
 
 use crate::{config::Config, db, name::Namespace, util::NamespaceNostrKind, validators};
 
-pub async fn index_create_events(config: &Config) -> anyhow::Result<()> {
+pub async fn index_create_events(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
     let (_keys, client) = config.nostr_random_client().await?;
-    let mut conn = config.sqlite().await?;
 
-    for event in search_relays(&conn, &client).await? {
+    for event in search_relays(conn, &client).await? {
         // Validate event parameters
         validators::event::create(&event)?;
 
@@ -27,8 +26,8 @@ pub async fn index_create_events(config: &Config) -> anyhow::Result<()> {
                 continue;
             }
         };
-        db::insert_create_event(&conn, event, ns.clone()).await?;
-        index_namespace_tree(&conn, &ns).await?;
+        db::insert_create_event(conn, event, ns.clone()).await?;
+        index_namespace_tree(conn, &ns).await?;
     }
 
     Ok(())

@@ -5,6 +5,7 @@ use nostr_sdk::{
     prelude::{FromSkStr, TagKind},
     EventBuilder, Keys, Tag,
 };
+use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
@@ -22,13 +23,14 @@ pub fn example_records() -> anyhow::Result<()> {
 
 pub async fn broadcast_records(
     config: &Config,
+    pool: &SqlitePool,
     document: &Path,
     privkey: &str,
 ) -> anyhow::Result<()> {
     let records: documents::Records = serde_json::from_str(&std::fs::read_to_string(document)?)?;
     let (keys, client) = config.nostr_client(privkey).await?;
     let kind = NamespaceNostrKind::Record.into();
-    let nsid = nsid(&config, &records.name)
+    let nsid = nsid(pool, &records.name)
         .await?
         .ok_or(anyhow!("Namespace not found for name"))?;
     let dtag = Tag::Generic(TagKind::D, vec![nsid.to_string()]);
@@ -41,9 +43,8 @@ pub async fn broadcast_records(
     Ok(())
 }
 
-async fn nsid(config: &Config, name: &str) -> anyhow::Result<Option<Nsid>> {
-    let mut conn = config.sqlite().await?;
-    let index = db::nsid_for_name(&mut conn, name.to_owned())
+async fn nsid(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<Nsid>> {
+    let index = db::nsid_for_name(conn, name.to_owned())
         .await
         .map_err(|_| anyhow!("Query error. Perhaps missing name?"))?;
     index.map(|s| Nsid::from_str(&s)).transpose()
