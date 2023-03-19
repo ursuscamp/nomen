@@ -7,7 +7,7 @@ use nostr_sdk::{
     Options,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite, Connection, SqliteConnection};
+use sqlx::{sqlite, Connection, SqliteConnection, SqlitePool};
 
 use super::ConfigFile;
 
@@ -117,14 +117,14 @@ impl Config {
         Ok(bitcoincore_rpc::Client::new(&url, auth)?)
     }
 
-    pub async fn sqlite(&self) -> anyhow::Result<sqlite::SqliteConnection> {
+    pub async fn sqlite(&self) -> anyhow::Result<sqlite::SqlitePool> {
         let db = self
             .data
             .as_ref()
             .map(|d| d.to_str().map(|s| s.to_owned()))
             .flatten()
             .expect("No database configured");
-        Ok(SqliteConnection::connect(&db).await?)
+        Ok(SqlitePool::connect(&db).await?)
     }
 
     pub async fn nostr_client(

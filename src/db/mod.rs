@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Event;
-use sqlx::{Executor, SqliteConnection};
+use sqlx::{Executor, SqliteConnection, SqlitePool};
 
 use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
 
@@ -34,20 +34,20 @@ pub async fn initialize(config: &Config) -> anyhow::Result<()> {
     let mut conn = config.sqlite().await?;
 
     sqlx::query("CREATE TABLE IF NOT EXISTS schema (version);")
-        .execute(&mut conn)
+        .execute(&conn)
         .await?;
 
     let (version,) =
         sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(version) + 1, 0) FROM schema")
-            .fetch_one(&mut conn)
+            .fetch_one(&conn)
             .await?;
 
     for (idx, migration) in MIGRATIONS[version as usize..].into_iter().enumerate() {
         log::debug!("Migrations schema version {idx}");
-        sqlx::query(migration).execute(&mut conn).await?;
+        sqlx::query(migration).execute(&conn).await?;
         sqlx::query("INSERT INTO schema (version) VALUES (?);")
             .bind(idx as i64)
-            .execute(&mut conn)
+            .execute(&conn)
             .await?;
     }
 
@@ -55,7 +55,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<()> {
 }
 
 pub async fn insert_namespace(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     nsid: String,
     blockhash: String,
     txid: String,
@@ -73,14 +73,14 @@ pub async fn insert_namespace(
     Ok(())
 }
 
-pub async fn next_index_height(conn: &mut SqliteConnection) -> anyhow::Result<usize> {
+pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
     let (h,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(height), 0) + 1 FROM blockchain;")
         .fetch_one(conn)
         .await?;
     Ok(h as usize)
 }
 
-pub async fn last_create_event_time(conn: &mut SqliteConnection) -> anyhow::Result<u64> {
+pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
     let (t,) =
         sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from create_events;")
             .fetch_one(conn)
@@ -89,7 +89,7 @@ pub async fn last_create_event_time(conn: &mut SqliteConnection) -> anyhow::Resu
 }
 
 pub async fn insert_create_event(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     event: Event,
     ns: Namespace,
 ) -> anyhow::Result<()> {
@@ -106,7 +106,7 @@ pub async fn insert_create_event(
 }
 
 pub async fn index_name_nsid(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     nsid: String,
     name: String,
     root: String,
@@ -124,7 +124,7 @@ pub async fn index_name_nsid(
     Ok(())
 }
 
-pub async fn last_records_time(conn: &mut SqliteConnection) -> anyhow::Result<u64> {
+pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
     let (t,) =
         sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM records_events;")
             .fetch_one(conn)
@@ -133,7 +133,7 @@ pub async fn last_records_time(conn: &mut SqliteConnection) -> anyhow::Result<u6
 }
 
 pub async fn insert_records_event(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     nsid: String,
     pubkey: String,
     created_at: u64,
@@ -153,10 +153,7 @@ pub async fn insert_records_event(
     Ok(())
 }
 
-pub async fn nsid_for_name(
-    conn: &mut SqliteConnection,
-    name: String,
-) -> anyhow::Result<Option<String>> {
+pub async fn nsid_for_name(conn: &SqlitePool, name: String) -> anyhow::Result<Option<String>> {
     let s = sqlx::query_as::<_, (String,)>("SELECT nsid FROM name_nsid WHERE name = ?;")
         .bind(name)
         .fetch_optional(conn)
@@ -164,7 +161,7 @@ pub async fn nsid_for_name(
     Ok(s.map(|s| s.0))
 }
 
-pub async fn namespace_exists(conn: &mut SqliteConnection, nsid: String) -> anyhow::Result<bool> {
+pub async fn namespace_exists(conn: &SqlitePool, nsid: String) -> anyhow::Result<bool> {
     let (b,) = sqlx::query_as::<_, (bool,)>("SELECT COUNT(*) FROM blockchain WHERE nsid = ?;")
         .bind(nsid)
         .fetch_one(conn)
@@ -173,7 +170,7 @@ pub async fn namespace_exists(conn: &mut SqliteConnection, nsid: String) -> anyh
 }
 
 pub async fn name_records(
-    conn: &mut SqliteConnection,
+    conn: &SqlitePool,
     name: String,
 ) -> anyhow::Result<Option<HashMap<String, String>>> {
     let content =
@@ -189,7 +186,7 @@ pub async fn name_records(
     Ok(records)
 }
 
-pub async fn top_level_names(conn: &mut SqliteConnection) -> anyhow::Result<Vec<(String, String)>> {
+pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, String)>> {
     Ok(
         sqlx::query_as::<_, (String, String)>("SELECT * FROM top_level_names_vw;")
             .fetch_all(conn)
@@ -200,7 +197,7 @@ pub async fn top_level_names(conn: &mut SqliteConnection) -> anyhow::Result<Vec<
 pub mod namespace {
     use std::collections::HashMap;
 
-    use sqlx::SqliteConnection;
+    use sqlx::{SqliteConnection, SqlitePool};
 
     pub struct NamespaceDetails {
         pub name: Option<String>,
@@ -209,10 +206,7 @@ pub mod namespace {
         pub blockdata: Option<(String, String, usize, usize)>,
     }
 
-    pub async fn details(
-        conn: &mut SqliteConnection,
-        nsid: String,
-    ) -> anyhow::Result<NamespaceDetails> {
+    pub async fn details(conn: &SqlitePool, nsid: String) -> anyhow::Result<NamespaceDetails> {
         let name = name_for_nsid(conn, nsid.clone()).await?;
 
         let records = records(conn, nsid.clone()).await?;
@@ -231,7 +225,7 @@ pub mod namespace {
     }
 
     async fn children(
-        conn: &mut SqliteConnection,
+        conn: &SqlitePool,
         nsid: String,
     ) -> Result<Vec<(String, String)>, anyhow::Error> {
         Ok(
@@ -242,10 +236,7 @@ pub mod namespace {
         )
     }
 
-    async fn records(
-        conn: &mut SqliteConnection,
-        nsid: String,
-    ) -> Result<Option<String>, anyhow::Error> {
+    async fn records(conn: &SqlitePool, nsid: String) -> Result<Option<String>, anyhow::Error> {
         let records = sqlx::query_as::<_, (String,)>(include_str!("./queries/records.sql"))
             .bind(nsid)
             .fetch_optional(conn)
@@ -253,10 +244,7 @@ pub mod namespace {
         Ok(records.map(|s| s.0))
     }
 
-    async fn name_for_nsid(
-        conn: &mut SqliteConnection,
-        nsid: String,
-    ) -> anyhow::Result<Option<String>> {
+    async fn name_for_nsid(conn: &SqlitePool, nsid: String) -> anyhow::Result<Option<String>> {
         let name =
             sqlx::query_as::<_, (String,)>("SELECT name FROM name_nsid WHERE nsid = ? LIMIT 1;")
                 .bind(nsid)
@@ -266,7 +254,7 @@ pub mod namespace {
     }
 
     async fn blockchain_data(
-        conn: &mut SqliteConnection,
+        conn: &SqlitePool,
         nsid: String,
     ) -> anyhow::Result<Option<(String, String, usize, usize)>> {
         let bd = sqlx::query_as::<_, (String, String, i64, i64)>(include_str!(
