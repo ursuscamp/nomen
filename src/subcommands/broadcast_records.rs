@@ -1,10 +1,7 @@
 use std::{path::Path, str::FromStr};
 
 use anyhow::anyhow;
-use nostr_sdk::{
-    prelude::{FromSkStr, TagKind},
-    EventBuilder, Keys, Tag,
-};
+use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 use sqlx::SqlitePool;
 
 use crate::{

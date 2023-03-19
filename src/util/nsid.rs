@@ -3,15 +3,14 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::anyhow;
 use bitcoin::hashes::hex::ToHex;
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
-use nostr_sdk::{prelude::TagKind, Event};
 
 #[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
 pub struct Nsid([u8; 20]);
 
 impl Nsid {
+    #[allow(dead_code)]
     pub fn from_slice(bytes: &[u8]) -> anyhow::Result<Nsid> {
         Ok(Nsid(bytes.try_into()?))
     }

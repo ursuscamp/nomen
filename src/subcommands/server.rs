@@ -1,17 +1,10 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use askama_axum::IntoResponse;
-use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-    routing::get,
-    Json, Router,
-};
-use serde::{Deserialize, Serialize};
+use axum::{http::StatusCode, routing::get, Router};
 use sqlx::SqlitePool;
-use toml::map;
 
-use crate::{config::Config, db, subcommands};
+use crate::{config::Config, subcommands};
 
 pub struct WebError(anyhow::Error, Option<StatusCode>);
 
@@ -79,25 +72,26 @@ pub async fn start(
 }
 
 async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
+    let confirmations = config
+        .server_confirmations()
+        .expect("Cannot determine confirmations");
+    let height = config.server_height();
     loop {
-        subcommands::index_blockchain(&config, &pool, 3, None).await;
-        subcommands::index_create_events(&config, &pool).await;
-        subcommands::index_records_events(&config, &pool).await;
+        subcommands::index_blockchain(&config, &pool, confirmations, height)
+            .await
+            .ok();
+        subcommands::index_create_events(&config, &pool).await.ok();
+        subcommands::index_records_events(&config, &pool).await.ok();
 
         tokio::time::sleep(Duration::from_secs(30)).await;
     }
-
-    Ok(())
 }
 
 mod site {
     use std::collections::HashMap;
 
     use anyhow::anyhow;
-    use axum::{
-        extract::{Path, Query, State},
-        http::StatusCode,
-    };
+    use axum::extract::{Path, State};
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
@@ -186,10 +180,9 @@ mod api {
     use std::collections::HashMap;
 
     use anyhow::anyhow;
-    use askama_axum::IntoResponse;
+
     use axum::{
         extract::{Query, State},
-        http::StatusCode,
         Json,
     };
     use serde::Deserialize;

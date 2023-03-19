@@ -1,13 +1,7 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    net::TcpStream,
-    time::Duration,
-};
+use std::collections::VecDeque;
 
-use anyhow::anyhow;
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::{Client, Event, Filter};
-use serde_json::json;
 use sqlx::SqlitePool;
 
 use crate::{config::Config, db, name::Namespace, util::NamespaceNostrKind, validators};

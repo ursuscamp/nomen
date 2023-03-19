@@ -1,16 +1,12 @@
 use std::str::FromStr;
 
 use anyhow::anyhow;
-use nostr_sdk::{
-    prelude::{tag, TagKind},
-    Event, Tag,
-};
+use nostr_sdk::{prelude::TagKind, Event, Tag};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{
     documents::{ChildCreate, Create},
-    hash160::{self, Hash160},
+    hash160::Hash160,
     util::{Nsid, Pubkey},
 };
 

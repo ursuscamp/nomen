@@ -1,11 +1,8 @@
 use std::str::FromStr;
 
-use nostr_sdk::{
-    prelude::{tag, TagKind},
-    Event, Kind,
-};
+use nostr_sdk::{prelude::TagKind, Event};
 
-use super::{NamespaceNostrKind, Nsid};
+use super::Nsid;
 
 pub trait MetadataExtractor {
     fn extract_nsid(&self) -> Option<Nsid>;

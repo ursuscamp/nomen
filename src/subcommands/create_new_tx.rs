@@ -12,7 +12,7 @@ use yansi::Paint;
 use crate::{
     config::Config,
     documents::{self, Create, ExampleDocument},
-    name::{self, Namespace},
+    name::Namespace,
 };
 
 pub fn example_create() -> anyhow::Result<()> {
@@ -56,7 +56,7 @@ pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> 
 }
 
 fn create_transaction(txin: TxIn, new_txout: TxOut, op_out: TxOut) -> Transaction {
-    let mut new_tx = Transaction {
+    let new_tx = Transaction {
         version: 1,
         lock_time: PackedLockTime::ZERO,
         input: vec![txin],

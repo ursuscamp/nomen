@@ -1,4 +1,4 @@
-use ripemd::{digest::OutputSizeUser, Digest, Ripemd160};
+use ripemd::{Digest, Ripemd160};
 use sha2::Sha256;
 
 #[derive(Default)]
@@ -16,6 +16,7 @@ impl Hash160 {
         self
     }
 
+    #[allow(dead_code)]
     pub fn chain_optional(mut self, data: &Option<&[u8]>) -> Hash160 {
         if let Some(data) = data {
             self.update(*data);

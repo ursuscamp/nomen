@@ -1,5 +1,3 @@
-use nostr_sdk::Event;
-
 pub mod event {
     use anyhow::anyhow;
     use nostr_sdk::Event;
@@ -7,13 +5,17 @@ pub mod event {
     use crate::util::NamespaceNostrKind;
 
     pub fn create(event: &Event) -> anyhow::Result<bool> {
-        event.kind == NamespaceNostrKind::Name.into() || return Err(anyhow!("Incorrect kind"));
+        if event.kind != NamespaceNostrKind::Name.into() {
+            return Err(anyhow!("Incorrect kind"));
+        }
         let valid = super::name::event(event)?;
         Ok(valid)
     }
 
     pub fn records(event: &Event) -> anyhow::Result<bool> {
-        event.kind == NamespaceNostrKind::Record.into() || return Err(anyhow!("Incorrect kind"));
+        if event.kind != NamespaceNostrKind::Record.into() {
+            return Err(anyhow!("Incorrect kind"));
+        }
         let valid = super::name::event(event)?;
         Ok(valid)
     }
@@ -21,7 +23,7 @@ pub mod event {
 
 pub mod name {
     use anyhow::anyhow;
-    use nostr_sdk::{prelude::TagKind, Event};
+    use nostr_sdk::Event;
     use regex::Regex;
 
     use crate::util::MetadataExtractor;

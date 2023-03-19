@@ -1,13 +1,10 @@
-use std::{ops::Deref, path::Path, str::FromStr};
+use std::path::Path;
 
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::{
     prelude::{FromSkStr, TagKind},
-    Event, EventBuilder, EventId, Keys, Tag, Timestamp,
+    Event, EventBuilder, Keys, Tag,
 };
-use secp256k1::SecretKey;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::{config::Config, documents::Create, util::NamespaceNostrKind};
 
@@ -17,7 +14,6 @@ pub async fn broadcast_new_name(
     privkey: &String,
 ) -> anyhow::Result<()> {
     let create: Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
-    let keys = Keys::from_sk_str(privkey.as_ref())?;
     let event = new_event(&create, privkey)?;
 
     let (_keys, client) = config.nostr_client(privkey).await?;

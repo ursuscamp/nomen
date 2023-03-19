@@ -1,4 +1,4 @@
-use serde::{de::IntoDeserializer, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     name::{Namespace, RawNameRow},

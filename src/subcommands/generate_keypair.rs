@@ -1,5 +1,5 @@
 use bitcoin::hashes::hex::ToHex;
-use secp256k1::{KeyPair, Secp256k1};
+use secp256k1::Secp256k1;
 use yansi::Paint;
 
 pub fn generate_keypair() {

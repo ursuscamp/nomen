@@ -7,7 +7,7 @@ use nostr_sdk::{
     Options,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite, Connection, SqliteConnection, SqlitePool};
+use sqlx::{sqlite, SqlitePool};
 
 use super::ConfigFile;
 
@@ -55,7 +55,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn merge_config_file(&mut self, mut cf: ConfigFile) {
+    pub fn merge_config_file(&mut self, cf: ConfigFile) {
         self.data = self
             .data
             .take()
@@ -86,6 +86,7 @@ impl Config {
                 .take()
                 .or(server.confirmations.take())
                 .or_else(|| Some(3));
+            *height = height.take().or(server.height.take()).or_else(|| Some(1));
             *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
             *without_api = *without_api || server.without_api.unwrap_or_default();
             *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
@@ -108,6 +109,20 @@ impl Config {
     pub fn server_bind(&self) -> Option<String> {
         match &self.subcommand {
             Subcommand::Server { bind, .. } => bind.clone(),
+            _ => None,
+        }
+    }
+
+    pub fn server_confirmations(&self) -> Option<usize> {
+        match &self.subcommand {
+            Subcommand::Server { confirmations, .. } => confirmations.clone(),
+            _ => None,
+        }
+    }
+
+    pub fn server_height(&self) -> Option<usize> {
+        match &self.subcommand {
+            Subcommand::Server { height, .. } => height.clone(),
             _ => None,
         }
     }
@@ -147,8 +162,7 @@ impl Config {
         sk: &str,
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
         let keys = nostr_sdk::Keys::from_sk_str(sk)?;
-        let mut client =
-            nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
+        let client = nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
         let relays = self.relays.as_ref().expect("No relays configured");
         for relay in relays {
             client.add_relay(relay, None).await?;

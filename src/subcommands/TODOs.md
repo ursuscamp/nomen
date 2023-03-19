@@ -25,7 +25,7 @@
   - [ ] Tx/Psbt/OP_RETURN only
 - [ ] Debug options: fix/add more
   - [ ] Name lookup.
-- [ ] Switch back to non-modified nostr sdk.
+- [x] Switch back to non-modified nostr sdk.
 - [ ] Use clippy instead of check.
 - [ ] Figure out a system to for maximum message sizes, to prevents spam.
 - [ ] Graceful shutdown.

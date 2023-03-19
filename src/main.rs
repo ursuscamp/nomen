@@ -9,24 +9,9 @@ mod subcommands;
 mod util;
 mod validators;
 
-use std::{borrow::BorrowMut, path::PathBuf, str::FromStr};
-
-use bitcoin::{
-    blockdata::{
-        opcodes::{
-            all::{OP_ENDIF, OP_IF},
-            OP_FALSE,
-        },
-        script::Builder,
-    },
-    hashes::hex::FromHex,
-    psbt::{serialize::Deserialize, PartiallySignedTransaction, Psbt},
-    Address, OutPoint, PackedLockTime, Script, Sequence, Transaction, TxIn, TxOut, Txid, Witness,
-};
-use bitcoincore_rpc::{Auth, Client, RawTx, RpcApi};
 use clap::Parser;
 
-use crate::config::{Config, ConfigFile};
+use crate::config::Config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -70,9 +55,9 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         config::Subcommand::Server {
-            bind,
-            confirmations,
-            height,
+            bind: _,
+            confirmations: _,
+            height: _,
             without_explorer,
             without_api,
             without_indexer,

@@ -3,7 +3,7 @@ use bitcoin::{hashes::hex::ToHex, BlockHash, Network, Txid};
 use bitcoincore_rpc::RpcApi;
 use sqlx::SqlitePool;
 
-use crate::{config::Config, db, name::Namespace};
+use crate::{config::Config, db};
 
 pub async fn index_blockchain(
     config: &Config,
