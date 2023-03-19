@@ -15,9 +15,10 @@
 - [ ] Review and improve tests.
 - [ ] Update transactions.
 - [ ] Block explorer.
-  - [ ] Option: disable explorer
-  - [ ] Option: disable api
-  - [ ] Option: disbale index
+  - [x] Option: disable explorer
+  - [x] Option: disable api
+  - [x] Option: disbale index
+  - [ ] Add timestamp info nsid page in explorer.
 - [ ] Transaction output options:
   - [ ] Raw/Hex
   - [ ] Output file
@@ -28,4 +29,3 @@
 - [ ] Use clippy instead of check.
 - [ ] Figure out a system to for maximum message sizes, to prevents spam.
 - [ ] Graceful shutdown.
-- [ ] Add timestamp info nsid page in explorer.

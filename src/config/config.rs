@@ -72,20 +72,23 @@ impl Config {
             bind,
             confirmations,
             height,
+            without_explorer,
+            without_api,
+            without_indexer,
         } = &mut self.subcommand
         {
+            let mut server = cf.server.unwrap_or_default();
             *bind = bind
                 .take()
-                .or(cf.server.as_mut().map(|s| s.bind.take()).flatten())
+                .or(server.bind.take())
                 .or_else(|| Some("0.0.0.0:8080".into()));
             *confirmations = confirmations
                 .take()
-                .or(cf
-                    .server
-                    .as_mut()
-                    .map(|mut s| s.confirmations.take())
-                    .flatten())
+                .or(server.confirmations.take())
                 .or_else(|| Some(3));
+            *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
+            *without_api = *without_api || server.without_api.unwrap_or_default();
+            *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
         }
     }
 
@@ -204,6 +207,18 @@ pub enum Subcommand {
         /// Starting block height to index. Default: most recently scanned block
         #[arg(long)]
         height: Option<usize>,
+
+        /// Start server without explorer.
+        #[arg(long)]
+        without_explorer: bool,
+
+        /// Start server without API.
+        #[arg(long)]
+        without_api: bool,
+
+        /// Start server without indexer.
+        #[arg(long)]
+        without_indexer: bool,
     },
 }
 

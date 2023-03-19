@@ -8,6 +8,9 @@ pub struct ServerConfigFile {
     pub bind: Option<String>,
     pub confirmations: Option<usize>,
     pub height: Option<usize>,
+    pub without_explorer: Option<bool>,
+    pub without_api: Option<bool>,
+    pub without_indexer: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

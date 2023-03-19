@@ -40,15 +40,31 @@ where
     }
 }
 
-pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
-    let _indexer = tokio::spawn(indexer(config.clone(), conn.clone()));
-    let app = Router::new()
-        .route("/", get(site::index))
-        .route("/faqs", get(site::faqs))
-        .route("/explorer", get(site::explorer))
-        .route("/explorer/:nsid", get(site::explore_nsid))
-        .route("/api/name", get(api::name))
-        .with_state(conn.clone());
+pub async fn start(
+    config: &Config,
+    conn: &SqlitePool,
+    without_explorer: bool,
+    without_api: bool,
+    without_indexer: bool,
+) -> anyhow::Result<()> {
+    if !without_indexer {
+        let _indexer = tokio::spawn(indexer(config.clone(), conn.clone()));
+    }
+    let mut app = Router::new();
+
+    if !without_explorer {
+        app = app
+            .route("/", get(site::index))
+            .route("/faqs", get(site::faqs))
+            .route("/explorer", get(site::explorer))
+            .route("/explorer/:nsid", get(site::explore_nsid));
+    }
+
+    if !without_api {
+        app = app.route("/api/name", get(api::name));
+    }
+
+    let app = app.with_state(conn.clone());
 
     let addr = config
         .server_bind()

@@ -73,7 +73,19 @@ async fn main() -> anyhow::Result<()> {
             bind,
             confirmations,
             height,
-        } => subcommands::start(&config, &pool).await?,
+            without_explorer,
+            without_api,
+            without_indexer,
+        } => {
+            subcommands::start(
+                &config,
+                &pool,
+                *without_explorer,
+                *without_api,
+                *without_indexer,
+            )
+            .await?
+        }
         config::Subcommand::Debug(debug) => match debug {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
             config::DebugSubcommand::NamesIndex => subcommands::names_index()?,
