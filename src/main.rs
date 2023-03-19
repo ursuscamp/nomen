@@ -25,10 +25,10 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::New(new) => match new {
             config::NewSubcommand::Tx { document } => {
-                subcommands::create_new_tx(&config, &document)?
+                subcommands::create_new_tx(&config, document)?
             }
             config::NewSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_new_name(&config, &document, &privkey).await?
+                subcommands::broadcast_new_name(&config, document, privkey).await?
             }
             config::NewSubcommand::Example => subcommands::example_create()?,
         },

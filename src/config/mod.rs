@@ -1,5 +1,5 @@
-mod config;
+mod cfg;
 mod config_file;
 
-pub use config::*;
+pub use cfg::*;
 pub use config_file::*;

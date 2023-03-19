@@ -36,20 +36,13 @@ pub async fn index_blockchain(
                     let b = &output.script_pubkey.as_bytes()[2..];
                     if b.starts_with(b"ind") {
                         let b = &b[3..];
-                        match parse_ind_output(&b) {
+                        match parse_ind_output(b) {
                             Ok(b) => {
-                                match index_output(
-                                    conn,
-                                    b,
-                                    &blockhash,
-                                    &txid,
-                                    vout,
-                                    blockinfo.height,
-                                )
-                                .await
+                                if let Err(err) =
+                                    index_output(conn, b, &blockhash, &txid, vout, blockinfo.height)
+                                        .await
                                 {
-                                    Err(err) => log::error!("Index error: {err}"),
-                                    _ => {}
+                                    log::error!("Index error: {err}")
                                 };
                             }
                             Err(e) => log::error!("Index error: {e}"),
@@ -73,7 +66,7 @@ async fn index_height(
     config: &Config,
 ) -> Result<usize, anyhow::Error> {
     let db_height = db::next_index_height(conn).await;
-    Ok(height
+    height
         .map(Result::Ok)
         .or(Some(db_height))
         .or_else(|| {
@@ -81,7 +74,7 @@ async fn index_height(
                 config.network.expect("No network configured"),
             ))
         })
-        .expect("starting height")?)
+        .expect("starting height")
 }
 
 async fn index_output(
@@ -125,7 +118,7 @@ fn starting_blockheight(network: Network) -> anyhow::Result<usize> {
 }
 
 fn parse_ind_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
-    let mut b = byte.into_iter();
+    let mut b = byte.iter();
     let (ind_ver, ind_type) = (b.next(), b.next());
     match (ind_ver, ind_type) {
         (Some(&0), Some(&0)) => Ok(b.copied().collect()),

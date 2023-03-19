@@ -21,7 +21,7 @@ impl FromStr for Pubkey {
 impl Debug for Pubkey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Pubkey")
-            .field(&hex::encode(&self.0))
+            .field(&hex::encode(self.0))
             .finish()
     }
 }

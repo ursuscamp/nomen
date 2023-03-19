@@ -11,7 +11,7 @@ use crate::{config::Config, documents::Create, util::NamespaceNostrKind};
 pub async fn broadcast_new_name(
     config: &Config,
     document: &Path,
-    privkey: &String,
+    privkey: &str,
 ) -> anyhow::Result<()> {
     let create: Create = serde_json::from_str(&std::fs::read_to_string(document)?)?;
     let event = new_event(&create, privkey)?;

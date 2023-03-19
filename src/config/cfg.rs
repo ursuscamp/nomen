@@ -80,13 +80,13 @@ impl Config {
             let mut server = cf.server.unwrap_or_default();
             *bind = bind
                 .take()
-                .or(server.bind.take())
+                .or_else(|| server.bind.take())
                 .or_else(|| Some("0.0.0.0:8080".into()));
             *confirmations = confirmations
                 .take()
-                .or(server.confirmations.take())
-                .or_else(|| Some(3));
-            *height = height.take().or(server.height.take()).or_else(|| Some(1));
+                .or_else(|| server.confirmations.take())
+                .or(Some(3));
+            *height = height.take().or_else(|| server.height.take()).or(Some(1));
             *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
             *without_api = *without_api || server.without_api.unwrap_or_default();
             *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
@@ -115,14 +115,14 @@ impl Config {
 
     pub fn server_confirmations(&self) -> Option<usize> {
         match &self.subcommand {
-            Subcommand::Server { confirmations, .. } => confirmations.clone(),
+            Subcommand::Server { confirmations, .. } => *confirmations,
             _ => None,
         }
     }
 
     pub fn server_height(&self) -> Option<usize> {
         match &self.subcommand {
-            Subcommand::Server { height, .. } => height.clone(),
+            Subcommand::Server { height, .. } => *height,
             _ => None,
         }
     }
@@ -150,8 +150,7 @@ impl Config {
         let db = self
             .data
             .as_ref()
-            .map(|d| d.to_str().map(|s| s.to_owned()))
-            .flatten()
+            .and_then(|d| d.to_str().map(|s| s.to_owned()))
             .expect("No database configured");
 
         Ok(SqlitePool::connect(&format!("sqlite:{db}")).await?)

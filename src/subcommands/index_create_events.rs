@@ -43,7 +43,7 @@ async fn index_namespace_tree(conn: &SqlitePool, ns: &Namespace) -> anyhow::Resu
     let mut queue = VecDeque::new();
     queue.push_back((None, String::new(), ns.clone()));
 
-    while queue.len() > 0 {
+    while !queue.is_empty() {
         let (parent_nsid, parent_name, next) = queue.pop_front().unwrap(); // Queue already verified > 0 elements
         let nsid = next.namespace_id().to_hex();
         let fqdn = if parent_name.is_empty() {

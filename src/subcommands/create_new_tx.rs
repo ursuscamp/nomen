@@ -56,22 +56,21 @@ pub fn create_new_tx(config: &Config, document: &PathBuf) -> anyhow::Result<()> 
 }
 
 fn create_transaction(txin: TxIn, new_txout: TxOut, op_out: TxOut) -> Transaction {
-    let new_tx = Transaction {
+    Transaction {
         version: 1,
         lock_time: PackedLockTime::ZERO,
         input: vec![txin],
         output: vec![new_txout, op_out],
-    };
-    new_tx
+    }
 }
 
 fn coerce_inputs(
-    txid: &String,
+    txid: &str,
     vout: u64,
-    address: &String,
+    address: &str,
 ) -> Result<(Txid, usize, Address), anyhow::Error> {
     let txid: Txid = txid.parse()?;
-    let address = Address::from_str(&address)?;
+    let address = Address::from_str(address)?;
     Ok((txid, vout as usize, address))
 }
 
@@ -83,7 +82,10 @@ fn input_and_new_output(
 ) -> Result<(TxIn, TxOut), anyhow::Error> {
     let client = config.rpc_client()?;
     let tx = client.get_raw_transaction(&txid, None)?;
-    let txout = tx.output.get(vout).ok_or(anyhow!("Invalid output"))?;
+    let txout = tx
+        .output
+        .get(vout)
+        .ok_or_else(|| anyhow!("Invalid output"))?;
     let txin = TxIn {
         previous_output: OutPoint {
             txid,
@@ -109,16 +111,16 @@ fn calculate_fee(new_tx: &Transaction, fee_rate: &usize) -> u64 {
 }
 
 fn op_return_output(name: Namespace) -> TxOut {
-    let mut op_return = format!("ind\x00\x00").as_bytes().to_vec();
+    let mut op_return = "ind\x00\x00".to_string().as_bytes().to_vec();
     let namespace_id = name.namespace_id();
     log::debug!("Namespace id for {}: {}", name.0, namespace_id.to_hex());
     op_return.extend(name.namespace_id().as_ref());
     let op_return = Script::new_op_return(&op_return);
-    let op_out = TxOut {
+
+    TxOut {
         value: 0,
         script_pubkey: op_return,
-    };
-    op_out
+    }
 }
 
 fn get_valid_name(create: &Create) -> anyhow::Result<Namespace> {

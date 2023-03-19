@@ -19,7 +19,7 @@ impl Hash160 {
     #[allow(dead_code)]
     pub fn chain_optional(mut self, data: &Option<&[u8]>) -> Hash160 {
         if let Some(data) = data {
-            self.update(*data);
+            self.update(data);
         }
         self
     }
@@ -36,8 +36,8 @@ impl Hash160 {
     }
 
     pub fn digest_slices(data: &[&[u8]]) -> [u8; 20] {
-        data.into_iter()
-            .fold(Hash160::default(), |acc, d| acc.chain_update(*d))
+        data.iter()
+            .fold(Hash160::default(), |acc, d| acc.chain_update(d))
             .finalize()
     }
 }

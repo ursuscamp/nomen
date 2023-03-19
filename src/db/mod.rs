@@ -6,7 +6,7 @@ use sqlx::{Executor, SqliteConnection, SqlitePool};
 
 use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
 
-static MIGRATIONS: [&'static str; 11] = [
+static MIGRATIONS: [&str; 11] = [
     "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
     "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, parent, pubkey);",
@@ -39,7 +39,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
             .fetch_one(&conn)
             .await?;
 
-    for (idx, migration) in MIGRATIONS[version as usize..].into_iter().enumerate() {
+    for (idx, migration) in MIGRATIONS[version as usize..].iter().enumerate() {
         log::debug!("Migrations schema version {idx}");
         sqlx::query(migration).execute(&conn).await?;
         sqlx::query("INSERT INTO schema (version) VALUES (?);")
@@ -216,7 +216,7 @@ pub mod namespace {
 
         let d = NamespaceDetails {
             name,
-            records: serde_json::from_str(&records.unwrap_or(String::from("{}")))?,
+            records: serde_json::from_str(&records.unwrap_or_else(|| String::from("{}")))?,
             children,
             blockdata,
         };

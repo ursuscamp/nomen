@@ -43,9 +43,11 @@ impl TryFrom<Event> for Namespace {
     type Error = anyhow::Error;
 
     fn try_from(event: Event) -> Result<Self, Self::Error> {
-        let nsid: Nsid = get_d_tag(&event).ok_or(anyhow!("Missing d tag"))?.parse()?;
+        let nsid: Nsid = get_d_tag(&event)
+            .ok_or_else(|| anyhow!("Missing d tag"))?
+            .parse()?;
         let name = get_ind_tag(&event)
-            .ok_or(anyhow!("Missing ind tag"))?
+            .ok_or_else(|| anyhow!("Missing ind tag"))?
             .clone();
         let children = get_names(&event)?;
         let pubkey = event.pubkey.into();
@@ -146,10 +148,10 @@ fn get_ind_tag(event: &Event) -> Option<&String> {
 
 fn get_names(event: &Event) -> anyhow::Result<Vec<Namespace>> {
     let children: Vec<ChildCreate> = serde_json::from_str(&event.content)?;
-    Ok(children
+    children
         .into_iter()
         .map(|cc| cc.try_into())
-        .collect::<anyhow::Result<_>>()?)
+        .collect::<anyhow::Result<_>>()
 }
 
 #[cfg(test)]

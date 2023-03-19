@@ -155,10 +155,10 @@ mod site {
                 record_keys,
                 records: value.records,
                 children: value.children,
-                blockhash: blockhash,
-                txid: txid,
-                vout: vout,
-                height: height,
+                blockhash,
+                txid,
+                vout,
+                height,
             }
         }
     }
@@ -203,8 +203,8 @@ mod api {
     ) -> Result<Json<HashMap<String, String>>, WebError> {
         let name = db::name_records(&conn, name.name).await?;
 
-        Ok(name
-            .map(|m| Json(m))
-            .ok_or_else(|| WebError::not_found(anyhow!("Not found")))?)
+        name
+            .map(Json)
+            .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
     }
 }

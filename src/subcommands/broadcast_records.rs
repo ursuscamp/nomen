@@ -29,7 +29,7 @@ pub async fn broadcast_records(
     let kind = NamespaceNostrKind::Record.into();
     let nsid = nsid(pool, &records.name)
         .await?
-        .ok_or(anyhow!("Namespace not found for name"))?;
+        .ok_or_else(|| anyhow!("Namespace not found for name"))?;
     let dtag = Tag::Generic(TagKind::D, vec![nsid.to_string()]);
     let indtag = Tag::Generic("ind".into(), vec![records.name.clone()]);
     let tags = vec![dtag, indtag];

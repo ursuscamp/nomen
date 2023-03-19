@@ -26,6 +26,6 @@
 - [ ] Debug options: fix/add more
   - [ ] Name lookup.
 - [x] Switch back to non-modified nostr sdk.
-- [ ] Use clippy instead of check.
+- [x] Use clippy instead of check.
 - [ ] Figure out a system to for maximum message sizes, to prevents spam.
 - [ ] Graceful shutdown.
