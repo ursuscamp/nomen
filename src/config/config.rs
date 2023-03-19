@@ -118,13 +118,25 @@ impl Config {
     }
 
     pub async fn sqlite(&self) -> anyhow::Result<sqlite::SqlitePool> {
+        let db = self.data.clone().expect("No database configured");
+
+        // SQLx doesn't seem to like it if a db file does not already exist, so let's create an empty one
+        if !tokio::fs::try_exists(&db).await? {
+            tokio::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&db)
+                .await?;
+        }
+
         let db = self
             .data
             .as_ref()
             .map(|d| d.to_str().map(|s| s.to_owned()))
             .flatten()
             .expect("No database configured");
-        Ok(SqlitePool::connect(&db).await?)
+
+        Ok(SqlitePool::connect(&format!("sqlite:{db}")).await?)
     }
 
     pub async fn nostr_client(

@@ -28,9 +28,6 @@ static MIGRATIONS: [&'static str; 11] = [
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<()> {
-    #[derive(sqlx::FromRow)]
-    struct Usize(usize);
-
     let mut conn = config.sqlite().await?;
 
     sqlx::query("CREATE TABLE IF NOT EXISTS schema (version);")
@@ -66,6 +63,7 @@ pub async fn insert_namespace(
         .bind(nsid)
         .bind(blockhash)
         .bind(txid)
+        .bind(vout as i64)
         .bind(height as i64)
         .execute(conn)
         .await?;
@@ -199,6 +197,7 @@ pub mod namespace {
 
     use sqlx::{SqliteConnection, SqlitePool};
 
+    #[derive(Debug)]
     pub struct NamespaceDetails {
         pub name: Option<String>,
         pub records: HashMap<String, String>,
@@ -260,6 +259,7 @@ pub mod namespace {
         let bd = sqlx::query_as::<_, (String, String, i64, i64)>(include_str!(
             "./queries/blockchain_data.sql"
         ))
+        .bind(nsid)
         .fetch_optional(conn)
         .await?
         .map(|s| (s.0, s.1, s.2 as usize, s.3 as usize));

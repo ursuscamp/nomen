@@ -159,6 +159,7 @@ mod site {
     ) -> Result<NsidTemplate, WebError> {
         let details = db::namespace::details(&conn, nsid).await?;
         if details.name.is_none() || details.blockdata.is_none() {
+            log::error!("{details:?}");
             return Err(WebError::not_found(anyhow!("NSID not found")));
         }
         Ok(details.into())
