@@ -66,8 +66,8 @@ pub async fn index_blockchain(
 }
 
 async fn index_height(height: Option<usize>, config: &Config) -> Result<usize, anyhow::Error> {
-    let conn = config.sqlite().await?;
-    let db_height = db::next_index_height(&conn).await;
+    let mut conn = config.sqlite().await?;
+    let db_height = db::next_index_height(&mut conn).await;
     Ok(height
         .map(Result::Ok)
         .or(Some(db_height))
@@ -93,13 +93,21 @@ async fn index_output(
         return Err(anyhow::anyhow!("Unexpected IND length"));
     }
 
-    let conn = config.sqlite().await?;
-    if db::namespace_exists(&conn, nsid.clone()).await? {
+    let mut conn = config.sqlite().await?;
+    if db::namespace_exists(&mut conn, nsid.clone()).await? {
         log::debug!("Namespace {nsid} already exists, skipping.");
         return Ok(());
     }
 
-    db::insert_namespace(&conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
+    db::insert_namespace(
+        &mut conn,
+        nsid,
+        blockhash.to_hex(),
+        txid.to_hex(),
+        vout,
+        height,
+    )
+    .await?;
     Ok(())
 }
 

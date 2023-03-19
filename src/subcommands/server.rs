@@ -8,7 +8,6 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use tokio_rusqlite::Connection;
 use toml::map;
 
 use crate::{config::Config, db, subcommands};
@@ -84,7 +83,7 @@ mod site {
         http::StatusCode,
     };
     use serde::Deserialize;
-    use tokio_rusqlite::Connection;
+    use sqlx::SqliteConnection;
 
     use crate::db::{self, namespace::NamespaceDetails};
 
@@ -117,7 +116,9 @@ mod site {
         names: Vec<(String, String)>,
     }
 
-    pub async fn explorer(State(conn): State<Connection>) -> Result<ExplorerTemplate, WebError> {
+    pub async fn explorer(
+        State(conn): State<SqliteConnection>,
+    ) -> Result<ExplorerTemplate, WebError> {
         Ok(ExplorerTemplate {
             names: db::top_level_names(&conn).await?,
         })
@@ -155,7 +156,7 @@ mod site {
     }
 
     pub async fn explore_nsid(
-        State(conn): State<Connection>,
+        State(conn): State<SqliteConnection>,
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
         let details = db::namespace::details(&conn, nsid).await?;
@@ -177,7 +178,7 @@ mod api {
         Json,
     };
     use serde::Deserialize;
-    use tokio_rusqlite::Connection;
+    use sqlx::SqliteConnection;
 
     use crate::db;
 
@@ -190,7 +191,7 @@ mod api {
 
     pub async fn name(
         Query(name): Query<NameQuery>,
-        State(conn): State<Connection>,
+        State(conn): State<SqliteConnection>,
     ) -> Result<Json<HashMap<String, String>>, WebError> {
         let name = db::name_records(&conn, name.name).await?;
 

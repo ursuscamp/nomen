@@ -10,8 +10,8 @@ use crate::{
 
 pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
     log::info!("Starting records index.");
-    let conn = config.sqlite().await?;
-    let last_records_time = db::last_records_time(&conn).await?;
+    let mut conn = config.sqlite().await?;
+    let last_records_time = db::last_records_time(&mut conn).await?;
     log::debug!("Getting all record events since {last_records_time}");
     let filters = filters(last_records_time);
     let (_keys, client) = config.nostr_random_client().await?;
@@ -28,7 +28,7 @@ pub async fn index_records_events(config: &Config) -> anyhow::Result<()> {
         log::debug!("Recording record for event {event:?}");
 
         let res = db::insert_records_event(
-            &conn,
+            &mut conn,
             nsid,
             pubkey,
             created_at,

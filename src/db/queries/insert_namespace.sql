@@ -1,0 +1,1 @@
+INSERT INTO blockchain (nsid, blockhash, txid, vout, height) VALUES (?, ?, ?, ?, ?);
