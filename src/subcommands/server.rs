@@ -67,11 +67,13 @@ pub async fn start(
     log::info!("Starting server on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
         .await?;
     Ok(())
 }
 
 async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
+    let guard = elegant_departure::get_shutdown_guard();
     let confirmations = config
         .server_confirmations()
         .expect("Cannot determine confirmations");
@@ -83,8 +85,13 @@ async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
         subcommands::index_create_events(&config, &pool).await.ok();
         subcommands::index_records_events(&config, &pool).await.ok();
 
-        tokio::time::sleep(Duration::from_secs(30)).await;
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(30)) => return Ok(()),
+            _ = guard.wait() => return Ok(())
+
+        }
     }
+    Ok(())
 }
 
 mod site {
@@ -203,8 +210,7 @@ mod api {
     ) -> Result<Json<HashMap<String, String>>, WebError> {
         let name = db::name_records(&conn, name.name).await?;
 
-        name
-            .map(Json)
+        name.map(Json)
             .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
     }
 }
