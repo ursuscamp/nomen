@@ -7,6 +7,7 @@ mod index_blockchain;
 mod index_create_events;
 mod index_records_events;
 mod server;
+mod update_tx;
 
 pub use broadcast_new_name::broadcast_new_name;
 pub use broadcast_records::*;

@@ -6,6 +6,7 @@ use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
 };
+use ripemd::digest::Update;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
@@ -192,6 +193,11 @@ pub enum Subcommand {
     #[serde(skip)]
     New(NewSubcommand),
 
+    /// Create and broadcast updates.
+    #[command(subcommand)]
+    #[serde(skip)]
+    Update(UpdateSubcommand),
+
     /// Broadcast records updates
     #[command(subcommand)]
     #[serde(skip)]
@@ -299,4 +305,23 @@ pub enum IndexSubcommand {
 
     /// Query relays for records
     RecordsEvents,
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum UpdateSubcommand {
+    /// Create a new, unsigned transaction using a simple input document.
+    /// Use `indigo update example` to create a sample document.
+    Tx { document: PathBuf },
+
+    /// Broadcast the update name transaction to Nostr relays.
+    Broadcast {
+        /// The same document used to create the name.
+        document: PathBuf,
+
+        /// Private key to sign the Nostr event
+        privkey: String,
+    },
+
+    /// Print an example document for update names.
+    Example,
 }
