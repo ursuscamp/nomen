@@ -6,6 +6,7 @@ mod generate_keypair;
 mod index_blockchain;
 mod index_create_events;
 mod index_records_events;
+mod name;
 mod server;
 mod update_tx;
 
@@ -17,4 +18,5 @@ pub use generate_keypair::generate_keypair;
 pub use index_blockchain::index_blockchain;
 pub use index_create_events::*;
 pub use index_records_events::*;
+pub use name::*;
 pub use server::*;

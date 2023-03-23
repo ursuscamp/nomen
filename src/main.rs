@@ -23,27 +23,7 @@ async fn main() -> anyhow::Result<()> {
     match &config.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
-        config::Subcommand::New(new) => match new {
-            config::NewSubcommand::Tx { document } => {
-                subcommands::create_new_tx(&config, document)?
-            }
-            config::NewSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_new_name(&config, document, privkey).await?
-            }
-            config::NewSubcommand::Example => subcommands::example_create()?,
-        },
-        config::Subcommand::Update(update) => match update {
-            config::UpdateSubcommand::Tx { document } => todo!(),
-            config::UpdateSubcommand::Broadcast { document, privkey } => todo!(),
-            config::UpdateSubcommand::Example => todo!(),
-        },
-        config::Subcommand::Records(records) => match records {
-            config::RecordsSubcommand::Broadcast { document, privkey } => {
-                subcommands::broadcast_records(&config, &pool, document.as_ref(), privkey.as_str())
-                    .await?
-            }
-            config::RecordsSubcommand::Example => subcommands::example_records()?,
-        },
+        config::Subcommand::Name(name) => subcommands::name(name).await?,
         config::Subcommand::Index(index) => match index {
             config::IndexSubcommand::Blockchain {
                 confirmations,

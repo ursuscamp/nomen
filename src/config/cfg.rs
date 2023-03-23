@@ -191,17 +191,7 @@ pub enum Subcommand {
     /// Create and broadcast new names.
     #[command(subcommand)]
     #[serde(skip)]
-    New(NewSubcommand),
-
-    /// Create and broadcast updates.
-    #[command(subcommand)]
-    #[serde(skip)]
-    Update(UpdateSubcommand),
-
-    /// Broadcast records updates
-    #[command(subcommand)]
-    #[serde(skip)]
-    Records(RecordsSubcommand),
+    Name(NameSubcommand),
 
     /// Scan and index the blockchain.
     #[command(subcommand)]
@@ -248,40 +238,6 @@ impl Default for Subcommand {
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
-pub enum NewSubcommand {
-    /// Create a new, unsigned transaction using a simple input document.
-    /// Use `indigo new example` to create a sample document.
-    Tx { document: PathBuf },
-
-    /// Broadcast the new name transaction to Nostr relays.
-    Broadcast {
-        /// The same document used to create the name.
-        document: PathBuf,
-
-        /// Private key to sign the Nostr event
-        privkey: String,
-    },
-
-    /// Print an example document for new names.
-    Example,
-}
-
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum RecordsSubcommand {
-    /// Broadcast a records event to the relays.
-    Broadcast {
-        /// A document representing the records to be relayed.
-        document: PathBuf,
-
-        /// Private key to sign the Nostr event.
-        privkey: String,
-    },
-
-    /// Print an example document to update the name.
-    Example,
-}
-
-#[derive(clap::Subcommand, Debug, Clone)]
 pub enum DebugSubcommand {
     ListNamespaces,
     NamesIndex,
@@ -308,20 +264,18 @@ pub enum IndexSubcommand {
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
-pub enum UpdateSubcommand {
-    /// Create a new, unsigned transaction using a simple input document.
-    /// Use `indigo update example` to create a sample document.
-    Tx { document: PathBuf },
+pub enum NameSubcommand {
+    /// Create a new name.
+    New {
+        /// The root name of the new namespace.
+        name: String,
 
-    /// Broadcast the update name transaction to Nostr relays.
-    Broadcast {
-        /// The same document used to create the name.
-        document: PathBuf,
+        /// Optional children (format "name:pubkey") to include in new name
+        children: Vec<String>,
 
-        /// Private key to sign the Nostr event
-        privkey: String,
+        /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+        /// Will prompt if not provided.
+        #[arg(short, long)]
+        privkey: Option<String>,
     },
-
-    /// Print an example document for update names.
-    Example,
 }
