@@ -266,16 +266,32 @@ pub enum IndexSubcommand {
 #[derive(clap::Subcommand, Debug, Clone)]
 pub enum NameSubcommand {
     /// Create a new name.
-    New {
-        /// The root name of the new namespace.
-        name: String,
+    New(NameNewSubcommand),
+}
 
-        /// Optional children (format "name:pubkey") to include in new name
-        children: Vec<String>,
+#[derive(clap::Args, Debug, Clone)]
+pub struct NameNewSubcommand {
+    /// The root name of the new namespace.
+    pub name: String,
 
-        /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-        /// Will prompt if not provided.
-        #[arg(short, long)]
-        privkey: Option<String>,
-    },
+    /// The txid to use as input.
+    pub txid: bitcoin::Txid,
+
+    /// Tx output number to use as input.
+    pub vout: u32,
+
+    /// New address to send outputs
+    pub address: bitcoin::Address,
+
+    /// Optional children (format "name:pubkey") to include in new name
+    pub children: Vec<String>,
+
+    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+    /// Will prompt if not provided.
+    #[arg(short, long)]
+    pub privkey: Option<String>,
+
+    /// Fee to use for the transaction
+    #[arg(short, long, default_value = "10000")]
+    pub fee: u32,
 }

@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     match &config.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
-        config::Subcommand::Name(name) => subcommands::name(name).await?,
+        config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index(index) => match index {
             config::IndexSubcommand::Blockchain {
                 confirmations,

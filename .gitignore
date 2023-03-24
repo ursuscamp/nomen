@@ -5,6 +5,7 @@ cookie
 .bitcoin
 .indigo.toml
 create.json
+__pycache__
 records.json
 indigo.db
 .DS_Store
