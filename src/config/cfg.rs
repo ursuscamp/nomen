@@ -267,6 +267,9 @@ pub enum IndexSubcommand {
 pub enum NameSubcommand {
     /// Create a new name.
     New(NameNewSubcommand),
+
+    /// Broadcast a new record for your name.
+    Record(NameRecordSubcomand),
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -294,4 +297,20 @@ pub struct NameNewSubcommand {
     /// Fee to use for the transaction
     #[arg(short, long, default_value = "10000")]
     pub fee: u32,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct NameRecordSubcomand {
+    /// The name you are broadcasting records for
+    pub name: String,
+
+    /// The namespace hash generated from the blockchain event
+    pub nsid: String,
+
+    /// Records to broadcast (format "key=value")
+    pub records: Vec<String>,
+
+    /// Private key to use to sign the nostr event. Must be the same private key corresponding to the public key hashed inside the root namespace.
+    #[arg(short, long)]
+    pub privkey: Option<String>,
 }
