@@ -17,6 +17,7 @@ derive_more = "0.99.17"
 elegant-departure = { version = "0.2.1", features = ["tokio"] }
 env_logger = "0.10.0"
 hex = "0.4.3"
+itertools = "0.10.5"
 log = "0.4.17"
 nostr-sdk = "0.19.1"
 rand = "0.8.5"

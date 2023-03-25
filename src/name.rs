@@ -5,7 +5,6 @@ use nostr_sdk::{prelude::TagKind, Event, Tag};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    documents::{ChildCreate, Create},
     hash160::Hash160,
     util::{Nsid, Pubkey},
 };

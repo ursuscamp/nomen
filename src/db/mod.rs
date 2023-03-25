@@ -1,13 +1,16 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::Event;
-use sqlx::{Executor, SqliteConnection, SqlitePool};
+use sqlx::SqlitePool;
 
-use crate::{config::Config, name::Namespace, subcommands, util::Nsid};
+use crate::config::Config;
+
+mod types;
+pub use types::*;
 
 static MIGRATIONS: [&str; 11] = [
-    "CREATE TABLE blockchain (nsid PRIMARY KEY, blockhash, txid, vout, height);",
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, vout, height, status);",
     "CREATE INDEX blockchain_height_dx ON blockchain(height);",
     "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
@@ -28,7 +31,7 @@ static MIGRATIONS: [&str; 11] = [
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
-    let mut conn = config.sqlite().await?;
+    let conn = config.sqlite().await?;
 
     sqlx::query("CREATE TABLE IF NOT EXISTS schema (version);")
         .execute(&conn)
@@ -84,23 +87,6 @@ pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
             .fetch_one(conn)
             .await?;
     Ok(t as u64)
-}
-
-pub async fn insert_create_event(
-    conn: &SqlitePool,
-    event: Event,
-    ns: Namespace,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_create_event.sql"))
-        .bind(ns.namespace_id().to_hex())
-        .bind(event.pubkey.to_hex())
-        .bind(event.created_at.as_i64())
-        .bind(event.id.to_hex())
-        .bind(&ns.0)
-        .bind(serde_json::to_string(&ns.2)?)
-        .execute(conn)
-        .await?;
-    Ok(())
 }
 
 pub async fn index_name_nsid(
@@ -195,7 +181,7 @@ pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, S
 pub mod namespace {
     use std::collections::HashMap;
 
-    use sqlx::{SqliteConnection, SqlitePool};
+    use sqlx::SqlitePool;
 
     #[derive(Debug)]
     pub struct NamespaceDetails {

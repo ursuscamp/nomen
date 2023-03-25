@@ -78,19 +78,19 @@ async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
         .server_confirmations()
         .expect("Cannot determine confirmations");
     let height = config.server_height();
-    loop {
-        subcommands::index_blockchain(&config, &pool, confirmations, height)
-            .await
-            .ok();
-        subcommands::index_create_events(&config, &pool).await.ok();
-        subcommands::index_records_events(&config, &pool).await.ok();
+    // loop {
+    //     subcommands::index_blockchain(&config, &pool, confirmations, height)
+    //         .await
+    //         .ok();
+    //     subcommands::index_create_events(&config, &pool).await.ok();
+    //     subcommands::index_records_events(&config, &pool).await.ok();
 
-        tokio::select! {
-            _ = tokio::time::sleep(Duration::from_secs(30)) => return Ok(()),
-            _ = guard.wait() => return Ok(())
+    //     tokio::select! {
+    //         _ = tokio::time::sleep(Duration::from_secs(30)) => return Ok(()),
+    //         _ = guard.wait() => return Ok(())
 
-        }
-    }
+    //     }
+    // }
     Ok(())
 }
 

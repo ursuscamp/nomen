@@ -18,10 +18,8 @@ pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
 }
 
 mod new {
-    use std::io::Write;
-
     use anyhow::anyhow;
-    use bitcoin::{hashes::hex::ToHex, secp256k1::SecretKey};
+    use bitcoin::hashes::hex::ToHex;
     use bitcoincore_rpc::{RawTx, RpcApi};
     use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
@@ -204,6 +202,8 @@ mod new {
     mod tests {
         use std::str::FromStr;
 
+        use bitcoin::secp256k1::SecretKey;
+
         use super::*;
 
         #[test]
@@ -274,10 +274,11 @@ fn parse_keys(privkey: Option<&String>) -> Result<Keys, anyhow::Error> {
     let privkey = if let Some(s) = privkey {
         s.clone()
     } else {
+        // TODO: use a better system for getting secure info than this, like a secure prompt
         print!("Private key: ");
         std::io::stdout().flush()?;
         let mut s = String::new();
-        std::io::stdin().read_line(&mut s);
+        std::io::stdin().read_line(&mut s)?;
         s.trim().to_string()
     };
     let privkey = hex::decode(privkey)?;

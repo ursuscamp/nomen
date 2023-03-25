@@ -6,7 +6,6 @@ use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
 };
-use ripemd::digest::Update;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
@@ -194,9 +193,7 @@ pub enum Subcommand {
     Name(NameSubcommand),
 
     /// Scan and index the blockchain.
-    #[command(subcommand)]
-    #[serde(skip)]
-    Index(IndexSubcommand),
+    Index,
 
     /// Useful debugging commands
     #[command(subcommand)]
