@@ -143,18 +143,18 @@ pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
 
 pub async fn insert_records_event(
     conn: &SqlitePool,
-    nsid: String,
-    pubkey: String,
-    created_at: u64,
-    event_id: String,
+    nsid: Nsid,
+    pubkey: XOnlyPublicKey,
+    created_at: i64,
+    event_id: EventId,
     name: String,
     records: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_records_event.sql"))
-        .bind(nsid)
-        .bind(pubkey)
-        .bind(created_at as i64)
-        .bind(event_id)
+        .bind(nsid.to_string())
+        .bind(pubkey.to_string())
+        .bind(created_at)
+        .bind(event_id.to_string())
         .bind(name)
         .bind(records)
         .execute(conn)
