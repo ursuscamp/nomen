@@ -1,9 +1,11 @@
 mod metadata_extractor;
 mod nsid;
+mod nsid_builder;
 mod pubkey;
 
 pub use metadata_extractor::*;
 pub use nsid::*;
+pub use nsid_builder::*;
 pub use pubkey::*;
 
 pub enum NamespaceNostrKind {
