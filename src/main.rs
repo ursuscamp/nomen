@@ -2,11 +2,8 @@
 
 mod config;
 mod db;
-mod hash160;
-// mod name;
 mod subcommands;
 mod util;
-mod validators;
 
 use clap::Parser;
 

@@ -5,7 +5,7 @@ use nostr_sdk::Keys;
 
 use crate::{
     config::{Config, NameSubcommand},
-    hash160::Hash160,
+    util::Hash160,
 };
 
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
@@ -28,8 +28,8 @@ mod new {
 
     use crate::{
         config::{Config, NameNewSubcommand},
-        hash160::Hash160,
         subcommands::name::get_keys,
+        util::Hash160,
         util::{ChildPair, NamespaceNostrKind, Nsid, NsidBuilder},
     };
 

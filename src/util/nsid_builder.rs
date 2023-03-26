@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use bitcoin::XOnlyPublicKey;
 
-use crate::hash160::Hash160;
+use crate::util::Hash160;
 
 use super::Nsid;
 

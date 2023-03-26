@@ -1,16 +1,14 @@
 mod childpair;
+mod hash160;
 mod keyval;
-mod metadata_extractor;
 mod nsid;
 mod nsid_builder;
-mod pubkey;
 
 pub use childpair::*;
+pub use hash160::*;
 pub use keyval::*;
-pub use metadata_extractor::*;
 pub use nsid::*;
 pub use nsid_builder::*;
-pub use pubkey::*;
 
 pub enum NamespaceNostrKind {
     Name = 38300,
