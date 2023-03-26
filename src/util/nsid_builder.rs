@@ -82,7 +82,7 @@ mod tests {
             .unwrap();
         let nsid = NsidBuilder::new("smith", &pk)
             .update_child("bob", pk)
-            .update_child("alice", pk)
+            .update_child("alice.smith", pk)
             .finalize();
 
         assert_eq!(

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use bitcoin::hashes::hex::ToHex;
-use nostr_sdk::Event;
+use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
+use nostr_sdk::{Event, EventId};
 use sqlx::SqlitePool;
 
-use crate::config::Config;
+use crate::{config::Config, util::Nsid};
 
 mod types;
 pub use types::*;
@@ -87,6 +87,27 @@ pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
             .fetch_one(conn)
             .await?;
     Ok(t as u64)
+}
+
+pub async fn insert_create_event(
+    conn: &SqlitePool,
+    nsid: Nsid,
+    pubkey: XOnlyPublicKey,
+    created_at: i64,
+    event_id: EventId,
+    name: String,
+    children: String,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_create_event.sql"))
+        .bind(nsid.to_hex())
+        .bind(pubkey.to_hex())
+        .bind(created_at)
+        .bind(event_id.to_hex())
+        .bind(children)
+        .execute(conn)
+        .await?;
+
+    Ok(())
 }
 
 pub async fn index_name_nsid(

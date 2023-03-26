@@ -161,6 +161,7 @@ mod new {
         queue.first().cloned().unwrap()
     }
 
+    // TODO: change to use nsid builder
     fn child_hashes(children: &[(String, Vec<u8>)], root: &str) -> Vec<Vec<u8>> {
         children
             .iter()
