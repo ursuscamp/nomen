@@ -30,7 +30,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 log::info!("Index block height {}", blockinfo.height);
             }
 
-            for txid in &blockinfo.tx {
+            for (txheight, txid) in blockinfo.tx.iter().enumerate() {
                 let tx = client.get_raw_transaction(txid, None)?;
                 for (vout, output) in tx.output.into_iter().enumerate() {
                     if output.script_pubkey.is_op_return() {
@@ -39,7 +39,14 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                             let b = &b[3..];
                             match parse_ind_output(b) {
                                 Ok(b) => {
-                                    index_txs.push((b, blockhash, *txid, vout, blockinfo.height));
+                                    index_txs.push((
+                                        b,
+                                        blockhash,
+                                        *txid,
+                                        blockinfo.height,
+                                        txheight,
+                                        vout,
+                                    ));
                                 }
                                 Err(e) => log::error!("Index error: {e}"),
                             }
@@ -55,8 +62,9 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     })
     .await??;
 
-    for (b, blockhash, txid, vout, height) in indexed_txs {
-        if let Err(e) = index_output(pool, b, &blockhash, &txid, vout, height).await {
+    for (b, blockhash, txid, blockheight, txheight, vout) in indexed_txs {
+        if let Err(e) = index_output(pool, b, &blockhash, &txid, blockheight, txheight, vout).await
+        {
             log::error!("Index error: {e}");
         }
     }
@@ -79,8 +87,9 @@ async fn index_output(
     bytes: Vec<u8>,
     blockhash: &BlockHash,
     txid: &Txid,
+    blockheight: usize,
+    txheight: usize,
     vout: usize,
-    height: usize,
 ) -> anyhow::Result<()> {
     let nsid = bytes.to_hex();
     log::info!("IND output found: {}", nsid);
@@ -93,6 +102,15 @@ async fn index_output(
     //     return Ok(());
     // }
 
-    db::insert_namespace(conn, nsid, blockhash.to_hex(), txid.to_hex(), vout, height).await?;
+    db::insert_namespace(
+        conn,
+        nsid,
+        blockhash.to_hex(),
+        txid.to_hex(),
+        blockheight,
+        txheight,
+        vout,
+    )
+    .await?;
     Ok(())
 }

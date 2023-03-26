@@ -10,8 +10,8 @@ mod types;
 pub use types::*;
 
 static MIGRATIONS: [&str; 11] = [
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, vout, height, status);",
-    "CREATE INDEX blockchain_height_dx ON blockchain(height);",
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status);",
+    "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
     "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
@@ -59,15 +59,17 @@ pub async fn insert_namespace(
     nsid: String,
     blockhash: String,
     txid: String,
+    blockheight: usize,
+    txheight: usize,
     vout: usize,
-    height: usize,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
         .bind(nsid)
         .bind(blockhash)
         .bind(txid)
+        .bind(blockheight as i64)
+        .bind(txheight as i64)
         .bind(vout as i64)
-        .bind(height as i64)
         .execute(conn)
         .await?;
 
@@ -75,9 +77,10 @@ pub async fn insert_namespace(
 }
 
 pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
-    let (h,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(height), 0) + 1 FROM blockchain;")
-        .fetch_one(conn)
-        .await?;
+    let (h,) =
+        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM blockchain;")
+            .fetch_one(conn)
+            .await?;
     Ok(h as usize)
 }
 
@@ -103,6 +106,7 @@ pub async fn insert_create_event(
         .bind(pubkey.to_hex())
         .bind(created_at)
         .bind(event_id.to_hex())
+        .bind(name)
         .bind(children)
         .execute(conn)
         .await?;
