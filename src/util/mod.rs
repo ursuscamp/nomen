@@ -1,9 +1,11 @@
+mod childpair;
 mod keyval;
 mod metadata_extractor;
 mod nsid;
 mod nsid_builder;
 mod pubkey;
 
+pub use childpair::*;
 pub use keyval::*;
 pub use metadata_extractor::*;
 pub use nsid::*;

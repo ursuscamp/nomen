@@ -18,29 +18,39 @@ pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
 }
 
 mod new {
+    use std::io::Write;
+
     use anyhow::anyhow;
-    use bitcoin::hashes::hex::ToHex;
+    use bitcoin::{hashes::hex::ToHex, secp256k1::SecretKey};
     use bitcoincore_rpc::{RawTx, RpcApi};
+    use itertools::Itertools;
     use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
     use crate::{
         config::{Config, NameNewSubcommand},
         hash160::Hash160,
-        subcommands::name::{nsid, parse_keys},
-        util::NamespaceNostrKind,
+        subcommands::name::get_keys,
+        util::{ChildPair, NamespaceNostrKind, Nsid, NsidBuilder},
     };
 
     pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
-        let keys = parse_keys(&args.privkey)?;
-        let children = parse_children(&args.children)?;
-        let mr = children_merkle_root(&children, &args.name)?;
-        let nsid = nsid(&args.name, mr.as_ref(), &keys);
-        let tx = create_unsigned_tx(config, args, &nsid).await?;
+        let keys = get_keys(&args.privkey)?;
+        let nsid = args
+            .children
+            .iter()
+            .cloned()
+            .map(ChildPair::pair)
+            .fold(
+                NsidBuilder::new(&args.name, &keys.public_key()),
+                |acc, (n, pk)| acc.update_child(&n, pk),
+            )
+            .finalize();
+        let tx = create_unsigned_tx(config, args, nsid).await?;
 
         println!("Nsid: {}", nsid.to_hex());
         println!("Unsigned Tx: {}", tx.raw_hex());
 
-        let event = create_event(children, nsid, args, keys)?;
+        let event = create_event(&args.children, nsid, args, keys)?;
         let (_k, nostr) = config.nostr_random_client().await?;
         let event_id = nostr.send_event(event).await?;
 
@@ -50,16 +60,18 @@ mod new {
     }
 
     fn create_event(
-        children: Vec<(String, Vec<u8>)>,
-        nsid: Vec<u8>,
+        children: &[ChildPair],
+        nsid: Nsid,
         args: &NameNewSubcommand,
         keys: Keys,
     ) -> Result<nostr_sdk::Event, anyhow::Error> {
         let children_json = {
             let s = children
-                .into_iter()
+                .iter()
+                .cloned()
+                .map(ChildPair::pair)
                 .map(|(name, pubkey)| (name, pubkey.to_hex()))
-                .collect::<Vec<_>>();
+                .collect_vec();
             serde_json::to_string(&s)
         }?;
         let event = EventBuilder::new(
@@ -77,7 +89,7 @@ mod new {
     async fn create_unsigned_tx(
         config: &Config,
         args: &NameNewSubcommand,
-        nsid: &[u8],
+        nsid: Nsid,
     ) -> Result<bitcoin::Transaction, anyhow::Error> {
         let tx = get_transaction(config, &args.txid).await?;
         let txout = &tx.output[args.vout as usize];
@@ -111,10 +123,10 @@ mod new {
         Ok(tx)
     }
 
-    fn op_return(nsid: &[u8]) -> Vec<u8> {
+    fn op_return(nsid: Nsid) -> Vec<u8> {
         let mut v = Vec::with_capacity(30);
         v.extend(b"IND\x00\x00");
-        v.extend(nsid);
+        v.extend(nsid.as_ref());
         v
     }
 
@@ -126,105 +138,7 @@ mod new {
         let txid = *txid;
         Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
     }
-
-    fn children_merkle_root(
-        children: &[(String, Vec<u8>)],
-        root: &str,
-    ) -> Result<Option<Vec<u8>>, anyhow::Error> {
-        let child_hashes = child_hashes(children, root);
-        let mr = if children.is_empty() {
-            None
-        } else {
-            Some(merkle_root(&child_hashes))
-        };
-        Ok(mr)
-    }
-
-    fn merkle_root(child_hashes: &[Vec<u8>]) -> Vec<u8> {
-        let mut queue = child_hashes.to_vec();
-        if queue.len() % 2 != 0 {
-            queue.push(
-                queue
-                    .last()
-                    .cloned()
-                    .expect("merkle_root expects at least one item"),
-            );
-        }
-
-        while queue.len() > 1 {
-            queue = queue
-                .chunks(2)
-                .map(|chunk| Hash160::digest_slices(&[chunk[0].as_ref(), chunk[1].as_ref()]).into())
-                .collect();
-        }
-
-        queue.first().cloned().unwrap()
-    }
-
-    // TODO: change to use nsid builder
-    fn child_hashes(children: &[(String, Vec<u8>)], root: &str) -> Vec<Vec<u8>> {
-        children
-            .iter()
-            .map(|(n, pk)| {
-                let root_end = format!(".{root}");
-                if n.ends_with(&root_end) {
-                    (n.clone(), pk)
-                } else {
-                    (format!("{n}{root_end}"), pk)
-                }
-            })
-            .map(|(n, pk)| {
-                let mut hash160 = Hash160::default();
-                hash160.update(n.as_bytes());
-                hash160.update(pk);
-                hash160.finalize().to_vec()
-            })
-            .collect()
-    }
-
-    fn parse_children(children: &[String]) -> anyhow::Result<Vec<(String, Vec<u8>)>> {
-        children
-            .iter()
-            .map(|child| -> anyhow::Result<(String, Vec<u8>)> {
-                let mut splitter = child.split(':');
-                let name = splitter
-                    .next()
-                    .ok_or_else(|| anyhow!("Unparseable child name"))?;
-                let pk = splitter
-                    .next()
-                    .ok_or_else(|| anyhow!("Unparseable child pubkey"))?;
-                let pk = hex::decode(pk)?;
-                Ok((name.to_lowercase(), pk))
-            })
-            .collect()
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use std::str::FromStr;
-
-        use bitcoin::secp256k1::SecretKey;
-
-        use super::*;
-
-        #[test]
-        fn test_merkle_root() {
-            let sk = "f5daf17ccf02488bc0ab506fc550016963af3030d4c5d2b7b3e3c232f3c0d7ca";
-            let keys = Keys::new(SecretKey::from_str(sk).unwrap());
-            let ch = child_hashes(
-                &[
-                    ("bob".to_string(), keys.public_key().serialize().to_vec()),
-                    ("alice".to_string(), keys.public_key().serialize().to_vec()),
-                ],
-                "smith",
-            );
-            let mr = merkle_root(&ch);
-
-            assert_eq!(mr.to_hex(), "08c6edfa1e25e57c67bf19294071df22e29e826a")
-        }
-    }
 }
-
 mod record {
     use std::collections::HashMap;
 
@@ -235,10 +149,10 @@ mod record {
         util::NamespaceNostrKind,
     };
 
-    use super::parse_keys;
+    use super::get_keys;
 
     pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyhow::Result<()> {
-        let keys = parse_keys(&record_data.privkey)?;
+        let keys = get_keys(&record_data.privkey)?;
         let map: HashMap<String, String> = record_data
             .records
             .iter()
@@ -275,7 +189,7 @@ mod record {
     }
 }
 
-fn parse_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
+fn get_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
     let privkey = if let Some(s) = privkey {
         *s
     } else {
@@ -288,14 +202,4 @@ fn parse_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
     };
     let keys = Keys::new(privkey);
     Ok(keys)
-}
-
-fn nsid(name: &str, mr: Option<&Vec<u8>>, keys: &Keys) -> Vec<u8> {
-    let mut hasher = Hash160::default();
-    hasher.update(name.as_bytes());
-    if let Some(mr) = mr {
-        hasher.update(mr);
-    }
-    hasher.update(&keys.public_key().serialize());
-    hasher.finalize().to_vec()
 }

@@ -9,7 +9,7 @@ use nostr_sdk::{
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal, Nsid};
+use crate::util::{ChildPair, KeyVal, Nsid};
 
 use super::ConfigFile;
 
@@ -286,7 +286,7 @@ pub struct NameNewSubcommand {
     pub address: bitcoin::Address,
 
     /// Optional children (format "name:pubkey") to include in new name
-    pub children: Vec<String>,
+    pub children: Vec<ChildPair>,
 
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
