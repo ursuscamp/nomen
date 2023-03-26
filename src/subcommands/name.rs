@@ -239,14 +239,18 @@ mod record {
 
     pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyhow::Result<()> {
         let keys = parse_keys(&record_data.privkey)?;
-        let map = parse_records(&record_data.records);
+        let map: HashMap<String, String> = record_data
+            .records
+            .iter()
+            .map(|p| p.clone().pair())
+            .collect();
         let records = serde_json::to_string(&map)?;
 
         let event = EventBuilder::new(
             NamespaceNostrKind::Record.into(),
             records,
             &[
-                Tag::Identifier(record_data.nsid.clone()),
+                Tag::Identifier(record_data.nsid.to_string()),
                 Tag::Generic(
                     TagKind::Custom("ind".to_owned()),
                     vec![record_data.name.clone()],

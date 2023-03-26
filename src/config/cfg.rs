@@ -9,6 +9,8 @@ use nostr_sdk::{
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
+use crate::util::{KeyVal, Nsid};
+
 use super::ConfigFile;
 
 #[derive(Parser, Debug, Clone)]
@@ -302,10 +304,10 @@ pub struct NameRecordSubcomand {
     pub name: String,
 
     /// The namespace hash generated from the blockchain event
-    pub nsid: String,
+    pub nsid: Nsid,
 
     /// Records to broadcast (format "key=value")
-    pub records: Vec<String>,
+    pub records: Vec<KeyVal>,
 
     /// Private key to use to sign the nostr event. Must be the same private key corresponding to the public key hashed inside the root namespace.
     #[arg(short, long)]
