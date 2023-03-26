@@ -31,7 +31,7 @@ mod new {
     };
 
     pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
-        let keys = parse_keys(args.privkey.as_ref())?;
+        let keys = parse_keys(&args.privkey)?;
         let children = parse_children(&args.children)?;
         let mr = children_merkle_root(&children, &args.name)?;
         let nsid = nsid(&args.name, mr.as_ref(), &keys);
@@ -238,7 +238,7 @@ mod record {
     use super::parse_keys;
 
     pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyhow::Result<()> {
-        let keys = parse_keys(record_data.privkey.as_ref())?;
+        let keys = parse_keys(&record_data.privkey)?;
         let map = parse_records(&record_data.records);
         let records = serde_json::to_string(&map)?;
 
@@ -271,19 +271,17 @@ mod record {
     }
 }
 
-fn parse_keys(privkey: Option<&String>) -> Result<Keys, anyhow::Error> {
+fn parse_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
     let privkey = if let Some(s) = privkey {
-        s.clone()
+        *s
     } else {
         // TODO: use a better system for getting secure info than this, like a secure prompt
         print!("Private key: ");
         std::io::stdout().flush()?;
         let mut s = String::new();
         std::io::stdin().read_line(&mut s)?;
-        s.trim().to_string()
+        s.trim().to_string().parse()?
     };
-    let privkey = hex::decode(privkey)?;
-    let privkey = SecretKey::from_slice(&privkey)?;
     let keys = Keys::new(privkey);
     Ok(keys)
 }

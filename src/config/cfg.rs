@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bitcoin::Network;
+use bitcoin::{secp256k1::SecretKey, Network};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
@@ -289,7 +289,7 @@ pub struct NameNewSubcommand {
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
     #[arg(short, long)]
-    pub privkey: Option<String>,
+    pub privkey: Option<SecretKey>,
 
     /// Fee to use for the transaction
     #[arg(short, long, default_value = "10000")]
@@ -309,5 +309,5 @@ pub struct NameRecordSubcomand {
 
     /// Private key to use to sign the nostr event. Must be the same private key corresponding to the public key hashed inside the root namespace.
     #[arg(short, long)]
-    pub privkey: Option<String>,
+    pub privkey: Option<SecretKey>,
 }
