@@ -4,7 +4,10 @@ use askama_axum::IntoResponse;
 use axum::{http::StatusCode, routing::get, Router};
 use sqlx::SqlitePool;
 
-use crate::{config::Config, subcommands};
+use crate::{
+    config::{Config, ServerSubcommand},
+    subcommands,
+};
 
 pub struct WebError(anyhow::Error, Option<StatusCode>);
 
@@ -36,16 +39,14 @@ where
 pub async fn start(
     config: &Config,
     conn: &SqlitePool,
-    without_explorer: bool,
-    without_api: bool,
-    without_indexer: bool,
+    server: &ServerSubcommand,
 ) -> anyhow::Result<()> {
-    if !without_indexer {
+    if !server.without_indexer {
         let _indexer = tokio::spawn(indexer(config.clone(), conn.clone()));
     }
     let mut app = Router::new();
 
-    if !without_explorer {
+    if !server.without_explorer {
         app = app
             .route("/", get(site::index))
             .route("/faqs", get(site::faqs))
@@ -53,7 +54,7 @@ pub async fn start(
             .route("/explorer/:nsid", get(site::explore_nsid));
     }
 
-    if !without_api {
+    if !server.without_api {
         app = app.route("/api/name", get(api::name));
     }
 
@@ -74,23 +75,13 @@ pub async fn start(
 
 async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
     let guard = elegant_departure::get_shutdown_guard();
-    let confirmations = config
-        .server_confirmations()
-        .expect("Cannot determine confirmations");
-    let height = config.server_height();
-    // loop {
-    //     subcommands::index_blockchain(&config, &pool, confirmations, height)
-    //         .await
-    //         .ok();
-    //     subcommands::index_create_events(&config, &pool).await.ok();
-    //     subcommands::index_records_events(&config, &pool).await.ok();
-
-    //     tokio::select! {
-    //         _ = tokio::time::sleep(Duration::from_secs(30)) => return Ok(()),
-    //         _ = guard.wait() => return Ok(())
-
-    //     }
-    // }
+    loop {
+        subcommands::index(&config, &pool).await?;
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(30)) => {},
+            _ = guard.wait() => return Ok(())
+        }
+    }
     Ok(())
 }
 

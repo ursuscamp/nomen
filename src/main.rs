@@ -21,23 +21,7 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,
-        config::Subcommand::Server {
-            bind: _,
-            confirmations: _,
-            height: _,
-            without_explorer,
-            without_api,
-            without_indexer,
-        } => {
-            subcommands::start(
-                &config,
-                &pool,
-                *without_explorer,
-                *without_api,
-                *without_indexer,
-            )
-            .await?
-        }
+        config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
         config::Subcommand::Debug(debug) => match debug {
             config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
             config::DebugSubcommand::NamesIndex => subcommands::names_index()?,

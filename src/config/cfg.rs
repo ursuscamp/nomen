@@ -70,25 +70,18 @@ impl Config {
         self.rpcport = self.rpcport.or(cf.rpcport);
         self.network = self.network.or(cf.network);
         self.relays = self.relays.take().or(cf.relays);
-        if let Subcommand::Server {
+        if let Subcommand::Server(ServerSubcommand {
             bind,
-            confirmations,
-            height,
             without_explorer,
             without_api,
             without_indexer,
-        } = &mut self.subcommand
+        }) = &mut self.subcommand
         {
             let mut server = cf.server.unwrap_or_default();
             *bind = bind
                 .take()
                 .or_else(|| server.bind.take())
                 .or_else(|| Some("0.0.0.0:8080".into()));
-            *confirmations = confirmations
-                .take()
-                .or_else(|| server.confirmations.take())
-                .or(Some(3));
-            *height = height.take().or_else(|| server.height.take()).or(Some(1));
             *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
             *without_api = *without_api || server.without_api.unwrap_or_default();
             *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
@@ -110,21 +103,7 @@ impl Config {
 
     pub fn server_bind(&self) -> Option<String> {
         match &self.subcommand {
-            Subcommand::Server { bind, .. } => bind.clone(),
-            _ => None,
-        }
-    }
-
-    pub fn server_confirmations(&self) -> Option<usize> {
-        match &self.subcommand {
-            Subcommand::Server { confirmations, .. } => *confirmations,
-            _ => None,
-        }
-    }
-
-    pub fn server_height(&self) -> Option<usize> {
-        match &self.subcommand {
-            Subcommand::Server { height, .. } => *height,
+            Subcommand::Server(ServerSubcommand { bind, .. }) => bind.clone(),
             _ => None,
         }
     }
@@ -203,31 +182,7 @@ pub enum Subcommand {
     Debug(DebugSubcommand),
 
     /// Start the HTTP server
-    Server {
-        /// Address and port to bind.
-        #[arg(short, long)]
-        bind: Option<String>,
-
-        /// Minimum number of confirmation before adding to index. Default: 3
-        #[arg(long)]
-        confirmations: Option<usize>,
-
-        /// Starting block height to index. Default: most recently scanned block
-        #[arg(long)]
-        height: Option<usize>,
-
-        /// Start server without explorer.
-        #[arg(long)]
-        without_explorer: bool,
-
-        /// Start server without API.
-        #[arg(long)]
-        without_api: bool,
-
-        /// Start server without indexer.
-        #[arg(long)]
-        without_indexer: bool,
-    },
+    Server(ServerSubcommand),
 }
 
 impl Default for Subcommand {
@@ -260,6 +215,25 @@ pub enum IndexSubcommand {
 
     /// Query relays for records
     RecordsEvents,
+}
+
+#[derive(clap::Args, Debug, Clone, Serialize, Deserialize)]
+pub struct ServerSubcommand {
+    /// Address and port to bind.
+    #[arg(short, long)]
+    pub bind: Option<String>,
+
+    /// Start server without explorer.
+    #[arg(long)]
+    pub without_explorer: bool,
+
+    /// Start server without API.
+    #[arg(long)]
+    pub without_api: bool,
+
+    /// Start server without indexer.
+    #[arg(long)]
+    pub without_indexer: bool,
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
