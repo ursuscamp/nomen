@@ -19,14 +19,34 @@ pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     for event in events {
         match EventData::from_event(&event) {
             Ok(ed) => match ed.validate_create() {
-                Ok(_) => save_event(pool, ed).await?,
-                Err(e) => log::error!("Invalid event {} with err: {e}", event.id),
+                Ok(_) => {
+                    save_names(pool, &ed).await?;
+                    save_event(pool, ed).await?;
+                }
+                Err(e) => {
+                    log::debug!("{ed:#?}");
+                    log::error!("Invalid event {} with err: {e}", event.id)
+                }
             },
             Err(err) => log::debug!("Event {} with err: {err}", event.id),
         }
     }
 
     log::info!("Create event indexing complete.");
+    Ok(())
+}
+
+async fn save_names(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
+    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey).await?;
+    let children = ed
+        .children
+        .as_ref()
+        .ok_or_else(|| anyhow!("No children found"))?;
+    for (name, pubkey) in children {
+        let nsid = NsidBuilder::new(name, &ed.pubkey).finalize();
+        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey).await?;
+    }
+
     Ok(())
 }
 

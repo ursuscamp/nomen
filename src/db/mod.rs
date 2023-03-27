@@ -9,23 +9,34 @@ use crate::{config::Config, util::Nsid};
 mod types;
 pub use types::*;
 
-static MIGRATIONS: [&str; 11] = [
+static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status);",
     "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
-    "CREATE TABLE name_nsid (name PRIMARY KEY, nsid, root, parent, pubkey);",
+    "CREATE TABLE name_nsid (name, nsid, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
     "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
+    "CREATE VIEW ordered_blockchain_vw AS
+        SELECT b.* FROM blockchain b
+        ORDER BY b.blockheight, b.txheight, b.vout",
+    "CREATE VIEW filtered_blockchain_vw AS
+        SELECT b.nsid FROM ordered_blockchain_vw b
+        JOIN create_events ce on b.nsid = ce.nsid
+        WHERE b.status = 'accepted'
+        GROUP BY ce.name;",
+    "CREATE VIEW blessed_blockchain_vw AS
+        SELECT b.* FROM blockchain b
+        JOIN filtered_blockchain_vw fb ON b.nsid = fb.nsid;",
     "CREATE VIEW name_records_vw AS
-        SELECT re.name, re.records, re.nsid FROM blockchain b
-        JOIN name_nsid nn ON b.nsid = nn.root
+        SELECT nn.name, re.records, re.nsid FROM blessed_blockchain_vw b
         JOIN create_events ce ON b.nsid = ce.nsid
-        JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey;",
+        JOIN name_nsid nn ON b.nsid = nn.parent
+        LEFT JOIN records_events re ON nn.nsid = re.nsid;",
     "CREATE VIEW top_level_names_vw AS
-        SELECT ce.name, ce.nsid FROM blockchain b
+        SELECT ce.name, ce.nsid FROM blessed_blockchain_vw b
         JOIN name_nsid nn ON b.nsid = nn.nsid
         JOIN create_events ce ON b.nsid = ce.nsid",
 ];
@@ -116,18 +127,16 @@ pub async fn insert_create_event(
 
 pub async fn index_name_nsid(
     conn: &SqlitePool,
-    nsid: String,
-    name: String,
-    root: String,
-    parent: Option<String>,
-    pubkey: String,
+    nsid: Nsid,
+    name: &str,
+    parent: Option<Nsid>,
+    pubkey: XOnlyPublicKey,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/index_name_nsid.sql"))
         .bind(name)
-        .bind(nsid)
-        .bind(root)
-        .bind(parent)
-        .bind(pubkey)
+        .bind(nsid.to_hex())
+        .bind(parent.map(|d| d.to_hex()))
+        .bind(pubkey.to_hex())
         .execute(conn)
         .await?;
     Ok(())

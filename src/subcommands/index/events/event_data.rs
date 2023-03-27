@@ -38,24 +38,28 @@ impl EventData {
     }
 
     pub fn validate_create(&self) -> anyhow::Result<()> {
-        let mut builder = NsidBuilder::new(&self.name, &self.pubkey);
-        let records = self
-            .children
-            .as_ref()
-            .ok_or_else(|| anyhow!("Event missing children"))?;
-        for (name, pk) in records {
-            builder = builder.update_child(&self.name, *pk);
-        }
-        let nsid = builder.finalize();
+        let nsid = self.recalc_nsid();
         if nsid != self.nsid {
             bail!("Invalid nsid")
         }
         Ok(())
     }
+
+    pub fn recalc_nsid(&self) -> Nsid {
+        let mut builder = NsidBuilder::new(&self.name, &self.pubkey);
+        if let Some(children) = &self.children {
+            for (n, pk) in children {
+                builder = builder.update_child(n, *pk);
+            }
+        }
+        builder.finalize()
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::hashes::hex::ToHex;
+
     use super::*;
 
     #[test]
