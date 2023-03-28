@@ -9,7 +9,7 @@ use crate::{
     config::Config,
     db,
     subcommands::index::events::EventData,
-    util::{EventExtractor, NamespaceNostrKind, Nsid, NsidBuilder},
+    util::{EventExtractor, NameKind, Nsid, NsidBuilder},
 };
 
 pub async fn records(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
@@ -49,7 +49,7 @@ async fn latest_events(
 ) -> anyhow::Result<Vec<Event>> {
     let index_height = db::last_records_time(pool).await?;
     let filter = Filter::new()
-        .kind(NamespaceNostrKind::Record.into())
+        .kind(NameKind::Record.into())
         .since(index_height.into());
 
     let (_keys, client) = config.nostr_random_client().await?;

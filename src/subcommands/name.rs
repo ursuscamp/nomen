@@ -30,7 +30,7 @@ mod new {
         config::{Config, NameNewSubcommand},
         subcommands::name::get_keys,
         util::Hash160,
-        util::{ChildPair, NamespaceNostrKind, Nsid, NsidBuilder},
+        util::{ChildPair, NameKind, Nsid, NsidBuilder},
     };
 
     pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
@@ -75,7 +75,7 @@ mod new {
             serde_json::to_string(&s)
         }?;
         let event = EventBuilder::new(
-            NamespaceNostrKind::Name.into(),
+            NameKind::Name.into(),
             children_json,
             &[
                 Tag::Identifier(nsid.to_hex()),
@@ -146,7 +146,7 @@ mod record {
 
     use crate::{
         config::{Config, NameRecordSubcomand},
-        util::NamespaceNostrKind,
+        util::NameKind,
     };
 
     use super::get_keys;
@@ -161,7 +161,7 @@ mod record {
         let records = serde_json::to_string(&map)?;
 
         let event = EventBuilder::new(
-            NamespaceNostrKind::Record.into(),
+            NameKind::Record.into(),
             records,
             &[
                 Tag::Identifier(record_data.nsid.to_string()),

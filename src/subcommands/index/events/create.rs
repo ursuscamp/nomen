@@ -7,7 +7,7 @@ use sqlx::SqlitePool;
 use crate::{
     config::Config,
     db,
-    util::{NamespaceNostrKind, Nsid, NsidBuilder},
+    util::{NameKind, Nsid, NsidBuilder},
 };
 
 use super::EventData;
@@ -75,7 +75,7 @@ async fn latest_events(
     let (_keys, client) = config.nostr_random_client().await?;
     let since = db::last_create_event_time(pool).await?;
     let filter = Filter::new()
-        .kind(NamespaceNostrKind::Name.into())
+        .kind(NameKind::Name.into())
         .since(since.into());
     let events = client.get_events_of(vec![filter], None).await?;
     Ok(events)

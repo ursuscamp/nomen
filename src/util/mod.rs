@@ -12,13 +12,14 @@ pub use keyval::*;
 pub use nsid::*;
 pub use nsid_builder::*;
 
-pub enum NamespaceNostrKind {
+pub enum NameKind {
     Name = 38300,
     Record = 38301,
+    Update = 38302,
 }
 
-impl From<NamespaceNostrKind> for nostr_sdk::Kind {
-    fn from(value: NamespaceNostrKind) -> Self {
+impl From<NameKind> for nostr_sdk::Kind {
+    fn from(value: NameKind) -> Self {
         nostr_sdk::Kind::ParameterizedReplaceable(value as u16)
     }
 }

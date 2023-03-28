@@ -5,7 +5,7 @@ use itertools::Itertools;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{config::Config, db, util::NamespaceNostrKind};
+use crate::{config::Config, db, util::NameKind};
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
     let client = config.rpc_client()?;
