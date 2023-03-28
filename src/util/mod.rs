@@ -1,3 +1,4 @@
+mod blockchain_kind;
 mod childpair;
 mod extractor;
 mod hash160;
@@ -5,6 +6,9 @@ mod keyval;
 mod nsid;
 mod nsid_builder;
 
+use anyhow::{anyhow, bail};
+use bitcoin::Block;
+pub use blockchain_kind::*;
 pub use childpair::*;
 pub use extractor::*;
 pub use hash160::*;
