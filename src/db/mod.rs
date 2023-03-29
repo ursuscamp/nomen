@@ -67,7 +67,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
 
 pub async fn insert_namespace(
     conn: &SqlitePool,
-    nsid: String,
+    nsid: Nsid,
     blockhash: String,
     txid: String,
     blockheight: usize,
@@ -75,7 +75,7 @@ pub async fn insert_namespace(
     vout: usize,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
-        .bind(nsid)
+        .bind(nsid.to_hex())
         .bind(blockhash)
         .bind(txid)
         .bind(blockheight as i64)

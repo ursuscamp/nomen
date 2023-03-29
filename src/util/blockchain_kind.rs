@@ -3,25 +3,42 @@ use anyhow::bail;
 use super::Nsid;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum BlockchainKind {
-    Create(Nsid),
-    Update(Nsid, Nsid),
+pub enum IndigoKind {
+    Create,
+    Update,
 }
-impl BlockchainKind {
-    fn parse_create(value: &[u8]) -> anyhow::Result<BlockchainKind> {
-        Ok(BlockchainKind::Create(value.try_into()?))
-    }
 
-    fn parse_update(value: &[u8]) -> anyhow::Result<BlockchainKind> {
-        if value.len() < 40 {
-            bail!("Invalid blockchain update tx: too few bytes")
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct IndigoTx {
+    pub kind: IndigoKind,
+    pub nsid: Nsid,
+}
+
+impl IndigoTx {
+    fn create(nsid: Nsid) -> IndigoTx {
+        IndigoTx {
+            kind: IndigoKind::Create,
+            nsid,
         }
-        let (from, to) = value.split_at(20);
-        Ok(BlockchainKind::Update(from.try_into()?, to.try_into()?))
+    }
+
+    fn update(nsid: Nsid) -> IndigoTx {
+        IndigoTx {
+            kind: IndigoKind::Update,
+            nsid,
+        }
+    }
+
+    fn parse_create(value: &[u8]) -> anyhow::Result<IndigoTx> {
+        Ok(IndigoTx::create(value.try_into()?))
+    }
+
+    fn parse_update(value: &[u8]) -> anyhow::Result<IndigoTx> {
+        Ok(IndigoTx::update(value.try_into()?))
     }
 }
 
-impl TryFrom<&[u8]> for BlockchainKind {
+impl TryFrom<&[u8]> for IndigoTx {
     type Error = anyhow::Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
@@ -36,8 +53,8 @@ impl TryFrom<&[u8]> for BlockchainKind {
         let value = &value[1..];
 
         let kind = match value.first() {
-            Some(0x00) => BlockchainKind::parse_create(&value[1..])?,
-            Some(0x01) => BlockchainKind::parse_update(&value[1..])?,
+            Some(0x00) => IndigoTx::parse_create(&value[1..])?,
+            Some(0x01) => IndigoTx::parse_update(&value[1..])?,
             _ => bail!("Unexpected blockchain tx type"),
         };
 
@@ -63,8 +80,8 @@ mod tests {
             .copied()
             .collect_vec();
         assert_eq!(
-            BlockchainKind::try_from(create.as_ref()).unwrap(),
-            BlockchainKind::Create(nsid)
+            IndigoTx::try_from(create.as_ref()).unwrap(),
+            IndigoTx::create(nsid)
         );
     }
 
@@ -74,12 +91,11 @@ mod tests {
         let update = b"IND\x00\x01"
             .iter()
             .chain(nsid.to_vec().iter())
-            .chain(nsid.to_vec().iter())
             .copied()
             .collect_vec();
         assert_eq!(
-            BlockchainKind::try_from(update.as_ref()).unwrap(),
-            BlockchainKind::Update(nsid, nsid)
+            IndigoTx::try_from(update.as_ref()).unwrap(),
+            IndigoTx::update(nsid)
         );
     }
 
@@ -87,20 +103,20 @@ mod tests {
     fn test_invalid_version() {
         let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"IND\x01\x00";
-        assert!(BlockchainKind::try_from(wrong_ver.as_ref()).is_err())
+        assert!(IndigoTx::try_from(wrong_ver.as_ref()).is_err())
     }
 
     #[test]
     fn test_invalid_tx_type() {
         let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"INZ\x00\x00";
-        assert!(BlockchainKind::try_from(wrong_ver.as_ref()).is_err())
+        assert!(IndigoTx::try_from(wrong_ver.as_ref()).is_err())
     }
 
     #[test]
     fn test_invalid_tx_kind() {
         let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"IND\x00\x10";
-        assert!(BlockchainKind::try_from(wrong_ver.as_ref()).is_err())
+        assert!(IndigoTx::try_from(wrong_ver.as_ref()).is_err())
     }
 }

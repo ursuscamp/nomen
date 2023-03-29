@@ -5,7 +5,11 @@ use itertools::Itertools;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{config::Config, db, util::NameKind};
+use crate::{
+    config::Config,
+    db,
+    util::{IndigoKind, IndigoTx, NameKind, Nsid},
+};
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
     let client = config.rpc_client()?;
@@ -35,12 +39,13 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 for (vout, output) in tx.output.into_iter().enumerate() {
                     if output.script_pubkey.is_op_return() {
                         let b = &output.script_pubkey.as_bytes()[2..];
+
+                        // Pre-check if it starts with IND, so we can filter out some unnecessary errors from the logs
                         if b.starts_with(b"IND") {
-                            let b = &b[3..];
-                            match parse_ind_output(b) {
-                                Ok(b) => {
+                            match IndigoTx::try_from(b) {
+                                Ok(IndigoTx { nsid, .. }) => {
                                     index_txs.push((
-                                        b,
+                                        nsid,
                                         blockhash,
                                         *txid,
                                         blockinfo.height,
@@ -48,6 +53,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                         vout,
                                     ));
                                 }
+
                                 Err(e) => log::error!("Index error: {e}"),
                             }
                         }
@@ -62,8 +68,9 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     })
     .await??;
 
-    for (b, blockhash, txid, blockheight, txheight, vout) in indexed_txs {
-        if let Err(e) = index_output(pool, b, &blockhash, &txid, blockheight, txheight, vout).await
+    for (nsid, blockhash, txid, blockheight, txheight, vout) in indexed_txs {
+        if let Err(e) =
+            index_output(pool, nsid, &blockhash, &txid, blockheight, txheight, vout).await
         {
             log::error!("Index error: {e}");
         }
@@ -84,16 +91,15 @@ fn parse_ind_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
 
 async fn index_output(
     conn: &SqlitePool,
-    bytes: Vec<u8>,
+    nsid: Nsid,
     blockhash: &BlockHash,
     txid: &Txid,
     blockheight: usize,
     txheight: usize,
     vout: usize,
 ) -> anyhow::Result<()> {
-    let nsid = bytes.to_hex();
     log::info!("IND output found: {}", nsid);
-    if bytes.len() != 20 {
+    if nsid.len() != 20 {
         return Err(anyhow::anyhow!("Unexpected IND length"));
     }
 
