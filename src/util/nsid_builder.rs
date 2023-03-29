@@ -10,6 +10,7 @@ pub struct NsidBuilder {
     root_name: String,
     pk: XOnlyPublicKey,
     child_hashes: Vec<Vec<u8>>,
+    prev: Option<Nsid>,
 }
 
 impl NsidBuilder {
@@ -18,6 +19,7 @@ impl NsidBuilder {
             root_name: root_name.to_owned(),
             pk: *root_pk,
             child_hashes: Default::default(),
+            prev: None,
         }
     }
 
@@ -34,13 +36,21 @@ impl NsidBuilder {
         self
     }
 
+    pub fn prev(mut self, prev: Nsid) -> Self {
+        self.prev = Some(prev);
+        self
+    }
+
     pub fn finalize(self) -> Nsid {
         let mut hasher = Hash160::default();
         hasher.update(self.root_name.as_bytes());
+        hasher.update(&self.pk.serialize());
         if let Some(mr) = self.child_merkle_root() {
             hasher.update(&mr);
         }
-        hasher.update(&self.pk.serialize());
+        if let Some(prev) = self.prev {
+            hasher.update(prev.as_ref());
+        }
         hasher.finalize().into()
     }
 
@@ -87,7 +97,24 @@ mod tests {
 
         assert_eq!(
             nsid,
-            "4e815dbf9d217f51ccbdfe3f24ac62a08ef8fed0".parse().unwrap()
+            "073e4dd94dd1128b964d45c2fba2fe4aca124df5".parse().unwrap()
+        )
+    }
+
+    #[test]
+    fn test_nsid_builder_with_prev() {
+        let pk: XOnlyPublicKey = "d57b873363d2233d3cd54453416deff9546df50d963bb1208da37f10a4c23d6f"
+            .parse()
+            .unwrap();
+        let nsid = NsidBuilder::new("smith", &pk)
+            .update_child("bob", pk)
+            .update_child("alice.smith", pk)
+            .prev(Nsid::from_str("4e815dbf9d217f51ccbdfe3f24ac62a08ef8fed0").unwrap())
+            .finalize();
+
+        assert_eq!(
+            nsid,
+            "5a1543e059d86a7004d987e179aa9826fdf20f09".parse().unwrap()
         )
     }
 }
