@@ -241,6 +241,9 @@ pub enum NameSubcommand {
     /// Create a new name.
     New(NameNewSubcommand),
 
+    /// Add new children to an existing name.
+    Update(NameUpdateSubcommand),
+
     /// Broadcast a new record for your name.
     Record(NameRecordSubcomand),
 }
@@ -283,7 +286,25 @@ pub struct NameRecordSubcomand {
     /// Records to broadcast (format "key=value")
     pub records: Vec<KeyVal>,
 
-    /// Private key to use to sign the nostr event. Must be the same private key corresponding to the public key hashed inside the root namespace.
+    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+    /// Will prompt if not provided.
+    #[arg(short, long)]
+    pub privkey: Option<SecretKey>,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct NameUpdateSubcommand {
+    /// The root name you are adding children to.
+    pub name: String,
+
+    /// The nsid of the last on-chain transaction associated with this name.
+    pub nsid: Nsid,
+
+    /// The children to be added.
+    pub children: Vec<ChildPair>,
+
+    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+    /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
 }

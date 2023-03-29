@@ -11,11 +11,14 @@ use crate::{
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
     match cmd {
         NameSubcommand::New(new_data) => new::new(config, new_data).await?,
+        NameSubcommand::Update(update_data) => update::update(config, update_data).await?,
         NameSubcommand::Record(record_data) => record::record(config, record_data).await?,
     }
 
     Ok(())
 }
+
+// TODO: refactor this module into separate files
 
 mod new {
     use std::io::Write;
@@ -139,6 +142,15 @@ mod new {
         Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
     }
 }
+
+mod update {
+    use crate::config::{Config, NameUpdateSubcommand};
+
+    pub async fn update(config: &Config, update_data: &NameUpdateSubcommand) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
 mod record {
     use std::collections::HashMap;
 
