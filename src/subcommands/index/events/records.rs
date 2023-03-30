@@ -31,6 +31,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     let EventData {
         event_id,
         nsid,
+        prev,
         pubkey,
         name,
         created_at,

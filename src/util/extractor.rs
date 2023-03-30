@@ -12,6 +12,7 @@ pub trait EventExtractor {
     fn extract_records(&self) -> anyhow::Result<HashMap<String, String>>;
     fn extract_name(&self) -> anyhow::Result<String>;
     fn extract_nsid(&self) -> anyhow::Result<Nsid>;
+    fn extract_prev_nsid(&self) -> anyhow::Result<Option<Nsid>>;
 }
 
 impl EventExtractor for Event {
@@ -58,5 +59,22 @@ impl EventExtractor for Event {
             .next()
             .ok_or_else(|| anyhow!("Missing 'd' tag"))?;
         nsid.parse()
+    }
+
+    fn extract_prev_nsid(&self) -> anyhow::Result<Option<Nsid>> {
+        let nn = self
+            .tags
+            .iter()
+            .find_map(|t| match t {
+                nostr_sdk::Tag::Generic(tk, values) => match tk {
+                    nostr_sdk::prelude::TagKind::Custom(tn) if tn == "ind" => {
+                        Some(values.get(1)?.clone())
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .and_then(|s| s.parse::<Nsid>().ok());
+        Ok(nn)
     }
 }

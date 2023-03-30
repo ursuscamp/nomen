@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network};
+use bitcoin::{secp256k1::SecretKey, Network, TxIn};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
@@ -253,14 +253,8 @@ pub struct NameNewSubcommand {
     /// The root name of the new namespace.
     pub name: String,
 
-    /// The txid to use as input.
-    pub txid: bitcoin::Txid,
-
-    /// Tx output number to use as input.
-    pub vout: u32,
-
-    /// New address to send outputs
-    pub address: bitcoin::Address,
+    #[command(flatten)]
+    pub txinfo: TxInfo,
 
     /// Optional children (format "name:pubkey") to include in new name
     pub children: Vec<ChildPair>,
@@ -269,10 +263,6 @@ pub struct NameNewSubcommand {
     /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
-
-    /// Fee to use for the transaction
-    #[arg(short, long, default_value = "10000")]
-    pub fee: u32,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -298,13 +288,32 @@ pub struct NameUpdateSubcommand {
     pub name: String,
 
     /// The nsid of the last on-chain transaction associated with this name.
-    pub nsid: Nsid,
+    pub previous: Nsid,
 
-    /// The children to be added.
+    #[command(flatten)]
+    pub txinfo: TxInfo,
+
+    /// Optional children (format "name:pubkey") to include in new name
     pub children: Vec<ChildPair>,
 
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct TxInfo {
+    /// The txid to use as input.
+    pub txid: bitcoin::Txid,
+
+    /// Tx output number to use as input.
+    pub vout: u32,
+
+    /// New address to send outputs
+    pub address: bitcoin::Address,
+
+    /// Fee to use for the transaction
+    #[arg(short, long, default_value = "10000")]
+    pub fee: u32,
 }

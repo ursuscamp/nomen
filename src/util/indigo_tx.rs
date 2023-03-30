@@ -38,6 +38,15 @@ impl IndigoTx {
     }
 }
 
+impl From<IndigoKind> for u8 {
+    fn from(value: IndigoKind) -> Self {
+        match value {
+            IndigoKind::Create => 0x00,
+            IndigoKind::Update => 0x01,
+        }
+    }
+}
+
 impl TryFrom<&[u8]> for IndigoTx {
     type Error = anyhow::Error;
 

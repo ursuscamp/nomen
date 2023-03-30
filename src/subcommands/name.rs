@@ -1,11 +1,13 @@
 use std::io::Write;
 
+use anyhow::anyhow;
 use bitcoin::secp256k1::SecretKey;
+use bitcoincore_rpc::RpcApi;
 use nostr_sdk::Keys;
 
 use crate::{
-    config::{Config, NameSubcommand},
-    util::Hash160,
+    config::{Config, NameSubcommand, TxInfo},
+    util::{Hash160, IndigoKind, Nsid},
 };
 
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
@@ -30,11 +32,13 @@ mod new {
     use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
     use crate::{
-        config::{Config, NameNewSubcommand},
-        subcommands::name::get_keys,
-        util::Hash160,
+        config::{Config, NameNewSubcommand, TxInfo},
+        subcommands::name::{create_unsigned_tx, get_keys},
         util::{ChildPair, NameKind, Nsid, NsidBuilder},
+        util::{Hash160, IndigoKind},
     };
+
+    use super::{get_transaction, op_return};
 
     pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
         let keys = get_keys(&args.privkey)?;
@@ -48,7 +52,7 @@ mod new {
                 |acc, (n, pk)| acc.update_child(&n, pk),
             )
             .finalize();
-        let tx = create_unsigned_tx(config, args, nsid).await?;
+        let tx = create_unsigned_tx(config, &args.txinfo, nsid, IndigoKind::Create).await?;
 
         println!("Nsid: {}", nsid.to_hex());
         println!("Unsigned Tx: {}", tx.raw_hex());
@@ -88,66 +92,79 @@ mod new {
         .to_event(&keys)?;
         Ok(event)
     }
-
-    async fn create_unsigned_tx(
-        config: &Config,
-        args: &NameNewSubcommand,
-        nsid: Nsid,
-    ) -> Result<bitcoin::Transaction, anyhow::Error> {
-        let tx = get_transaction(config, &args.txid).await?;
-        let txout = &tx.output[args.vout as usize];
-        let new_amount = txout
-            .value
-            .checked_sub(args.fee as u64)
-            .ok_or_else(|| anyhow!("Fee is over available amount in tx"))?;
-        let txin = bitcoin::TxIn {
-            previous_output: bitcoin::OutPoint {
-                txid: args.txid,
-                vout: args.vout,
-            },
-            script_sig: bitcoin::Script::new(), // Unsigned tx with empty script
-            sequence: bitcoin::Sequence::ZERO,
-            witness: bitcoin::Witness::new(),
-        };
-        let txout = bitcoin::TxOut {
-            value: new_amount,
-            script_pubkey: args.address.script_pubkey(),
-        };
-        let op_return = bitcoin::TxOut {
-            value: 0,
-            script_pubkey: bitcoin::Script::new_op_return(&op_return(nsid)),
-        };
-        let tx = bitcoin::Transaction {
-            version: 1,
-            lock_time: bitcoin::PackedLockTime::ZERO,
-            input: vec![txin],
-            output: vec![txout, op_return],
-        };
-        Ok(tx)
-    }
-
-    fn op_return(nsid: Nsid) -> Vec<u8> {
-        let mut v = Vec::with_capacity(30);
-        v.extend(b"IND\x00\x00");
-        v.extend(nsid.as_ref());
-        v
-    }
-
-    async fn get_transaction(
-        config: &Config,
-        txid: &bitcoin::Txid,
-    ) -> Result<bitcoin::Transaction, anyhow::Error> {
-        let client = config.rpc_client()?;
-        let txid = *txid;
-        Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
-    }
 }
 
 mod update {
-    use crate::config::{Config, NameUpdateSubcommand};
+    use anyhow::anyhow;
+    use bitcoin::{hashes::hex::ToHex, Transaction};
+    use bitcoincore_rpc::RawTx;
+    use itertools::Itertools;
+    use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
-    pub async fn update(config: &Config, update_data: &NameUpdateSubcommand) -> anyhow::Result<()> {
+    use crate::{
+        config::{Config, NameUpdateSubcommand, TxInfo},
+        util::{ChildPair, IndigoKind, NameKind, Nsid, NsidBuilder},
+    };
+
+    use super::{create_unsigned_tx, get_keys, get_transaction, op_return};
+
+    pub async fn update(config: &Config, args: &NameUpdateSubcommand) -> anyhow::Result<()> {
+        let keys = get_keys(&args.privkey)?;
+        let nsid = args
+            .children
+            .iter()
+            .fold(
+                NsidBuilder::new(&args.name, &keys.public_key()),
+                |acc, child| {
+                    let p = child.clone().pair();
+                    acc.update_child(&p.0, p.1)
+                },
+            )
+            .prev(args.previous)
+            .finalize();
+        let tx = create_unsigned_tx(config, &args.txinfo, nsid, IndigoKind::Update).await?;
+
+        println!("Nsid: {}", nsid.to_hex());
+        println!("Unsigned Tx: {}", tx.raw_hex());
+
+        let event = update_event(&args.children, args.previous, nsid, args, keys)?;
+        let (_k, nostr) = config.nostr_random_client().await?;
+        let event_id = nostr.send_event(event).await?;
+
+        println!("Sent event {event_id}");
+
         Ok(())
+    }
+
+    fn update_event(
+        children: &[ChildPair],
+        prev: Nsid,
+        nsid: Nsid,
+        args: &NameUpdateSubcommand,
+        keys: Keys,
+    ) -> Result<nostr_sdk::Event, anyhow::Error> {
+        let children_json = {
+            let s = children
+                .iter()
+                .cloned()
+                .map(ChildPair::pair)
+                .map(|(name, pubkey)| (name, pubkey.to_hex()))
+                .collect_vec();
+            serde_json::to_string(&s)
+        }?;
+        let event = EventBuilder::new(
+            NameKind::Update.into(),
+            children_json,
+            &[
+                Tag::Identifier(nsid.to_hex()),
+                Tag::Generic(
+                    TagKind::Custom("ind".to_owned()),
+                    vec![args.name.clone(), prev.to_hex()],
+                ),
+            ],
+        )
+        .to_event(&keys)?;
+        Ok(event)
     }
 }
 
@@ -214,4 +231,59 @@ fn get_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
     };
     let keys = Keys::new(privkey);
     Ok(keys)
+}
+
+async fn get_transaction(
+    config: &Config,
+    txid: &bitcoin::Txid,
+) -> Result<bitcoin::Transaction, anyhow::Error> {
+    let client = config.rpc_client()?;
+    let txid = *txid;
+    Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
+}
+
+fn op_return(nsid: Nsid, kind: IndigoKind) -> Vec<u8> {
+    let mut v = Vec::with_capacity(25);
+    v.extend(b"IND\x00");
+    v.push(kind.into());
+    v.extend(nsid.as_ref());
+    v
+}
+
+async fn create_unsigned_tx(
+    config: &Config,
+    args: &TxInfo,
+    nsid: Nsid,
+    kind: IndigoKind,
+) -> Result<bitcoin::Transaction, anyhow::Error> {
+    let tx = get_transaction(config, &args.txid).await?;
+    let txout = &tx.output[args.vout as usize];
+    let new_amount = txout
+        .value
+        .checked_sub(args.fee as u64)
+        .ok_or_else(|| anyhow!("Fee is over available amount in tx"))?;
+    let txin = bitcoin::TxIn {
+        previous_output: bitcoin::OutPoint {
+            txid: args.txid,
+            vout: args.vout,
+        },
+        script_sig: bitcoin::Script::new(), // Unsigned tx with empty script
+        sequence: bitcoin::Sequence::ZERO,
+        witness: bitcoin::Witness::new(),
+    };
+    let txout = bitcoin::TxOut {
+        value: new_amount,
+        script_pubkey: args.address.script_pubkey(),
+    };
+    let op_return = bitcoin::TxOut {
+        value: 0,
+        script_pubkey: bitcoin::Script::new_op_return(&op_return(nsid, kind)),
+    };
+    let tx = bitcoin::Transaction {
+        version: 1,
+        lock_time: bitcoin::PackedLockTime::ZERO,
+        input: vec![txin],
+        output: vec![txout, op_return],
+    };
+    Ok(tx)
 }

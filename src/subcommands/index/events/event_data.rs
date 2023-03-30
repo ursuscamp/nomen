@@ -10,6 +10,7 @@ use crate::util::{EventExtractor, Nsid, NsidBuilder};
 pub struct EventData {
     pub event_id: EventId,
     pub nsid: Nsid,
+    pub prev: Option<Nsid>,
     pub pubkey: XOnlyPublicKey,
     pub name: String,
     pub created_at: i64,
@@ -21,6 +22,7 @@ pub struct EventData {
 impl EventData {
     pub fn from_event(event: &Event) -> anyhow::Result<Self> {
         let nsid = event.extract_nsid()?;
+        let prev = event.extract_prev_nsid()?;
         let name = event.extract_name()?;
         let children = event.extract_children(&name).ok();
         let records = event.extract_records().ok();
@@ -28,6 +30,7 @@ impl EventData {
         Ok(EventData {
             event_id: event.id,
             nsid,
+            prev,
             pubkey: event.pubkey,
             name,
             created_at: event.created_at.as_i64(),
@@ -52,6 +55,11 @@ impl EventData {
                 builder = builder.update_child(n, *pk);
             }
         }
+
+        if let Some(prev) = self.prev {
+            builder = builder.prev(prev);
+        }
+
         builder.finalize()
     }
 }
