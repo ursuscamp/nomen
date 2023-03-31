@@ -1,18 +1,15 @@
-use anyhow::{anyhow, bail, Context};
-use bitcoin::XOnlyPublicKey;
-use itertools::Itertools;
-use nostr_sdk::{Event, EventId, Filter};
+use anyhow::anyhow;
+use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
     db,
-    util::{NameKind, Nsid, NsidBuilder},
+    subcommands::index::events::EventData,
+    util::{NameKind, NsidBuilder},
 };
 
-use super::EventData;
-
-pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
+pub async fn update(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     log::info!("Beginning indexing create events.");
     let events = latest_events(config, pool).await?;
 
@@ -36,20 +33,6 @@ pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn save_names(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
-    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey).await?;
-    let children = ed
-        .children
-        .as_ref()
-        .ok_or_else(|| anyhow!("No children found"))?;
-    for (name, pubkey) in children {
-        let nsid = NsidBuilder::new(name, &ed.pubkey).finalize();
-        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey).await?;
-    }
-
-    Ok(())
-}
-
 async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     log::info!("Saving valid event {}", ed.event_id);
     let EventData {
@@ -64,7 +47,31 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         records,
     } = ed;
 
-    db::insert_create_event(pool, nsid, pubkey, created_at, event_id, name, raw_content).await?;
+    db::insert_update_event(
+        pool,
+        nsid,
+        prev.ok_or_else(|| anyhow!("Previous NSID is missing but required"))?,
+        pubkey,
+        created_at,
+        event_id,
+        name,
+        raw_content,
+    )
+    .await?;
+
+    Ok(())
+}
+
+async fn save_names(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
+    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey).await?;
+    let children = ed
+        .children
+        .as_ref()
+        .ok_or_else(|| anyhow!("No children found"))?;
+    for (name, pubkey) in children {
+        let nsid = NsidBuilder::new(name, &ed.pubkey).finalize();
+        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey).await?;
+    }
 
     Ok(())
 }
@@ -74,9 +81,9 @@ async fn latest_events(
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> anyhow::Result<Vec<Event>> {
     let (_keys, client) = config.nostr_random_client().await?;
-    let since = db::last_create_event_time(pool).await?;
+    let since = db::last_update_event_time(pool).await?;
     let filter = Filter::new()
-        .kind(NameKind::Name.into())
+        .kind(NameKind::Update.into())
         .since(since.into());
     let events = client.get_events_of(vec![filter], None).await?;
     Ok(events)

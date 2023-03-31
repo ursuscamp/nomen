@@ -12,13 +12,14 @@ use crate::{
 mod types;
 pub use types::*;
 
-static MIGRATIONS: [&str; 14] = [
+static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status, kind);",
     "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
     "CREATE TABLE name_nsid (name, nsid, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
+    "CREATE TABLE update_events (nsid PRIMARY KEY, prev, pubkey, created_at, event_id, name, children);",
     "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
@@ -110,6 +111,14 @@ pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
     Ok(t as u64)
 }
 
+pub async fn last_update_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
+    let (t,) =
+        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from update_events;")
+            .fetch_one(conn)
+            .await?;
+    Ok(t as u64)
+}
+
 pub async fn insert_create_event(
     conn: &SqlitePool,
     nsid: Nsid,
@@ -121,6 +130,31 @@ pub async fn insert_create_event(
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_create_event.sql"))
         .bind(nsid.to_hex())
+        .bind(pubkey.to_hex())
+        .bind(created_at)
+        .bind(event_id.to_hex())
+        .bind(name)
+        .bind(children)
+        .execute(conn)
+        .await?;
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_update_event(
+    conn: &SqlitePool,
+    nsid: Nsid,
+    prev: Nsid,
+    pubkey: XOnlyPublicKey,
+    created_at: i64,
+    event_id: EventId,
+    name: String,
+    children: String,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_update_event.sql"))
+        .bind(nsid.to_hex())
+        .bind(prev.to_hex())
         .bind(pubkey.to_hex())
         .bind(created_at)
         .bind(event_id.to_hex())
