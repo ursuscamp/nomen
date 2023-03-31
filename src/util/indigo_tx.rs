@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::bail;
 
 use super::Nsid;
@@ -6,6 +8,16 @@ use super::Nsid;
 pub enum IndigoKind {
     Create,
     Update,
+}
+
+impl Display for IndigoKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            IndigoKind::Create => "create",
+            IndigoKind::Update => "update",
+        };
+        write!(f, "{s}")
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -43,7 +43,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                         // Pre-check if it starts with IND, so we can filter out some unnecessary errors from the logs
                         if b.starts_with(b"IND") {
                             match IndigoTx::try_from(b) {
-                                Ok(IndigoTx { nsid, .. }) => {
+                                Ok(IndigoTx { nsid, kind }) => {
                                     index_txs.push((
                                         nsid,
                                         blockhash,
@@ -51,6 +51,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                         blockinfo.height,
                                         txheight,
                                         vout,
+                                        kind,
                                     ));
                                 }
 
@@ -68,9 +69,18 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     })
     .await??;
 
-    for (nsid, blockhash, txid, blockheight, txheight, vout) in indexed_txs {
-        if let Err(e) =
-            index_output(pool, nsid, &blockhash, &txid, blockheight, txheight, vout).await
+    for (nsid, blockhash, txid, blockheight, txheight, vout, kind) in indexed_txs {
+        if let Err(e) = index_output(
+            pool,
+            nsid,
+            &blockhash,
+            &txid,
+            blockheight,
+            txheight,
+            vout,
+            kind,
+        )
+        .await
         {
             log::error!("Index error: {e}");
         }
@@ -89,6 +99,7 @@ fn parse_ind_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn index_output(
     conn: &SqlitePool,
     nsid: Nsid,
@@ -97,18 +108,14 @@ async fn index_output(
     blockheight: usize,
     txheight: usize,
     vout: usize,
+    kind: IndigoKind,
 ) -> anyhow::Result<()> {
     log::info!("IND output found: {}", nsid);
     if nsid.len() != 20 {
         return Err(anyhow::anyhow!("Unexpected IND length"));
     }
 
-    // if db::namespace_exists(conn, nsid.clone()).await? {
-    //     log::debug!("Namespace {nsid} already exists, skipping.");
-    //     return Ok(());
-    // }
-
-    db::insert_namespace(
+    db::insert_blockchain(
         conn,
         nsid,
         blockhash.to_hex(),
@@ -116,6 +123,7 @@ async fn index_output(
         blockheight,
         txheight,
         vout,
+        kind,
     )
     .await?;
     Ok(())

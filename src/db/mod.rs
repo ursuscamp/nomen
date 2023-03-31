@@ -4,13 +4,16 @@ use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
 use nostr_sdk::{Event, EventId};
 use sqlx::SqlitePool;
 
-use crate::{config::Config, util::Nsid};
+use crate::{
+    config::Config,
+    util::{IndigoKind, Nsid},
+};
 
 mod types;
 pub use types::*;
 
 static MIGRATIONS: [&str; 14] = [
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status);",
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status, kind);",
     "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
     "CREATE TABLE name_nsid (name, nsid, parent, pubkey);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
@@ -65,7 +68,9 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     Ok(conn)
 }
 
-pub async fn insert_namespace(
+// TODO: combine these arguments into a simpler set for <8
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_blockchain(
     conn: &SqlitePool,
     nsid: Nsid,
     blockhash: String,
@@ -73,6 +78,7 @@ pub async fn insert_namespace(
     blockheight: usize,
     txheight: usize,
     vout: usize,
+    kind: IndigoKind,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
         .bind(nsid.to_hex())
@@ -81,6 +87,7 @@ pub async fn insert_namespace(
         .bind(blockheight as i64)
         .bind(txheight as i64)
         .bind(vout as i64)
+        .bind(kind.to_string())
         .execute(conn)
         .await?;
 

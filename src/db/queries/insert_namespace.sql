@@ -1,1 +1,1 @@
-INSERT INTO blockchain (nsid, blockhash, txid, blockheight, txheight, vout, 'status') VALUES (?, ?, ?, ?, ?, ?, 'accepted');
+INSERT INTO blockchain (nsid, blockhash, txid, blockheight, txheight, vout, status, kind) VALUES (?, ?, ?, ?, ?, ?, 'accepted', ?);
