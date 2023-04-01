@@ -30,6 +30,11 @@ static MIGRATIONS: [&str; 15] = [
         SELECT b.nsid FROM ordered_blockchain_vw b
         JOIN create_events ce on b.nsid = ce.nsid
         WHERE b.status = 'accepted'
+        GROUP BY ce.name
+        UNION
+        SELECT b.nsid FROM ordered_blockchain_vw b
+        JOIN update_events ce on b.nsid = ce.nsid
+        WHERE b.status = 'accepted'
         GROUP BY ce.name;",
     "CREATE VIEW blessed_blockchain_vw AS
         SELECT b.* FROM blockchain b
@@ -251,6 +256,19 @@ pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, S
             .fetch_all(conn)
             .await?,
     )
+}
+
+pub async fn copy_name_nsid(
+    conn: &SqlitePool,
+    old_parent: Nsid,
+    new_parent: Nsid,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/copy_name_nsid.sql"))
+        .bind(new_parent.to_hex())
+        .bind(old_parent.to_hex())
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 pub mod namespace {

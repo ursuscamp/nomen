@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use bitcoin::hashes::hex::ToHex;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
@@ -18,7 +19,8 @@ pub async fn update(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
             Ok(ed) => match ed.validate() {
                 Ok(_) => {
                     save_names(pool, &ed).await?;
-                    save_event(pool, ed).await?;
+                    save_event(pool, &ed).await?;
+                    process_updates(pool, &ed).await?
                 }
                 Err(e) => {
                     log::debug!("{ed:#?}");
@@ -33,7 +35,26 @@ pub async fn update(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
+pub async fn process_updates(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
+    let old_parent = ed
+        .prev
+        .ok_or_else(|| anyhow!("Previous parent must be present on event"))?;
+    log::info!("Processing updates...");
+
+    log::debug!("Copying names from previous blockchain update.");
+    db::copy_name_nsid(pool, old_parent, ed.nsid).await?;
+
+    log::debug!("Marking old blockchain update as inactive");
+    sqlx::query("UPDATE blockchain SET status = 'replaced' WHERE nsid = ?")
+        .bind(old_parent.to_hex())
+        .execute(pool)
+        .await?;
+
+    log::info!("Update processing complete.");
+    Ok(())
+}
+
+async fn save_event(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
     log::info!("Saving valid event {}", ed.event_id);
     let EventData {
         event_id,
@@ -49,13 +70,13 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
 
     db::insert_update_event(
         pool,
-        nsid,
+        *nsid,
         prev.ok_or_else(|| anyhow!("Previous NSID is missing but required"))?,
-        pubkey,
-        created_at,
-        event_id,
-        name,
-        raw_content,
+        *pubkey,
+        *created_at,
+        *event_id,
+        name.clone(),
+        raw_content.clone(),
     )
     .await?;
 
