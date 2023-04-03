@@ -37,14 +37,14 @@ pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
 }
 
 async fn save_names(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
-    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey).await?;
+    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey, false).await?;
     let children = ed
         .children
         .as_ref()
         .ok_or_else(|| anyhow!("No children found"))?;
     for (name, pubkey) in children {
         let nsid = NsidBuilder::new(name, &ed.pubkey).finalize();
-        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey).await?;
+        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey, true).await?;
     }
 
     Ok(())

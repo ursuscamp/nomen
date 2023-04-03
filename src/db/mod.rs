@@ -15,7 +15,7 @@ pub use types::*;
 static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status, kind);",
     "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
-    "CREATE TABLE name_nsid (name, nsid, parent, pubkey);",
+    "CREATE TABLE name_nsid (name, nsid, parent, pubkey, child);",
     "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
     "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
     "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
@@ -41,13 +41,12 @@ static MIGRATIONS: [&str; 15] = [
         JOIN filtered_blockchain_vw fb ON b.nsid = fb.nsid;",
     "CREATE VIEW name_records_vw AS
         SELECT nn.name, re.records, re.nsid FROM blessed_blockchain_vw b
-        JOIN create_events ce ON b.nsid = ce.nsid
         JOIN name_nsid nn ON b.nsid = nn.parent
         LEFT JOIN records_events re ON nn.nsid = re.nsid;",
     "CREATE VIEW top_level_names_vw AS
-        SELECT ce.name, ce.nsid FROM blessed_blockchain_vw b
-        JOIN name_nsid nn ON b.nsid = nn.nsid
-        JOIN create_events ce ON b.nsid = ce.nsid",
+        SELECT nn.name, nn.nsid FROM blessed_blockchain_vw b
+        JOIN name_nsid nn ON b.nsid = nn.parent
+        WHERE nn.child = false;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -177,12 +176,14 @@ pub async fn index_name_nsid(
     name: &str,
     parent: Option<Nsid>,
     pubkey: XOnlyPublicKey,
+    child: bool,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/index_name_nsid.sql"))
         .bind(name)
         .bind(nsid.to_hex())
         .bind(parent.map(|d| d.to_hex()))
         .bind(pubkey.to_hex())
+        .bind(child)
         .execute(conn)
         .await?;
     Ok(())
