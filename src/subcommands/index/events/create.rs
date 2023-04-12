@@ -20,7 +20,6 @@ pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
         match EventData::from_event(&event) {
             Ok(ed) => match ed.validate() {
                 Ok(_) => {
-                    save_names(pool, &ed).await?;
                     save_event(pool, ed).await?;
                 }
                 Err(e) => {
@@ -36,31 +35,15 @@ pub async fn create(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn save_names(pool: &SqlitePool, ed: &EventData) -> anyhow::Result<()> {
-    db::index_name_nsid(pool, ed.nsid, &ed.name, Some(ed.nsid), ed.pubkey, false).await?;
-    let children = ed
-        .children
-        .as_ref()
-        .ok_or_else(|| anyhow!("No children found"))?;
-    for (name, pubkey) in children {
-        let nsid = NsidBuilder::new(name, &ed.pubkey).finalize();
-        db::index_name_nsid(pool, nsid, name, Some(ed.nsid), *pubkey, true).await?;
-    }
-
-    Ok(())
-}
-
 async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     log::info!("Saving valid event {}", ed.event_id);
     let EventData {
         event_id,
         nsid,
-        prev,
         pubkey,
         name,
         created_at,
         raw_content,
-        children,
         records,
     } = ed;
 

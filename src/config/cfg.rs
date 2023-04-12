@@ -253,9 +253,6 @@ pub struct NameNewSubcommand {
     #[command(flatten)]
     pub txinfo: TxInfo,
 
-    /// Optional children (format "name:pubkey") to include in new name
-    pub children: Vec<ChildPair>,
-
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
     #[arg(short, long)]
