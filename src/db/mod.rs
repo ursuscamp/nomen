@@ -12,41 +12,21 @@ use crate::{
 mod types;
 pub use types::*;
 
-static MIGRATIONS: [&str; 15] = [
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, status, kind);",
-    "CREATE INDEX blockchain_height_dx ON blockchain(blockheight);",
-    "CREATE TABLE name_nsid (name, nsid, parent, pubkey, child);",
-    "CREATE INDEX name_nsid_nsid_idx ON name_nsid(nsid);",
-    "CREATE INDEX name_nsid_parent_idx ON name_nsid(parent);",
-    "CREATE TABLE create_events (nsid PRIMARY KEY, pubkey, created_at, event_id, name, children);",
-    "CREATE TABLE update_events (nsid PRIMARY KEY, prev, pubkey, created_at, event_id, name, children);",
-    "CREATE TABLE records_events (nsid, pubkey, created_at, event_id, name, records);",
+static MIGRATIONS: [&str; 8] = [
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, kind);",
+    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id);",
+    "CREATE TABLE records_events (name, pubkey, created_at, event_id, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
     "CREATE VIEW ordered_blockchain_vw AS
         SELECT b.* FROM blockchain b
         ORDER BY b.blockheight, b.txheight, b.vout",
-    "CREATE VIEW filtered_blockchain_vw AS
-        SELECT b.nsid FROM ordered_blockchain_vw b
-        JOIN create_events ce on b.nsid = ce.nsid
-        WHERE b.status = 'accepted'
-        GROUP BY ce.name
-        UNION
-        SELECT b.nsid FROM ordered_blockchain_vw b
-        JOIN update_events ce on b.nsid = ce.nsid
-        WHERE b.status = 'accepted'
-        GROUP BY ce.name;",
-    "CREATE VIEW blessed_blockchain_vw AS
-        SELECT b.* FROM blockchain b
-        JOIN filtered_blockchain_vw fb ON b.nsid = fb.nsid;",
-    "CREATE VIEW name_records_vw AS
-        SELECT nn.name, re.records, re.nsid FROM blessed_blockchain_vw b
-        JOIN name_nsid nn ON b.nsid = nn.parent
-        LEFT JOIN records_events re ON nn.nsid = re.nsid;",
-    "CREATE VIEW top_level_names_vw AS
-        SELECT nn.name, nn.nsid FROM blessed_blockchain_vw b
-        JOIN name_nsid nn ON b.nsid = nn.parent
-        WHERE nn.child = false;",
+    "CREATE VIEW name_vw AS
+        SELECT ne.* FROM ordered_blockchain_vw b
+        JOIN name_events ne on b.nsid = ne.nsid;",
+    "CREATE VIEW records_vw AS
+        SELECT re.* FROM name_vw nvw
+        LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -108,10 +88,9 @@ pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
 }
 
 pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
-    let (t,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from create_events;")
-            .fetch_one(conn)
-            .await?;
+    let (t,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from name_events;")
+        .fetch_one(conn)
+        .await?;
     Ok(t as u64)
 }
 
