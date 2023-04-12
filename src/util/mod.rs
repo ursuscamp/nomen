@@ -1,8 +1,8 @@
 mod childpair;
 mod extractor;
 mod hash160;
-mod indigo_tx;
 mod keyval;
+mod kind;
 mod nsid;
 mod nsid_builder;
 
@@ -11,8 +11,8 @@ use bitcoin::Block;
 pub use childpair::*;
 pub use extractor::*;
 pub use hash160::*;
-pub use indigo_tx::*;
 pub use keyval::*;
+pub use kind::*;
 pub use nsid::*;
 pub use nsid_builder::*;
 
