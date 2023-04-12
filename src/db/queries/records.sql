@@ -1,5 +1,2 @@
-SELECT re.records FROM blessed_blockchain_vw b
-JOIN name_nsid nn ON b.nsid = nn.parent
-JOIN name_events ce ON b.nsid = ce.nsid
-JOIN records_events re on nn.nsid = re.nsid AND nn.pubkey = re.pubkey
+SELECT re.records FROM records_vw re
 WHERE re.nsid = ?;

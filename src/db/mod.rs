@@ -26,7 +26,7 @@ static MIGRATIONS: [&str; 9] = [
         SELECT ne.* FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid;",
     "CREATE VIEW records_vw AS
-        SELECT nvw.name, re.records FROM name_vw nvw
+        SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
         LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
 ];
 
@@ -231,7 +231,7 @@ pub async fn name_records(
 
 pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, String)>> {
     Ok(
-        sqlx::query_as::<_, (String, String)>("SELECT * FROM top_level_names_vw;")
+        sqlx::query_as::<_, (String, String)>("SELECT * FROM name_vw;")
             .fetch_all(conn)
             .await?,
     )
@@ -259,7 +259,6 @@ pub mod namespace {
     pub struct NamespaceDetails {
         pub name: Option<String>,
         pub records: HashMap<String, String>,
-        pub children: Vec<(String, String)>,
         pub blockdata: Option<(String, String, usize, usize)>,
     }
 
@@ -270,40 +269,25 @@ pub mod namespace {
 
         let blockdata = blockchain_data(conn, nsid.clone()).await?;
 
-        let children = children(conn, nsid).await?;
-
         let d = NamespaceDetails {
             name,
             records: serde_json::from_str(&records.unwrap_or_else(|| String::from("{}")))?,
-            children,
             blockdata,
         };
         Ok(d)
     }
 
-    async fn children(
-        conn: &SqlitePool,
-        nsid: String,
-    ) -> Result<Vec<(String, String)>, anyhow::Error> {
-        Ok(
-            sqlx::query_as::<_, (String, String)>(include_str!("./queries/children.sql"))
-                .bind(nsid)
-                .fetch_all(conn)
-                .await?,
-        )
-    }
-
-    async fn records(conn: &SqlitePool, nsid: String) -> Result<Option<String>, anyhow::Error> {
+    async fn records(conn: &SqlitePool, nsid: String) -> Result<Option<(String)>, anyhow::Error> {
         let records = sqlx::query_as::<_, (String,)>(include_str!("./queries/records.sql"))
             .bind(nsid)
             .fetch_optional(conn)
             .await?;
-        Ok(records.map(|s| s.0))
+        Ok(records.map(|r| r.0))
     }
 
     async fn name_for_nsid(conn: &SqlitePool, nsid: String) -> anyhow::Result<Option<String>> {
         let name =
-            sqlx::query_as::<_, (String,)>("SELECT name FROM name_nsid WHERE nsid = ? LIMIT 1;")
+            sqlx::query_as::<_, (String,)>("SELECT name FROM name_vw WHERE nsid = ? LIMIT 1;")
                 .bind(nsid)
                 .fetch_optional(conn)
                 .await?;
