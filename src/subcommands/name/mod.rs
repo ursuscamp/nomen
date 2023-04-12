@@ -1,6 +1,5 @@
 mod new;
 mod record;
-mod update;
 
 use std::io::Write;
 
@@ -10,7 +9,6 @@ use bitcoincore_rpc::RpcApi;
 pub use new::*;
 use nostr_sdk::Keys;
 pub use record::*;
-pub use update::*;
 
 use crate::{
     config::{Config, NameSubcommand, TxInfo},
@@ -20,7 +18,6 @@ use crate::{
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
     match cmd {
         NameSubcommand::New(new_data) => new::new(config, new_data).await?,
-        NameSubcommand::Update(update_data) => update::update(config, update_data).await?,
         NameSubcommand::Record(record_data) => record::record(config, record_data).await?,
     }
 
