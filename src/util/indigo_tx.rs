@@ -7,14 +7,12 @@ use super::Nsid;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IndigoKind {
     Create,
-    Update,
 }
 
 impl Display for IndigoKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             IndigoKind::Create => "create",
-            IndigoKind::Update => "update",
         };
         write!(f, "{s}")
     }
@@ -34,19 +32,8 @@ impl IndigoTx {
         }
     }
 
-    fn update(nsid: Nsid) -> IndigoTx {
-        IndigoTx {
-            kind: IndigoKind::Update,
-            nsid,
-        }
-    }
-
     fn parse_create(value: &[u8]) -> anyhow::Result<IndigoTx> {
         Ok(IndigoTx::create(value.try_into()?))
-    }
-
-    fn parse_update(value: &[u8]) -> anyhow::Result<IndigoTx> {
-        Ok(IndigoTx::update(value.try_into()?))
     }
 }
 
@@ -54,7 +41,6 @@ impl From<IndigoKind> for u8 {
     fn from(value: IndigoKind) -> Self {
         match value {
             IndigoKind::Create => 0x00,
-            IndigoKind::Update => 0x01,
         }
     }
 }
@@ -75,7 +61,6 @@ impl TryFrom<&[u8]> for IndigoTx {
 
         let kind = match value.first() {
             Some(0x00) => IndigoTx::parse_create(&value[1..])?,
-            Some(0x01) => IndigoTx::parse_update(&value[1..])?,
             _ => bail!("Unexpected blockchain tx type"),
         };
 
@@ -103,20 +88,6 @@ mod tests {
         assert_eq!(
             IndigoTx::try_from(create.as_ref()).unwrap(),
             IndigoTx::create(nsid)
-        );
-    }
-
-    #[test]
-    fn test_parse_update() {
-        let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
-        let update = b"IND\x00\x01"
-            .iter()
-            .chain(nsid.to_vec().iter())
-            .copied()
-            .collect_vec();
-        assert_eq!(
-            IndigoTx::try_from(update.as_ref()).unwrap(),
-            IndigoTx::update(nsid)
         );
     }
 
