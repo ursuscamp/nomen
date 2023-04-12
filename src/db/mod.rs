@@ -26,7 +26,7 @@ static MIGRATIONS: [&str; 9] = [
         SELECT ne.* FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid;",
     "CREATE VIEW records_vw AS
-        SELECT re.* FROM name_vw nvw
+        SELECT nvw.name, re.records FROM name_vw nvw
         LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
 ];
 
@@ -179,7 +179,6 @@ pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
 
 pub async fn insert_records_event(
     conn: &SqlitePool,
-    nsid: Nsid,
     pubkey: XOnlyPublicKey,
     created_at: i64,
     event_id: EventId,
@@ -187,7 +186,6 @@ pub async fn insert_records_event(
     records: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_records_event.sql"))
-        .bind(nsid.to_string())
         .bind(pubkey.to_string())
         .bind(created_at)
         .bind(event_id.to_string())
