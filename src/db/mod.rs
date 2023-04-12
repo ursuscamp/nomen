@@ -12,11 +12,12 @@ use crate::{
 mod types;
 pub use types::*;
 
-static MIGRATIONS: [&str; 8] = [
+static MIGRATIONS: [&str; 9] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, kind);",
-    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id);",
+    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content);",
+    "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
     "CREATE TABLE records_events (name, pubkey, created_at, event_id, records);",
-    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(nsid, pubkey)",
+    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
     "CREATE VIEW ordered_blockchain_vw AS
         SELECT b.* FROM blockchain b
@@ -111,7 +112,7 @@ pub async fn insert_create_event(
     name: String,
     children: String,
 ) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_create_event.sql"))
+    sqlx::query(include_str!("./queries/insert_name_event.sql"))
         .bind(nsid.to_hex())
         .bind(pubkey.to_hex())
         .bind(created_at)
