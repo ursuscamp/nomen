@@ -1,14 +1,7 @@
-use anyhow::{anyhow, bail, Context};
-use bitcoin::XOnlyPublicKey;
-use itertools::Itertools;
-use nostr_sdk::{Event, EventId, Filter};
+use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{
-    config::Config,
-    db,
-    util::{NameKind, Nsid, NsidBuilder},
-};
+use crate::{config::Config, db, util::NameKind};
 
 use super::EventData;
 
@@ -44,7 +37,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         name,
         created_at,
         raw_content,
-        records,
+        records: _,
     } = ed;
 
     db::insert_create_event(pool, nsid, pubkey, created_at, event_id, name, raw_content).await?;

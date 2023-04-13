@@ -82,19 +82,17 @@ async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
             _ = guard.wait() => return Ok(())
         }
     }
-    Ok(())
 }
 
 mod site {
     use std::collections::HashMap;
 
-    use anyhow::anyhow;
     use axum::extract::{Path, State};
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
-    use crate::db::{self, namespace::NamespaceDetails, NameDetails};
+    use crate::db::{self, NameDetails};
 
     use super::WebError;
 

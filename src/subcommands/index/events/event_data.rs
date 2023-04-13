@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use bitcoin::XOnlyPublicKey;
 use nostr_sdk::{Event, EventId};
 
@@ -21,7 +21,6 @@ impl EventData {
     pub fn from_event(event: &Event) -> anyhow::Result<Self> {
         let nsid = event.extract_nsid()?;
         let name = event.extract_name()?;
-        let children = event.extract_children(&name).ok();
         let records = event.extract_records().ok();
 
         Ok(EventData {
@@ -44,7 +43,7 @@ impl EventData {
     }
 
     pub fn recalc_nsid(&self) -> Nsid {
-        let mut builder = NsidBuilder::new(&self.name, &self.pubkey);
+        let builder = NsidBuilder::new(&self.name, &self.pubkey);
 
         builder.finalize()
     }
@@ -52,8 +51,6 @@ impl EventData {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::hashes::hex::ToHex;
-
     use super::*;
 
     #[test]

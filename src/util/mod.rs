@@ -5,8 +5,6 @@ mod kind;
 mod nsid;
 mod nsid_builder;
 
-use anyhow::{anyhow, bail};
-use bitcoin::Block;
 pub use extractor::*;
 pub use hash160::*;
 pub use keyval::*;

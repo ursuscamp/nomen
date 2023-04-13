@@ -73,7 +73,6 @@ mod tests {
     use std::str::FromStr;
 
     use itertools::Itertools;
-    use ripemd::digest::crypto_common::Block;
 
     use super::*;
 
@@ -93,21 +92,18 @@ mod tests {
 
     #[test]
     fn test_invalid_version() {
-        let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"NOM\x01\x00";
         assert!(NomenTx::try_from(wrong_ver.as_ref()).is_err())
     }
 
     #[test]
     fn test_invalid_tx_type() {
-        let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"NOZ\x00\x00";
         assert!(NomenTx::try_from(wrong_ver.as_ref()).is_err())
     }
 
     #[test]
     fn test_invalid_tx_kind() {
-        let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let wrong_ver = b"NOM\x00\x10";
         assert!(NomenTx::try_from(wrong_ver.as_ref()).is_err())
     }

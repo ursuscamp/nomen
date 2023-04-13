@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use bitcoin::XOnlyPublicKey;
 
 use crate::util::Hash160;
@@ -29,8 +27,6 @@ impl NsidBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
 
     #[test]

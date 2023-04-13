@@ -1,16 +1,7 @@
-use std::collections::HashMap;
-
-use anyhow::bail;
-use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
-use nostr_sdk::{Event, EventId, Filter};
+use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{
-    config::Config,
-    db,
-    subcommands::index::events::EventData,
-    util::{EventExtractor, NameKind, Nsid, NsidBuilder},
-};
+use crate::{config::Config, db, subcommands::index::events::EventData, util::NameKind};
 
 pub async fn records(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     log::info!("Beginning indexing record events.");
@@ -30,12 +21,12 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     log::info!("Saving valid event {}", ed.event_id);
     let EventData {
         event_id,
-        nsid,
+        nsid: _,
         pubkey,
         name,
         created_at,
         raw_content,
-        records,
+        records: _,
     } = ed;
     db::insert_records_event(pool, pubkey, created_at, event_id, name, raw_content).await?;
 

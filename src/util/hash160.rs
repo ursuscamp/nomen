@@ -6,6 +6,7 @@ pub struct Hash160 {
     hasher: Sha256,
 }
 
+#[allow(unused)]
 impl Hash160 {
     pub fn update(&mut self, data: &[u8]) {
         self.hasher.update(data);

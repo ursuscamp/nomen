@@ -36,11 +36,3 @@ pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyho
 
     Ok(())
 }
-
-fn parse_records(records: &[String]) -> HashMap<String, String> {
-    records
-        .iter()
-        .filter_map(|rec| rec.split_once('='))
-        .map(|(k, v)| (k.to_uppercase(), v.to_owned()))
-        .collect()
-}

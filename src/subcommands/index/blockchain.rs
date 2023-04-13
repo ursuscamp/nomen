@@ -1,14 +1,11 @@
-use anyhow::anyhow;
 use bitcoin::{hashes::hex::ToHex, BlockHash, Txid};
 use bitcoincore_rpc::RpcApi;
-use itertools::Itertools;
-use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
     db,
-    util::{NameKind, NomenKind, NomenTx, Nsid},
+    util::{NomenKind, NomenTx, Nsid},
 };
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
@@ -88,15 +85,6 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 
     log::info!("Blockchain index complete.");
     Ok(())
-}
-
-fn parse_ind_output(byte: &[u8]) -> anyhow::Result<Vec<u8>> {
-    let mut b = byte.iter();
-    let (ind_ver, ind_type) = (b.next(), b.next());
-    match (ind_ver, ind_type) {
-        (Some(&0), Some(&0)) => Ok(b.copied().collect()),
-        _ => Err(anyhow!("Invalid ind code")),
-    }
 }
 
 #[allow(clippy::too_many_arguments)]

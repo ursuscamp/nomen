@@ -1,19 +1,13 @@
-use std::io::Write;
+use bitcoin::hashes::hex::ToHex;
+use bitcoincore_rpc::RawTx;
 
-use anyhow::anyhow;
-use bitcoin::{hashes::hex::ToHex, secp256k1::SecretKey};
-use bitcoincore_rpc::{RawTx, RpcApi};
-use itertools::Itertools;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
 use crate::{
-    config::{Config, NameNewSubcommand, TxInfo},
+    config::{Config, NameNewSubcommand},
     subcommands::name::{create_unsigned_tx, get_keys},
-    util::{Hash160, NomenKind},
-    util::{NameKind, Nsid, NsidBuilder},
+    util::{NameKind, NomenKind, Nsid, NsidBuilder},
 };
-
-use super::{get_transaction, op_return};
 
 pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
     let keys = get_keys(&args.privkey)?;

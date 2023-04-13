@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network, TxIn};
+use bitcoin::{secp256k1::SecretKey, Network};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
