@@ -9,7 +9,7 @@ use nostr_sdk::{
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{ChildPair, KeyVal, Nsid};
+use crate::util::{KeyVal, Nsid};
 
 use super::ConfigFile;
 

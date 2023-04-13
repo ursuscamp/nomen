@@ -9,8 +9,8 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 use crate::{
     config::{Config, NameNewSubcommand, TxInfo},
     subcommands::name::{create_unsigned_tx, get_keys},
-    util::{ChildPair, NameKind, Nsid, NsidBuilder},
     util::{Hash160, IndigoKind},
+    util::{NameKind, Nsid, NsidBuilder},
 };
 
 use super::{get_transaction, op_return};
