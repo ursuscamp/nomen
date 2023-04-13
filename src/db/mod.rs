@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
 use nostr_sdk::{Event, EventId};
-use sqlx::SqlitePool;
+use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::Config,
@@ -12,7 +12,7 @@ use crate::{
 mod types;
 pub use types::*;
 
-static MIGRATIONS: [&str; 9] = [
+static MIGRATIONS: [&str; 10] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, kind);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
@@ -28,6 +28,11 @@ static MIGRATIONS: [&str; 9] = [
     "CREATE VIEW records_vw AS
         SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
         LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
+    "CREATE VIEW detail_vw AS
+        SELECT b.nsid, b.blockhash, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records
+        FROM ordered_blockchain_vw b
+        JOIN name_events ne on b.nsid = ne.nsid
+        LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;"
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -148,6 +153,24 @@ pub async fn insert_update_event(
         .await?;
 
     Ok(())
+}
+
+#[derive(FromRow)]
+pub struct NameDetails {
+    pub blockhash: String,
+    pub txid: String,
+    pub vout: i64,
+    pub blockheight: i64,
+    pub name: String,
+    pub records: String,
+}
+
+pub async fn name_details(conn: &SqlitePool, nsid: Nsid) -> anyhow::Result<NameDetails> {
+    let details = sqlx::query_as::<_, NameDetails>("SELECT * FROM detail_vw WHERE nsid = ?")
+        .bind(nsid.to_hex())
+        .fetch_one(conn)
+        .await?;
+    Ok(details)
 }
 
 pub async fn index_name_nsid(
@@ -271,7 +294,7 @@ pub mod namespace {
 
         let d = NamespaceDetails {
             name,
-            records: serde_json::from_str(&records.unwrap_or_else(|| String::from("{}")))?,
+            records: serde_json::from_str(&dbg!(records).unwrap_or_else(|| String::from("{}")))?,
             blockdata,
         };
         Ok(d)

@@ -90,10 +90,11 @@ mod site {
 
     use anyhow::anyhow;
     use axum::extract::{Path, State};
+    use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
-    use crate::db::{self, namespace::NamespaceDetails};
+    use crate::db::{self, namespace::NamespaceDetails, NameDetails};
 
     use super::WebError;
 
@@ -138,37 +139,56 @@ mod site {
         records: HashMap<String, String>,
         blockhash: String,
         txid: String,
-        vout: usize,
-        height: usize,
+        vout: i64,
+        height: i64,
     }
 
-    impl From<NamespaceDetails> for NsidTemplate {
-        fn from(value: NamespaceDetails) -> Self {
-            let (blockhash, txid, vout, height) = value.blockdata.unwrap_or_default();
-            let mut record_keys = value.records.keys().cloned().collect::<Vec<_>>();
-            record_keys.sort();
-            NsidTemplate {
-                name: value.name.unwrap_or_default(),
-                record_keys,
-                records: value.records,
-                blockhash,
-                txid,
-                vout,
-                height,
-            }
+    impl TryFrom<NameDetails> for NsidTemplate {
+        type Error = anyhow::Error;
+
+        fn try_from(value: NameDetails) -> Result<Self, Self::Error> {
+            let records: HashMap<String, String> = serde_json::from_str(&value.records)?;
+
+            Ok(NsidTemplate {
+                name: value.name,
+                record_keys: records.keys().cloned().collect_vec(),
+                records,
+                blockhash: value.blockhash,
+                txid: value.txid,
+                vout: value.vout,
+                height: value.blockheight,
+            })
         }
     }
+
+    // impl From<NameDetails> for NsidTemplate {
+    //     fn from(value: NameDetails) -> Self {
+    //         let (blockhash, txid, vout, height) = value.blockdata.unwrap_or_default();
+    //         let mut record_keys = value.records.keys().cloned().collect::<Vec<_>>();
+    //         record_keys.sort();
+    //         NsidTemplate {
+    //             name: value.name.unwrap_or_default(),
+    //             record_keys,
+    //             records: value.records,
+    //             blockhash,
+    //             txid,
+    //             vout,
+    //             height,
+    //         }
+    //     }
+    // }
 
     pub async fn explore_nsid(
         State(conn): State<SqlitePool>,
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
-        let details = db::namespace::details(&conn, nsid).await?;
-        if details.name.is_none() || details.blockdata.is_none() {
-            log::error!("{details:?}");
-            return Err(WebError::not_found(anyhow!("NSID not found")));
-        }
-        Ok(details.into())
+        // let details = db::namespace::details(&conn, nsid).await?;
+        let details = db::name_details(&conn, nsid.parse()?).await?;
+        // if details.name.is_none() || details.blockdata.is_none() {
+        //     log::error!("{details:?}");
+        //     return Err(WebError::not_found(anyhow!("NSID not found")));
+        // }
+        Ok(details.try_into()?)
     }
 }
 
