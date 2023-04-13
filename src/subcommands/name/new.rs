@@ -9,7 +9,7 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 use crate::{
     config::{Config, NameNewSubcommand, TxInfo},
     subcommands::name::{create_unsigned_tx, get_keys},
-    util::{Hash160, IndigoKind},
+    util::{Hash160, NomenKind},
     util::{NameKind, Nsid, NsidBuilder},
 };
 
@@ -18,7 +18,7 @@ use super::{get_transaction, op_return};
 pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
     let keys = get_keys(&args.privkey)?;
     let nsid = NsidBuilder::new(&args.name, &keys.public_key()).finalize();
-    let tx = create_unsigned_tx(config, &args.txinfo, nsid, IndigoKind::Create).await?;
+    let tx = create_unsigned_tx(config, &args.txinfo, nsid, NomenKind::Create).await?;
 
     println!("Nsid: {}", nsid.to_hex());
     println!("Unsigned Tx: {}", tx.raw_hex());

@@ -36,7 +36,7 @@ fn parse_config() -> anyhow::Result<Config> {
     let config_name = config
         .config
         .clone()
-        .unwrap_or_else(|| ".indigo.toml".into());
+        .unwrap_or_else(|| ".nomen.toml".into());
 
     if config_name.is_file() {
         let config_str = std::fs::read_to_string(config_name)?;

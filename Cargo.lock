@@ -908,38 +908,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indigo"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "askama",
- "askama_axum",
- "axum",
- "bitcoin",
- "bitcoincore-rpc",
- "clap",
- "derive_more",
- "elegant-departure",
- "env_logger 0.10.0",
- "hex",
- "itertools",
- "log 0.4.17",
- "nostr-sdk",
- "rand 0.8.5",
- "regex 1.7.1",
- "ripemd",
- "secp256k1 0.26.0",
- "serde",
- "serde-hex",
- "serde_json",
- "sha2",
- "sqlx",
- "tokio",
- "toml",
- "yansi",
-]
-
-[[package]]
 name = "inout"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1163,6 +1131,38 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "nomen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "askama",
+ "askama_axum",
+ "axum",
+ "bitcoin",
+ "bitcoincore-rpc",
+ "clap",
+ "derive_more",
+ "elegant-departure",
+ "env_logger 0.10.0",
+ "hex",
+ "itertools",
+ "log 0.4.17",
+ "nostr-sdk",
+ "rand 0.8.5",
+ "regex 1.7.1",
+ "ripemd",
+ "secp256k1 0.26.0",
+ "serde",
+ "serde-hex",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "toml",
+ "yansi",
 ]
 
 [[package]]

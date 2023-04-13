@@ -8,7 +8,7 @@ use sqlx::SqlitePool;
 use crate::{
     config::Config,
     db,
-    util::{IndigoKind, IndigoTx, NameKind, Nsid},
+    util::{NameKind, NomenKind, NomenTx, Nsid},
 };
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
@@ -40,10 +40,10 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                     if output.script_pubkey.is_op_return() {
                         let b = &output.script_pubkey.as_bytes()[2..];
 
-                        // Pre-check if it starts with IND, so we can filter out some unnecessary errors from the logs
-                        if b.starts_with(b"IND") {
-                            match IndigoTx::try_from(b) {
-                                Ok(IndigoTx { nsid, kind }) => {
+                        // Pre-check if it starts with NOM, so we can filter out some unnecessary errors from the logs
+                        if b.starts_with(b"NOM") {
+                            match NomenTx::try_from(b) {
+                                Ok(NomenTx { nsid, kind }) => {
                                     index_txs.push((
                                         nsid,
                                         blockhash,
@@ -108,11 +108,11 @@ async fn index_output(
     blockheight: usize,
     txheight: usize,
     vout: usize,
-    kind: IndigoKind,
+    kind: NomenKind,
 ) -> anyhow::Result<()> {
-    log::info!("IND output found: {}", nsid);
+    log::info!("NOM output found: {}", nsid);
     if nsid.len() != 20 {
-        return Err(anyhow::anyhow!("Unexpected IND length"));
+        return Err(anyhow::anyhow!("Unexpected NOM length"));
     }
 
     db::insert_blockchain(

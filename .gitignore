@@ -3,10 +3,10 @@
 cookie
 .auth*
 .bitcoin
-.indigo.toml
+.nomen.toml
 create.json
 __pycache__
 records.json
-indigo.db
+nomen.db
 .DS_Store
 records1.json

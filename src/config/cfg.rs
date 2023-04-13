@@ -15,11 +15,11 @@ use super::ConfigFile;
 
 #[derive(Parser, Debug, Clone)]
 pub struct Config {
-    /// Location of config file: Default: .indigo.toml
+    /// Location of config file: Default: .nomen.toml
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
-    /// Path for index data. Default: indigo.db
+    /// Path for index data. Default: nomen.db
     #[arg(short, long)]
     pub data: Option<PathBuf>,
 
@@ -62,7 +62,7 @@ impl Config {
             .data
             .take()
             .or(cf.data)
-            .or_else(|| Some("indigo.db".into()));
+            .or_else(|| Some("nomen.db".into()));
         self.cookie = self.cookie.take().or(cf.cookie);
         self.rpcuser = self.rpcuser.take().or(cf.rpcuser);
         self.rpcpass = self.rpcpass.take().or(cf.rpcpass);

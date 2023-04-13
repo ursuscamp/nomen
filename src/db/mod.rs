@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
-    util::{IndigoKind, Nsid},
+    util::{NomenKind, Nsid},
 };
 
 mod types;
@@ -64,7 +64,7 @@ pub async fn insert_blockchain(
     blockheight: usize,
     txheight: usize,
     vout: usize,
-    kind: IndigoKind,
+    kind: NomenKind,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
         .bind(nsid.to_hex())

@@ -12,7 +12,7 @@ pub use record::*;
 
 use crate::{
     config::{Config, NameSubcommand, TxInfo},
-    util::{IndigoKind, Nsid},
+    util::{NomenKind, Nsid},
 };
 
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
@@ -48,9 +48,9 @@ pub(crate) async fn get_transaction(
     Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
 }
 
-pub(crate) fn op_return(nsid: Nsid, kind: IndigoKind) -> Vec<u8> {
+pub(crate) fn op_return(nsid: Nsid, kind: NomenKind) -> Vec<u8> {
     let mut v = Vec::with_capacity(25);
-    v.extend(b"IND\x00");
+    v.extend(b"NOM\x00");
     v.push(kind.into());
     v.extend(nsid.as_ref());
     v
@@ -60,7 +60,7 @@ pub(crate) async fn create_unsigned_tx(
     config: &Config,
     args: &TxInfo,
     nsid: Nsid,
-    kind: IndigoKind,
+    kind: NomenKind,
 ) -> Result<bitcoin::Transaction, anyhow::Error> {
     let tx = get_transaction(config, &args.txid).await?;
     let txout = &tx.output[args.vout as usize];
