@@ -5,11 +5,12 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 use crate::{
     config::{Config, NameRecordSubcomand},
     subcommands::get_keys,
-    util::NameKind,
+    util::{NameKind, NsidBuilder},
 };
 
 pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyhow::Result<()> {
     let keys = get_keys(&record_data.privkey)?;
+    let nsid = NsidBuilder::new(&record_data.name, &keys.public_key()).finalize();
     let map: HashMap<String, String> = record_data
         .records
         .iter()
@@ -21,7 +22,7 @@ pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyho
         NameKind::Record.into(),
         records,
         &[
-            Tag::Identifier(record_data.nsid.to_string()),
+            Tag::Identifier(nsid.to_string()),
             Tag::Generic(
                 TagKind::Custom("ind".to_owned()),
                 vec![record_data.name.clone()],

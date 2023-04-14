@@ -264,9 +264,6 @@ pub struct NameRecordSubcomand {
     /// The name you are broadcasting records for
     pub name: String,
 
-    /// The namespace hash generated from the blockchain event
-    pub nsid: Nsid,
-
     /// Records to broadcast (format "key=value")
     pub records: Vec<KeyVal>,
 
