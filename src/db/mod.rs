@@ -9,19 +9,32 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 10] = [
+static MIGRATIONS: [&str; 11] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, kind);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
     "CREATE TABLE records_events (name, pubkey, created_at, event_id, records);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
+
+    // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
+    // to make sure we are always looking in exact blockchain order
     "CREATE VIEW ordered_blockchain_vw AS
         SELECT b.* FROM blockchain b
         ORDER BY b.blockheight, b.txheight, b.vout",
-    "CREATE VIEW name_vw AS
-        SELECT ne.* FROM ordered_blockchain_vw b
+
+    // Someone could theoretically try to claim a name a second time, we want to rank each blockchain event
+    // in order, partitioned by name. So if Person A claims 'domain-name' first, then Person B also claims 'domain-name'
+    // second, then Person A will be ranked 1, and Person B will be ranked 2.
+    "CREATE VIEW ranked_name_vw AS
+        SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
+        FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid;",
+
+    // We select everyone that has rank 1. This is always going to be first claimed on blockchain.
+    "CREATE VIEW name_vw AS 
+        SELECT * FROM ranked_name_vw WHERE row = 1;",
+
     "CREATE VIEW records_vw AS
         SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
         LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
