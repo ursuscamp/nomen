@@ -1,1 +1,0 @@
-INSERT INTO name_nsid (name, nsid, parent, pubkey, child) VALUES (?, ?, ?, ?, ?);
