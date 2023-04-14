@@ -38,7 +38,7 @@ mod tests {
 
         assert_eq!(
             nsid,
-            "073e4dd94dd1128b964d45c2fba2fe4aca124df5".parse().unwrap()
+            "28d63a9a61c6c5ce6be37a830105c92cf7a8f365".parse().unwrap()
         )
     }
 }
