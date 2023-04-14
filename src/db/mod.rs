@@ -169,7 +169,7 @@ pub async fn name_records(
     name: String,
 ) -> anyhow::Result<Option<HashMap<String, String>>> {
     let content =
-        sqlx::query_as::<_, (String,)>("SELECT records from name_records_vw where name = ?;")
+        sqlx::query_as::<_, (String,)>("SELECT records from detail_vw where name = ? LIMIT 1;")
             .bind(name)
             .fetch_optional(conn)
             .await?;
