@@ -140,6 +140,7 @@ mod site {
         name: String,
         record_keys: Vec<String>,
         records: HashMap<String, String>,
+        records_created_at: String,
         blockhash: String,
         blocktime: String,
         txid: String,
@@ -163,11 +164,13 @@ mod site {
             let mut record_keys = records.keys().cloned().collect_vec();
             record_keys.sort();
             let blocktime = NsidTemplate::format_time(value.blocktime)?;
+            let records_created_at = NsidTemplate::format_time(value.records_created_at)?;
 
             Ok(NsidTemplate {
                 name: value.name,
                 record_keys,
                 records,
+                records_created_at,
                 blockhash: value.blockhash,
                 blocktime,
                 txid: value.txid,

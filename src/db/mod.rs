@@ -39,7 +39,7 @@ static MIGRATIONS: [&str; 11] = [
         SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
         LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
     "CREATE VIEW detail_vw AS
-        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records
+        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, re.created_at as records_created_at
         FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid
         LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;"
@@ -143,6 +143,7 @@ pub struct NameDetails {
     pub blockheight: i64,
     pub name: String,
     pub records: String,
+    pub records_created_at: i64,
 }
 
 pub async fn name_details(conn: &SqlitePool, nsid: Nsid) -> anyhow::Result<NameDetails> {

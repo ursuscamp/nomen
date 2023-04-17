@@ -37,6 +37,7 @@
   {% if records.is_empty() %}
   <p>No records found.</p>
   {% else %}
+  <p><small>Last updated at {{ records_created_at }}.</small></p>
   <table>
     <thead>
       <tr>
