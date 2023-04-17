@@ -45,6 +45,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                         nsid,
                                         blockhash,
                                         *txid,
+                                        blockinfo.time,
                                         blockinfo.height,
                                         txheight,
                                         vout,
@@ -66,12 +67,13 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     })
     .await??;
 
-    for (nsid, blockhash, txid, blockheight, txheight, vout, kind) in indexed_txs {
+    for (nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind) in indexed_txs {
         if let Err(e) = index_output(
             pool,
             nsid,
             &blockhash,
             &txid,
+            blocktime,
             blockheight,
             txheight,
             vout,
@@ -93,6 +95,7 @@ async fn index_output(
     nsid: Nsid,
     blockhash: &BlockHash,
     txid: &Txid,
+    blocktime: usize,
     blockheight: usize,
     txheight: usize,
     vout: usize,
@@ -108,6 +111,7 @@ async fn index_output(
         nsid,
         blockhash.to_hex(),
         txid.to_hex(),
+        blocktime,
         blockheight,
         txheight,
         vout,

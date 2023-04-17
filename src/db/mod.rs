@@ -10,10 +10,10 @@ use crate::{
 };
 
 static MIGRATIONS: [&str; 11] = [
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blockheight, txheight, vout, kind);",
-    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content);",
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
+    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
-    "CREATE TABLE records_events (name, pubkey, created_at, event_id, records);",
+    "CREATE TABLE records_events (name, pubkey, created_at, event_id, records, indexed_at);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey)",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
 
@@ -76,6 +76,7 @@ pub async fn insert_blockchain(
     nsid: Nsid,
     blockhash: String,
     txid: String,
+    blocktime: usize,
     blockheight: usize,
     txheight: usize,
     vout: usize,
@@ -85,6 +86,7 @@ pub async fn insert_blockchain(
         .bind(nsid.to_hex())
         .bind(blockhash)
         .bind(txid)
+        .bind(blocktime as i64)
         .bind(blockheight as i64)
         .bind(txheight as i64)
         .bind(vout as i64)

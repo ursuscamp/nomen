@@ -1,1 +1,1 @@
-INSERT INTO blockchain (nsid, blockhash, txid, blockheight, txheight, vout, kind) VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO blockchain (nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch());
