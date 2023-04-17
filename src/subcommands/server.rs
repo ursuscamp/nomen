@@ -91,6 +91,11 @@ mod site {
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
+    use time::{
+        format_description::{self, OwnedFormatItem},
+        macros::format_description,
+        OffsetDateTime,
+    };
 
     use crate::db::{self, NameDetails};
 
@@ -136,10 +141,18 @@ mod site {
         record_keys: Vec<String>,
         records: HashMap<String, String>,
         blockhash: String,
-        blocktime: i64,
+        blocktime: String,
         txid: String,
         vout: i64,
         height: i64,
+    }
+
+    impl NsidTemplate {
+        fn format_time(timestamp: i64) -> anyhow::Result<String> {
+            let dt = OffsetDateTime::from_unix_timestamp(timestamp)?;
+            let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+            Ok(dt.format(format)?)
+        }
     }
 
     impl TryFrom<NameDetails> for NsidTemplate {
@@ -149,13 +162,14 @@ mod site {
             let records: HashMap<String, String> = serde_json::from_str(&value.records)?;
             let mut record_keys = records.keys().cloned().collect_vec();
             record_keys.sort();
+            let blocktime = NsidTemplate::format_time(value.blocktime)?;
 
             Ok(NsidTemplate {
                 name: value.name,
                 record_keys,
                 records,
                 blockhash: value.blockhash,
-                blocktime: value.blocktime,
+                blocktime,
                 txid: value.txid,
                 vout: value.vout,
                 height: value.blockheight,
