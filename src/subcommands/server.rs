@@ -99,7 +99,7 @@ mod site {
 
     use crate::db::{self, NameDetails};
 
-    use super::WebError;
+    use super::{util, WebError};
 
     #[derive(askama::Template)]
     #[template(path = "index.html")]
@@ -126,11 +126,16 @@ mod site {
     #[template(path = "explorer.html")]
     pub struct ExplorerTemplate {
         names: Vec<(String, String)>,
+        last_index_time: String,
     }
 
     pub async fn explorer(State(conn): State<SqlitePool>) -> Result<ExplorerTemplate, WebError> {
+        let last_index_time = db::last_index_time(&conn).await?;
+        let last_index_time = util::format_time(last_index_time)?;
+
         Ok(ExplorerTemplate {
             names: db::top_level_names(&conn).await?,
+            last_index_time,
         })
     }
 
@@ -148,14 +153,6 @@ mod site {
         height: i64,
     }
 
-    impl NsidTemplate {
-        fn format_time(timestamp: i64) -> anyhow::Result<String> {
-            let dt = OffsetDateTime::from_unix_timestamp(timestamp)?;
-            let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-            Ok(dt.format(format)?)
-        }
-    }
-
     impl TryFrom<NameDetails> for NsidTemplate {
         type Error = anyhow::Error;
 
@@ -163,8 +160,8 @@ mod site {
             let records: HashMap<String, String> = serde_json::from_str(&value.records)?;
             let mut record_keys = records.keys().cloned().collect_vec();
             record_keys.sort();
-            let blocktime = NsidTemplate::format_time(value.blocktime)?;
-            let records_created_at = NsidTemplate::format_time(value.records_created_at)?;
+            let blocktime = util::format_time(value.blocktime)?;
+            let records_created_at = util::format_time(value.records_created_at)?;
 
             Ok(NsidTemplate {
                 name: value.name,
@@ -219,5 +216,15 @@ mod api {
 
         name.map(Json)
             .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
+    }
+}
+
+mod util {
+    use time::{macros::format_description, OffsetDateTime};
+
+    pub fn format_time(timestamp: i64) -> anyhow::Result<String> {
+        let dt = OffsetDateTime::from_unix_timestamp(timestamp)?;
+        let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+        Ok(dt.format(format)?)
     }
 }

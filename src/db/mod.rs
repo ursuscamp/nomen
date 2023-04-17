@@ -9,7 +9,7 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 11] = [
+static MIGRATIONS: [&str; 12] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
@@ -42,7 +42,9 @@ static MIGRATIONS: [&str; 11] = [
         SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, re.created_at as records_created_at
         FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid
-        LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;"
+        LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;",
+
+    "CREATE TABLE event_log (created_at, type, data);",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -204,4 +206,23 @@ pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, S
             .fetch_all(conn)
             .await?,
     )
+}
+
+pub async fn save_event(conn: &SqlitePool, evt_type: &str, evt_data: &str) -> anyhow::Result<()> {
+    sqlx::query("INSERT INTO event_log (created_at, type, data) VALUES (unixepoch(), ?, ?);")
+        .bind(evt_type)
+        .bind(evt_data)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
+    let (created_at,) = sqlx::query_as::<_, (i64,)>(
+        "SELECT created_at FROM event_log WHERE type = 'index' ORDER BY created_at DESC LIMIT 1;",
+    )
+    .fetch_one(conn)
+    .await?;
+
+    Ok(created_at)
 }
