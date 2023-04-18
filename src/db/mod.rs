@@ -9,7 +9,7 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 12] = [
+static MIGRATIONS: [&str; 13] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
@@ -45,6 +45,8 @@ static MIGRATIONS: [&str; 12] = [
         LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;",
 
     "CREATE TABLE event_log (created_at, type, data);",
+
+    "CREATE TABLE name_owners (name PRIMARY KEY, pubkey, created_at);"
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
