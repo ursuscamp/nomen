@@ -9,13 +9,15 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 13] = [
+static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
     "CREATE TABLE records_events (name, pubkey, created_at, event_id, records, indexed_at);",
-    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey)",
+    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey);",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
+    "CREATE INDEX transfer_events (name, pubkey, created_at, event_id, content, indexed_at);",
+    "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(name, pubkey);",
 
     // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
     // to make sure we are always looking in exact blockchain order
@@ -45,8 +47,6 @@ static MIGRATIONS: [&str; 13] = [
         LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;",
 
     "CREATE TABLE event_log (created_at, type, data);",
-
-    "CREATE TABLE name_owners (name PRIMARY KEY, pubkey, created_at);"
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {

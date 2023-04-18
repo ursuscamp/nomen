@@ -7,12 +7,14 @@ use super::Nsid;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NomenKind {
     Create,
+    Transfer,
 }
 
 impl Display for NomenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             NomenKind::Create => "create",
+            NomenKind::Transfer => "transfer",
         };
         write!(f, "{s}")
     }
@@ -32,8 +34,19 @@ impl NomenTx {
         }
     }
 
+    fn transfer(nsid: Nsid) -> NomenTx {
+        NomenTx {
+            kind: NomenKind::Transfer,
+            nsid,
+        }
+    }
+
     fn parse_create(value: &[u8]) -> anyhow::Result<NomenTx> {
         Ok(NomenTx::create(value.try_into()?))
+    }
+
+    fn parse_transfer(value: &[u8]) -> anyhow::Result<NomenTx> {
+        Ok(NomenTx::transfer(value.try_into()?))
     }
 }
 
@@ -41,6 +54,7 @@ impl From<NomenKind> for u8 {
     fn from(value: NomenKind) -> Self {
         match value {
             NomenKind::Create => 0x00,
+            NomenKind::Transfer => 0x01,
         }
     }
 }
@@ -61,6 +75,7 @@ impl TryFrom<&[u8]> for NomenTx {
 
         let kind = match value.first() {
             Some(0x00) => NomenTx::parse_create(&value[1..])?,
+            Some(0x01) => NomenTx::parse_transfer(&value[1..])?,
             _ => bail!("Unexpected blockchain tx type"),
         };
 
