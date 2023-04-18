@@ -55,17 +55,20 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
         .await?;
 
     let (version,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(version) + 1, 0) FROM schema")
+        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(version) + 1, 0) FROM schema;")
             .fetch_one(&conn)
             .await?;
 
     for (idx, migration) in MIGRATIONS[version as usize..].iter().enumerate() {
-        log::debug!("Migrations schema version {idx}");
-        sqlx::query(migration).execute(&conn).await?;
+        let version = idx as i64 + version;
+        let mut tx = conn.begin().await?;
+        log::debug!("Migrations schema version {version}");
+        sqlx::query(migration).execute(&mut tx).await?;
         sqlx::query("INSERT INTO schema (version) VALUES (?);")
-            .bind(idx as i64)
-            .execute(&conn)
+            .bind(version)
+            .execute(&mut tx)
             .await?;
+        tx.commit().await?;
     }
 
     Ok(conn)
