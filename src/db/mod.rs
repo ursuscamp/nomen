@@ -9,14 +9,14 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 14] = [
+static MIGRATIONS: [&str; 17] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
     "CREATE TABLE records_events (name, pubkey, created_at, event_id, records, indexed_at);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey);",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
-    "CREATE INDEX transfer_events (name, pubkey, created_at, event_id, content, indexed_at);",
+    "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(name, pubkey);",
 
     // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
@@ -37,14 +37,36 @@ static MIGRATIONS: [&str; 14] = [
     "CREATE VIEW name_vw AS 
         SELECT * FROM ranked_name_vw WHERE row = 1;",
 
+    // Starting with a valid name event, follow the graph recrusively to each successive transfer_event (if such exists),
+    // connecting punbkey -> content (next pubkey) -> pubkey -> content (next pubkey), etc. The resulting query returns
+    // the successive owners of each name
+    "CREATE VIEW ownership_chain_vw AS
+        WITH RECURSIVE owners(name, pk) as (
+            SELECT name, pubkey FROM name_vw
+            UNION ALL
+            SELECT te.name, te.content FROM transfer_events te JOIN owners ON te.pubkey = owners.pk AND te.name = owners.name
+        )
+        SELECT name, pk FROM owners;",
+
+    // Partition over the names, and only return the final value (the latest owner)
+    "CREATE VIEW owners_vw AS
+        SELECT DISTINCT name, last_value(pk) OVER (PARTITION BY name) AS pubkey 
+        FROM ownership_chain_vw;",
+
+    // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
+    "CREATE TABLE name_owners (name, pubkey);",
+
     "CREATE VIEW records_vw AS
         SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
-        LEFT JOIN records_events re ON nvw.name = re.name AND nvw.pubkey = re.pubkey;",
+        JOIN name_owners no ON nvw.name = no.name
+        LEFT JOIN records_events re ON nvw.name = re.name AND no.pubkey = re.pubkey;",
+
     "CREATE VIEW detail_vw AS
         SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, re.created_at as records_created_at
         FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid
-        LEFT JOIN records_events re on ne.name = re.name AND ne.pubkey = re.pubkey;",
+        JOIN name_owners no ON ne.name = no.name
+        LEFT JOIN records_events re on ne.name = re.name AND no.pubkey = re.pubkey;",
 
     "CREATE TABLE event_log (created_at, type, data);",
 ];
