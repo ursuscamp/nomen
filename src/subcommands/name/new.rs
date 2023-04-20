@@ -36,7 +36,7 @@ fn create_event(
         "",
         &[
             Tag::Identifier(nsid.to_hex()),
-            Tag::Generic(TagKind::Custom("ind".to_owned()), vec![args.name.clone()]),
+            Tag::Generic(TagKind::Custom("nom".to_owned()), vec![args.name.clone()]),
         ],
     )
     .to_event(&keys)?;

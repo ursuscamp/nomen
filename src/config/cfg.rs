@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network};
+use bitcoin::{secp256k1::SecretKey, Network, TxIn, XOnlyPublicKey};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
@@ -171,7 +171,7 @@ pub enum Subcommand {
     /// Create and broadcast new names.
     #[command(subcommand)]
     #[serde(skip)]
-    Name(NameSubcommand),
+    Name(Box<NameSubcommand>),
 
     /// Scan and index the blockchain.
     Index,
@@ -243,6 +243,9 @@ pub enum NameSubcommand {
 
     /// Broadcast a new record for your name.
     Record(NameRecordSubcomand),
+
+    /// Transfer a domain to a new keypair.
+    Transfer(NameTransferSubcommand),
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -271,6 +274,25 @@ pub struct NameRecordSubcomand {
     /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct NameTransferSubcommand {
+    /// The name to be transferred.
+    pub name: String,
+
+    /// The public key of the previous owner.
+    pub previous: XOnlyPublicKey,
+
+    /// The public key of the new owner.
+    pub new: XOnlyPublicKey,
+
+    #[command(flatten)]
+    pub txinfo: TxInfo,
+
+    /// JSON command output
+    #[arg(short, long)]
+    pub json: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]
