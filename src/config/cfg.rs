@@ -4,7 +4,7 @@ use bitcoin::{secp256k1::SecretKey, Network, TxIn, XOnlyPublicKey};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
-    Options,
+    Event, Options,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
@@ -160,7 +160,7 @@ impl Config {
     }
 }
 
-#[derive(clap::Subcommand, Deserialize, Serialize, Debug, Clone)]
+#[derive(clap::Subcommand, Debug, Clone)]
 pub enum Subcommand {
     #[command(skip)]
     Noop,
@@ -168,9 +168,11 @@ pub enum Subcommand {
     /// Generate a private/public keypair.
     GenerateKeypair,
 
+    /// Sign/broadcast a raw Nostr event
+    SignEvent(SignEventCommand),
+
     /// Create and broadcast new names.
     #[command(subcommand)]
-    #[serde(skip)]
     Name(Box<NameSubcommand>),
 
     /// Scan and index the blockchain.
@@ -178,7 +180,6 @@ pub enum Subcommand {
 
     /// Useful debugging commands
     #[command(subcommand)]
-    #[serde(skip)]
     Debug(DebugSubcommand),
 
     /// Start the HTTP server
@@ -313,4 +314,18 @@ pub struct TxInfo {
     /// Fee to use for the transaction
     #[arg(short, long, default_value = "10000")]
     pub fee: u32,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct SignEventCommand {
+    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+    /// Will prompt if not provided.
+    #[arg(short, long)]
+    pub privkey: Option<SecretKey>,
+
+    /// Broadcast event to configured relays.
+    #[arg(short, long)]
+    pub broadcast: bool,
+
+    pub event: String,
 }

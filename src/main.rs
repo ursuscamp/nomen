@@ -19,6 +19,7 @@ async fn main() -> anyhow::Result<()> {
     match &config.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
+        config::Subcommand::SignEvent(event) => subcommands::sign_event(&config, event).await?,
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,
         config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
