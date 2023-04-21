@@ -10,10 +10,10 @@ NEW_PUBKEY="cb5dd62f5018ddd6dc9c49b492b20c78dc3c84fc7f237b101334c5aed2bb6247"
 
 ADDR=$($CMD getnewaddress)
 TXID=$($CMD listunspent | jq -r .[0].txid)
-DATA=$(RUST_LOG=off cargo run -- name transfer --json smith $OLD_PUBKEY $NEW_PUBKEY $TXID 0 $ADDR)
+DATA=$(RUST_LOG=off cargo run -q -- name transfer --json smith $OLD_PUBKEY $NEW_PUBKEY $TXID 0 $ADDR)
 UTX=$(echo $DATA | jq -r .unsigned_tx)
 UEVENT=$(echo $DATA | jq -r .unsigned_event)
 STX=$($CMD signrawtransactionwithwallet $UTX | jq -r .hex)
 $CMD sendrawtransaction $STX
 $CMD generatetoaddress 3 $ADDR
-echo $UEVENT
+RUST_LOG=off cargo run -q -- sign-event --privkey $OLD_PRIVKEY --broadcast $UEVENT
