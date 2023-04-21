@@ -260,6 +260,10 @@ pub struct NameNewSubcommand {
     /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
+
+    /// JSON command output
+    #[arg(short, long)]
+    pub json: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]
