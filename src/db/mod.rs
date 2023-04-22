@@ -17,7 +17,7 @@ static MIGRATIONS: [&str; 17] = [
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey);",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
     "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
-    "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(name, pubkey);",
+    "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(nsid)",
 
     // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
     // to make sure we are always looking in exact blockchain order
@@ -252,4 +252,34 @@ pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
     .await?;
 
     Ok(created_at)
+}
+
+pub async fn last_transfer_time(conn: &SqlitePool) -> anyhow::Result<u64> {
+    let (t,) =
+        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM transfer_events;")
+            .fetch_one(conn)
+            .await?;
+    Ok(t as u64)
+}
+
+pub async fn insert_transfer_event(
+    conn: &SqlitePool,
+    nsid: Nsid,
+    pubkey: XOnlyPublicKey,
+    created_at: i64,
+    event_id: EventId,
+    name: String,
+    children: String,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
+        .bind(nsid.to_hex())
+        .bind(pubkey.to_hex())
+        .bind(created_at)
+        .bind(event_id.to_hex())
+        .bind(name)
+        .bind(children)
+        .execute(conn)
+        .await?;
+
+    Ok(())
 }
