@@ -62,7 +62,7 @@ static MIGRATIONS: [&str; 17] = [
         LEFT JOIN records_events re ON nvw.name = re.name AND no.pubkey = re.pubkey;",
 
     "CREATE VIEW detail_vw AS
-        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, re.created_at as records_created_at
+        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, no.pubkey, re.created_at as records_created_at
         FROM ordered_blockchain_vw b
         JOIN name_events ne on b.nsid = ne.nsid
         JOIN name_owners no ON ne.name = no.name
@@ -172,6 +172,7 @@ pub struct NameDetails {
     pub blockheight: i64,
     pub name: String,
     pub records: String,
+    pub pubkey: String,
     pub records_created_at: i64,
 }
 

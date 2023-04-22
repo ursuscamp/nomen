@@ -151,6 +151,7 @@ mod site {
         txid: String,
         vout: i64,
         height: i64,
+        pubkey: String,
     }
 
     impl TryFrom<NameDetails> for NsidTemplate {
@@ -173,6 +174,7 @@ mod site {
                 txid: value.txid,
                 vout: value.vout,
                 height: value.blockheight,
+                pubkey: value.pubkey,
             })
         }
     }
