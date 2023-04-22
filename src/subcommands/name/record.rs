@@ -24,7 +24,7 @@ pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyho
         &[
             Tag::Identifier(nsid.to_string()),
             Tag::Generic(
-                TagKind::Custom("ind".to_owned()),
+                TagKind::Custom("nom".to_owned()),
                 vec![record_data.name.clone()],
             ),
         ],

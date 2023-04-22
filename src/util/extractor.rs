@@ -36,7 +36,7 @@ impl EventExtractor for Event {
             .iter()
             .filter_map(|t| match t {
                 nostr_sdk::Tag::Generic(tk, values) => match tk {
-                    nostr_sdk::prelude::TagKind::Custom(tn) if tn == "ind" => {
+                    nostr_sdk::prelude::TagKind::Custom(tn) if tn == "nom" => {
                         Some(values.iter().next()?.clone())
                     }
                     _ => None,
@@ -44,7 +44,7 @@ impl EventExtractor for Event {
                 _ => None,
             })
             .next()
-            .ok_or_else(|| anyhow!("Missing or invalid 'ind' tag"))?;
+            .ok_or_else(|| anyhow!("Missing or invalid 'nom' tag"))?;
         Ok(name)
     }
 
@@ -67,7 +67,7 @@ impl EventExtractor for Event {
             .iter()
             .find_map(|t| match t {
                 nostr_sdk::Tag::Generic(tk, values) => match tk {
-                    nostr_sdk::prelude::TagKind::Custom(tn) if tn == "ind" => {
+                    nostr_sdk::prelude::TagKind::Custom(tn) if tn == "nom" => {
                         Some(values.get(1)?.clone())
                     }
                     _ => None,
