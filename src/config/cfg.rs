@@ -1,15 +1,14 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network, TxIn, XOnlyPublicKey};
+use bitcoin::{secp256k1::SecretKey, Network, XOnlyPublicKey};
 use clap::Parser;
 use nostr_sdk::{
-    prelude::{FromSkStr, ToBech32},
-    Event, Options,
+    prelude::{FromSkStr, ToBech32}, Options,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal, Nsid};
+use crate::util::{KeyVal};
 
 use super::ConfigFile;
 

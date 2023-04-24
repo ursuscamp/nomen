@@ -7,7 +7,7 @@ use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 use nostr_sdk::Event;
 
-use super::{EventExtractor, Hash160, NameKind, NsidBuilder};
+use super::{EventExtractor, NameKind, NsidBuilder};
 
 #[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
 pub struct Nsid([u8; 20]);

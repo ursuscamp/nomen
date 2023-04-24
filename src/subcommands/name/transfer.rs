@@ -7,7 +7,7 @@ use crate::{
     util::{tag_print, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
-use super::{create_unsigned_tx, get_keys};
+use super::{create_unsigned_tx};
 
 #[derive(serde::Serialize)]
 struct CmdOutput {

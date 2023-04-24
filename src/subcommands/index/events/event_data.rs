@@ -4,7 +4,7 @@ use anyhow::bail;
 use bitcoin::XOnlyPublicKey;
 use nostr_sdk::{Event, EventId};
 
-use crate::util::{EventExtractor, Nsid, NsidBuilder};
+use crate::util::{EventExtractor, Nsid};
 
 #[derive(Debug, Clone)]
 pub struct EventData {
@@ -38,17 +38,11 @@ impl EventData {
     }
 
     pub fn validate(&self) -> anyhow::Result<()> {
-        // let nsid = self.recalc_nsid();
         if self.nsid != self.calculated_nsid {
             bail!("Invalid nsid")
         }
+        // TODO: validate name regex here
         Ok(())
-    }
-
-    pub fn recalc_nsid(&self) -> Nsid {
-        let builder = NsidBuilder::new(&self.name, &self.pubkey);
-
-        builder.finalize()
     }
 }
 

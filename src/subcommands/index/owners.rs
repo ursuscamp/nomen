@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 pub async fn reindex(conn: &SqlitePool) -> anyhow::Result<()> {
+    log::info!("Beginning onwer index rebuild.");
     let mut tx = conn.begin().await?;
     sqlx::query("DELETE FROM name_owners;")
         .execute(&mut tx)
@@ -9,5 +10,6 @@ pub async fn reindex(conn: &SqlitePool) -> anyhow::Result<()> {
         .execute(&mut tx)
         .await?;
     tx.commit().await?;
+    log::info!("Owner index build complete.");
     Ok(())
 }
