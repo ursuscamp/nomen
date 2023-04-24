@@ -3,8 +3,11 @@ use std::{
     str::FromStr,
 };
 
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
+use nostr_sdk::Event;
+
+use super::{EventExtractor, Hash160, NameKind, NsidBuilder};
 
 #[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
 pub struct Nsid([u8; 20]);
@@ -21,6 +24,23 @@ impl TryFrom<&[u8]> for Nsid {
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Nsid::from_slice(value)
+    }
+}
+
+impl TryFrom<Event> for Nsid {
+    type Error = anyhow::Error;
+
+    fn try_from(event: Event) -> Result<Self, Self::Error> {
+        let nk: NameKind = event.kind.try_into()?;
+        let name = event.extract_name()?;
+        let builder = match nk {
+            NameKind::Name | NameKind::Record => NsidBuilder::new(&name, &event.pubkey),
+            NameKind::Transfer => {
+                let nextpk: XOnlyPublicKey = event.content.parse()?;
+                NsidBuilder::new(&name, &nextpk)
+            }
+        };
+        Ok(builder.finalize())
     }
 }
 

@@ -5,6 +5,7 @@ mod kind;
 mod nsid;
 mod nsid_builder;
 
+use anyhow::bail;
 pub use extractor::*;
 pub use hash160::*;
 pub use keyval::*;
@@ -22,6 +23,20 @@ pub enum NameKind {
 impl From<NameKind> for nostr_sdk::Kind {
     fn from(value: NameKind) -> Self {
         nostr_sdk::Kind::ParameterizedReplaceable(value as u16)
+    }
+}
+
+impl TryFrom<nostr_sdk::Kind> for NameKind {
+    type Error = anyhow::Error;
+
+    fn try_from(value: nostr_sdk::Kind) -> Result<Self, Self::Error> {
+        let nk = match value {
+            nostr_sdk::Kind::ParameterizedReplaceable(38300) => NameKind::Name,
+            nostr_sdk::Kind::ParameterizedReplaceable(38301) => NameKind::Record,
+            nostr_sdk::Kind::ParameterizedReplaceable(38302) => NameKind::Transfer,
+            _ => bail!("Invalid Event kind"),
+        };
+        Ok(nk)
     }
 }
 

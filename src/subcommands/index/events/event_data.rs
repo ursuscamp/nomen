@@ -10,6 +10,7 @@ use crate::util::{EventExtractor, Nsid, NsidBuilder};
 pub struct EventData {
     pub event_id: EventId,
     pub nsid: Nsid,
+    pub calculated_nsid: Nsid,
     pub pubkey: XOnlyPublicKey,
     pub name: String,
     pub created_at: i64,
@@ -20,12 +21,14 @@ pub struct EventData {
 impl EventData {
     pub fn from_event(event: &Event) -> anyhow::Result<Self> {
         let nsid = event.extract_nsid()?;
+        let calculated_nsid = event.clone().try_into()?;
         let name = event.extract_name()?;
         let records = event.extract_records().ok();
 
         Ok(EventData {
             event_id: event.id,
             nsid,
+            calculated_nsid,
             pubkey: event.pubkey,
             name,
             created_at: event.created_at.as_i64(),
@@ -35,8 +38,8 @@ impl EventData {
     }
 
     pub fn validate(&self) -> anyhow::Result<()> {
-        let nsid = self.recalc_nsid();
-        if nsid != self.nsid {
+        // let nsid = self.recalc_nsid();
+        if self.nsid != self.calculated_nsid {
             bail!("Invalid nsid")
         }
         Ok(())
