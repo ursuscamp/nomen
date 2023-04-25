@@ -34,7 +34,7 @@ impl TryFrom<Event> for Nsid {
         let nk: NameKind = event.kind.try_into()?;
         let name = event.extract_name()?;
         let builder = match nk {
-            NameKind::Name | NameKind::Record => NsidBuilder::new(&name, &event.pubkey),
+            NameKind::Name => NsidBuilder::new(&name, &event.pubkey),
             NameKind::Transfer => {
                 let nextpk: XOnlyPublicKey = event.content.parse()?;
                 NsidBuilder::new(&name, &nextpk)

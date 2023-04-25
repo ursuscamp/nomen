@@ -108,7 +108,7 @@ pub(crate) fn record_event(
     let records = serde_json::to_string(&records)?;
     let nsid = NsidBuilder::new(name, &pubkey).finalize();
     let event = EventBuilder::new(
-        NameKind::Record.into(),
+        NameKind::Name.into(),
         records,
         &[
             Tag::Identifier(nsid.to_string()),

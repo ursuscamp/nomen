@@ -51,7 +51,7 @@ async fn latest_events(
 ) -> anyhow::Result<Vec<Event>> {
     let index_height = db::last_records_time(pool).await?;
     let filter = Filter::new()
-        .kind(NameKind::Record.into())
+        .kind(NameKind::Name.into())
         .since(index_height.into());
 
     let (_keys, client) = config.nostr_random_client().await?;

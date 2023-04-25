@@ -228,7 +228,7 @@ pub async fn name_records(
 
 pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, String)>> {
     Ok(
-        sqlx::query_as::<_, (String, String)>("SELECT * FROM name_vw;")
+        sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM name_vw;")
             .fetch_all(conn)
             .await?,
     )

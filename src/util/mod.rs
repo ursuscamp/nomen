@@ -16,8 +16,7 @@ use yansi::Paint;
 
 pub enum NameKind {
     Name = 38300,
-    Record = 38301,
-    Transfer = 38302,
+    Transfer = 38301,
 }
 
 impl From<NameKind> for nostr_sdk::Kind {
@@ -32,8 +31,7 @@ impl TryFrom<nostr_sdk::Kind> for NameKind {
     fn try_from(value: nostr_sdk::Kind) -> Result<Self, Self::Error> {
         let nk = match value {
             nostr_sdk::Kind::ParameterizedReplaceable(38300) => NameKind::Name,
-            nostr_sdk::Kind::ParameterizedReplaceable(38301) => NameKind::Record,
-            nostr_sdk::Kind::ParameterizedReplaceable(38302) => NameKind::Transfer,
+            nostr_sdk::Kind::ParameterizedReplaceable(38301) => NameKind::Transfer,
             _ => bail!("Invalid Event kind"),
         };
         Ok(nk)
