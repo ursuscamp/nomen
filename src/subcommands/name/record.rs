@@ -18,7 +18,7 @@ pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyho
         .collect();
     let records = serde_json::to_string(&map)?;
 
-    let event = super::record_event(keys.public_key(), &map, &record_data.name)?.sign(&keys)?;
+    let event = super::name_event(keys.public_key(), &map, &record_data.name)?.sign(&keys)?;
 
     let (_keys, client) = config.nostr_random_client().await?;
     let event_id = client.send_event(event).await?;

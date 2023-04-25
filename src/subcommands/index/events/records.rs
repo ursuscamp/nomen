@@ -30,7 +30,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         raw_content,
         records: _,
     } = ed;
-    db::insert_records_event(
+    db::insert_name_event(
         pool,
         name,
         fingerprint,

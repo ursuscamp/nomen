@@ -100,7 +100,7 @@ pub(crate) async fn create_unsigned_tx(
     Ok(tx)
 }
 
-pub(crate) fn record_event(
+pub(crate) fn name_event(
     pubkey: XOnlyPublicKey,
     records: &HashMap<String, String>,
     name: &str,

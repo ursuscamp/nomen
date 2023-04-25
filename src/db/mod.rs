@@ -186,7 +186,7 @@ pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn insert_records_event(
+pub async fn insert_name_event(
     conn: &SqlitePool,
     name: String,
     fingerprint: [u8; 5],
@@ -196,7 +196,7 @@ pub async fn insert_records_event(
     event_id: EventId,
     records: String,
 ) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_records_event.sql"))
+    sqlx::query(include_str!("./queries/insert_name_event.sql"))
         .bind(name)
         .bind(fingerprint.to_hex())
         .bind(nsid.to_hex())
