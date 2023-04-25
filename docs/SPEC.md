@@ -24,7 +24,7 @@ In order to claim a name, publish an output to the bitcoin blockchain in this fo
 
 `NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. If the `TRANSACTION TYPE` is `0x01` (ownership change), then the `NAMESPACE ID` is the HASH-160 of `<NAME><NEW OWNER PUBKEY>`.
 
-**Note:** The owner of the Bitcoin UTXO that generated the `OP_RETURN`, or the amount of the from UTXO, do not matter. Bitcoin, in this case, is being utilized only as a decentralized timestamp server. The only thing that matters is the order of transaction outputs.
+**Note:** The owner of the Bitcoin UTXO that generated the `OP_RETURN`, or the amount in the UTXO, do not matter. Bitcoin, in this case, is being utilized only as a decentralized timestamp server. The only thing that matters is the order of transaction outputs.
 
 ### Nostr
 
@@ -39,7 +39,7 @@ There are currently three types of Nostr events. These are all parameterized rep
 
 #### New Name
 
-After publishing a `0x00` name transaction, publish a `38300` kind Nostr event. The `d` tag for the event should be the lower case hex representation of the `NAMESPACE ID` published to the blockchain. Additionally, there should be a `nom` tag with the `name` value as the parameter. `content` must be a JSON-serialized object of key/value pairs. These key/value pairs represent the records for the name. For example, `NPUB` might be the users Nostr npub, `EMAIL` might be the users email, etc. See `Appendix C` for some recommended key types.
+After publishing a `0x00` name transaction, publish a `38300` kind Nostr event. The `d` tag for the event should be the lower case hex representation of the `NAMESPACE ID` published to the blockchain. Additionally, there should be a `nom` tag with the `name` value as the parameter. `content` must be a JSON-serialized object of key/value pairs. These key/value pairs represent the records for the name. For example, `NPUB` might be the owner's Nostr npub, `EMAIL` might be the owner's email, etc. See `Appendix D` for some recommended key types.
 
 When the records need to be updated, the owner may just publish another name event with different records and it will be replaced.
 
