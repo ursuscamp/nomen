@@ -32,6 +32,11 @@ impl Hash160 {
             .expect("Hash160 struct should return 20 bytes")
     }
 
+    pub fn fingerprint(self) -> [u8; 5] {
+        let h = self.finalize();
+        h[..5].try_into().unwrap()
+    }
+
     pub fn digest(data: &[u8]) -> [u8; 20] {
         Hash160::default().chain_update(data).finalize()
     }
@@ -55,6 +60,14 @@ mod tests {
         h.update(b"hello");
         let d = h.finalize().to_hex();
         assert_eq!(d, "b6a9c8c230722b7c748331a8b450f05566dc7d0f");
+    }
+
+    #[test]
+    fn test_fingerprint() {
+        let mut h = Hash160::default();
+        h.update(b"hello");
+        let d = h.fingerprint().to_hex();
+        assert_eq!(d, "b6a9c8c230");
     }
 
     #[test]

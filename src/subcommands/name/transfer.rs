@@ -4,10 +4,10 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 
 use crate::{
     config::{Config, NameTransferSubcommand},
-    util::{tag_print, NameKind, NomenKind, Nsid, NsidBuilder},
+    util::{tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
-use super::{create_unsigned_tx};
+use super::create_unsigned_tx;
 
 #[derive(serde::Serialize)]
 struct CmdOutput {
@@ -18,7 +18,11 @@ struct CmdOutput {
 
 pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow::Result<()> {
     let nsid = NsidBuilder::new(&args.name, &args.new).finalize();
-    let unsigned_tx = create_unsigned_tx(config, &args.txinfo, nsid, NomenKind::Transfer).await?;
+    let fingerprint = Hash160::default()
+        .chain_update(args.name.as_bytes())
+        .fingerprint();
+    let unsigned_tx =
+        create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Transfer).await?;
     let unsigned_event = create_event(nsid, args)?;
     let output = CmdOutput {
         nsid: nsid.to_hex(),

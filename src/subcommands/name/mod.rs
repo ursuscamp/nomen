@@ -52,10 +52,11 @@ pub(crate) async fn get_transaction(
     Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
 }
 
-pub(crate) fn op_return(nsid: Nsid, kind: NomenKind) -> Vec<u8> {
+pub(crate) fn op_return(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) -> Vec<u8> {
     let mut v = Vec::with_capacity(25);
     v.extend(b"NOM\x00");
     v.push(kind.into());
+    v.extend(fingerprint);
     v.extend(nsid.as_ref());
     v
 }
@@ -63,6 +64,7 @@ pub(crate) fn op_return(nsid: Nsid, kind: NomenKind) -> Vec<u8> {
 pub(crate) async fn create_unsigned_tx(
     config: &Config,
     args: &TxInfo,
+    fingerprint: [u8; 5],
     nsid: Nsid,
     kind: NomenKind,
 ) -> Result<bitcoin::Transaction, anyhow::Error> {
@@ -87,7 +89,7 @@ pub(crate) async fn create_unsigned_tx(
     };
     let op_return = bitcoin::TxOut {
         value: 0,
-        script_pubkey: bitcoin::Script::new_op_return(&op_return(nsid, kind)),
+        script_pubkey: bitcoin::Script::new_op_return(&op_return(fingerprint, nsid, kind)),
     };
     let tx = bitcoin::Transaction {
         version: 1,
