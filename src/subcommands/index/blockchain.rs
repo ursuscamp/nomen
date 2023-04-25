@@ -46,6 +46,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                     kind,
                                 }) => {
                                     index_txs.push((
+                                        fingerprint,
                                         nsid,
                                         blockhash,
                                         *txid,
@@ -71,9 +72,12 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     })
     .await??;
 
-    for (nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind) in indexed_txs {
+    for (fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind) in
+        indexed_txs
+    {
         if let Err(e) = index_output(
             pool,
+            fingerprint,
             nsid,
             &blockhash,
             &txid,
@@ -96,6 +100,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 #[allow(clippy::too_many_arguments)]
 async fn index_output(
     conn: &SqlitePool,
+    fingerprint: [u8; 5],
     nsid: Nsid,
     blockhash: &BlockHash,
     txid: &Txid,
@@ -112,6 +117,7 @@ async fn index_output(
 
     db::insert_blockchain(
         conn,
+        fingerprint,
         nsid,
         blockhash.to_hex(),
         txid.to_hex(),

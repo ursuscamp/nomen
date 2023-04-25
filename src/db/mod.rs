@@ -10,7 +10,7 @@ use crate::{
 };
 
 static MIGRATIONS: [&str; 17] = [
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
+    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
     "CREATE TABLE records_events (name, pubkey, created_at, event_id, records, indexed_at);",
@@ -102,6 +102,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_blockchain(
     conn: &SqlitePool,
+    fingerprint: [u8; 5],
     nsid: Nsid,
     blockhash: String,
     txid: String,
@@ -112,6 +113,7 @@ pub async fn insert_blockchain(
     kind: NomenKind,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
+        .bind(fingerprint.to_hex())
         .bind(nsid.to_hex())
         .bind(blockhash)
         .bind(txid)
