@@ -23,30 +23,39 @@ impl Display for NomenKind {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NomenTx {
     pub kind: NomenKind,
+    pub fingerprint: [u8; 5],
     pub nsid: Nsid,
 }
 
 impl NomenTx {
-    fn create(nsid: Nsid) -> NomenTx {
+    fn create(fingerprint: [u8; 5], nsid: Nsid) -> NomenTx {
         NomenTx {
             kind: NomenKind::Create,
+            fingerprint,
             nsid,
         }
     }
 
-    fn transfer(nsid: Nsid) -> NomenTx {
+    fn transfer(fingerprint: [u8; 5], nsid: Nsid) -> NomenTx {
         NomenTx {
             kind: NomenKind::Transfer,
+            fingerprint,
             nsid,
         }
     }
 
     fn parse_create(value: &[u8]) -> anyhow::Result<NomenTx> {
-        Ok(NomenTx::create(value.try_into()?))
+        Ok(NomenTx::create(
+            value[..5].try_into()?,
+            value[5..].try_into()?,
+        ))
     }
 
     fn parse_transfer(value: &[u8]) -> anyhow::Result<NomenTx> {
-        Ok(NomenTx::transfer(value.try_into()?))
+        Ok(NomenTx::transfer(
+            value[..5].try_into()?,
+            value[5..].try_into()?,
+        ))
     }
 }
 
@@ -93,15 +102,17 @@ mod tests {
 
     #[test]
     fn test_parse_create() {
+        let fp = hex::decode("0102030405").unwrap();
         let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
         let create = b"NOM\x00\x00"
             .iter()
+            .chain(fp.iter())
             .chain(nsid.to_vec().iter())
             .copied()
             .collect_vec();
         assert_eq!(
             NomenTx::try_from(create.as_ref()).unwrap(),
-            NomenTx::create(nsid)
+            NomenTx::create(fp.try_into().unwrap(), nsid)
         );
     }
 

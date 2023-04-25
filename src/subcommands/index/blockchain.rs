@@ -40,7 +40,11 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                         // Pre-check if it starts with NOM, so we can filter out some unnecessary errors from the logs
                         if b.starts_with(b"NOM") {
                             match NomenTx::try_from(b) {
-                                Ok(NomenTx { nsid, kind }) => {
+                                Ok(NomenTx {
+                                    fingerprint,
+                                    nsid,
+                                    kind,
+                                }) => {
                                     index_txs.push((
                                         nsid,
                                         blockhash,
