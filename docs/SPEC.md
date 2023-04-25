@@ -1,56 +1,79 @@
-# GUNS
+# Nomen
 
-## Global Uncensorable Name System
+Nomen is a protocol for deriving globally unique names based on Bitcoin and Nostr.
 
-### Specification
+## Overview
 
-#### Introduction
+This protocol is intended to be extremely simple. Bitcoin is used for ordering of claims to names, and Nostr is as the data transport layer for name information.
 
-The following lay out the specification for GUNS, the Global Uncensorable Name System. It is designed in the hopes that it will provide a global name system without the need for a centralized organization like ICANN with final control authority.
+Each name is a globally unique value, and are claimed on a first come/first serve basis. In order to claim (or register) a name, a claim is published to the Bitcoin blockchain in the form of a hash in an OP_RETURN. A special event is published to Nostr with the necessary information to recreate the hash.
 
-#### Workflow
+Indexers (like a name server) link on-chain claims to published Nostr events and provide an interface to query records for these names.
 
-##### Initiation Transaction
+## Details
 
-In order to initiate a new namespace, a `NAMESPACE_ID` must be commited to the Bitcoin blockchain in an OP_RETURN output (output value may be `0`). This is called an __initiation transaction__.
+### Blockchain
 
-The initiation transaction must take this form: `OP_RETURN GUN \x00 \x00 NAMESPACE_ID`.
+In order to claim a name, publish an output to the bitcoin blockchain in this format: `OP_RETURN <VERSION><TRANSACTION TYPE><NAMESPACE ID>`. All names have an associated owner, which just a private/public keypair. Public keys are always 32-byte X-Only Public Keys used everywhere in Nostr and Bitcoin Schnorr signatures.
 
-The null byte `\x00` following `GUN` is a version byte. It's made to indicate which version of the parser to user for the following information. Currently, version `0` is the only version, but potential future protocol revisions should increment by 1.
+`VERSION` is reserved for future use, for incompatible changes to the protocol, or unlocking additional namespace. It is one byte and must currently be `0x00`.
 
-The next null byte is a __transaction type__. The transaction type indicates indicates which transaction will follow. Transsaction type `0` indicates a namespace intitiation transaction.
+`TRANSACTION TYPE` represents the type of claim being made on chain. It is one byte. It may be `0x00` which represents a new name being claimed, or `0x01` which represents an ownership change of the name (owned by a new keypair).
 
-The `NAMESPACE_ID` is a 20-byte hash value of the namespace data. It is created by concatenating the following values: 32-byte secp256k1 public key, 32-byte merkle root for namespace data, and the UTF-8 encoded __fully qualified name__. Then the value is run through the HASH160 algorithm like so: `RIPEMD160(SHA256(PUBKEY MERKLE_ROOT? FULLY_QUALIFIED_NAME))`. The 20-byte value produced by this function is the `NAMESPACE_ID`, which uniquely identifies a root name.
+`NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. If the `TRANSACTION TYPE` is `0x01` (ownership change), then the `NAMESPACE ID` is the HASH-160 of `<NAME><NEW OWNER PUBKEY>`.
 
-If a namespace has no children, the merkle root should be skipped.
+**Note:** The owner of the Bitcoin UTXO that generated the `OP_RETURN`, or the amount of the from UTXO, do not matter. Bitcoin, in this case, is being utilized only as a decentralized timestamp server. The only thing that matters is the order.
 
-The fully qualified name is a complete name, from parent's name all the way to a child. So if the top-level namespace `com` has child `amazon` which in turn has a child `www` then the fully qualified name is `www.amazon.com`.
+### Nostr
 
-Namespace names's must obey the following limitations:
+Nostr is the propogation layer of the protocol. The only information on-chain is the information necessary to determination ownership of a name, and that is only in a shortened hash form.
 
-* Must be 256 bytes or less when fully qualified (restriction may be lifted in later versions).
-* Must be match the following regular expression: `[a-z][a-z0-9\-_]*` (restrictions may be lifted in later versions).
-* Must NOT begin with underscore character `_`. All names beginning with underscore characters are reserved for protocol use. Even when character restrictions are lifted, `_` will always be reserved.
+There are currently three types of Nostr events. These are all parameterized replaceable events (all events are idempotent and thus replaceable).
 
-During indexing, a client must ignore any transactions where any names violate these rules. For the purposes of the protocol, the invalid transaction may as well not exist. In the case of an initiation transaction, for example, if a namespace root is valid, but a child name is not valid, the entire transaction is invalid, and the namespace root is still considered "free" to be claimed by anyone.
+| Event kind | Event type    | Description                                    |
+|------------|---------------|------------------------------------------------|
+| 38300      | NEW NAME      | Match to `0x00` transaction type               |
+| 38301      | RECORDS       | Publish a new record set for a particular name |
+| 38300      | TRANSFER NAME | Match to `0x01` transaction type               |
 
+#### New Name
 
-#### Index
+After publishing a `0x00` name transaction, publish a `38300` kind Nostr event. The `d` tag for the event should be the lower case hex representation of the `NAMESPACE ID` published to the blockchain. Additionally, there should be a `nom` tag with the `name` value as the parameter. `content` is unused, but recommended to be empty. The published event must be signed by the keypair that made the claim on the blockchain. I.e., the `pubkey` value should be part of the namespace ID.
 
-##### Merkle Roots
+When receiving new events, and indexer should recalculate the namespace ID and compare to the `d` tag to validate, then use the namespace ID to link to blockchain for correct ordering.
 
-Each domain makes up a namespace of child namespaces, potentially infinitely. Each commitment to the blockchain has a namespace ID (`nsid`), as mentioned above. Part of the __NSID__ is a merkle root who's tree consists of the child namespaces __NSIDs__. The merkle root is calculated by doing a HASH160 on a __NSID__ and it's neighbor. If there are an odd number of names, then the last one is hashed with itself. When there is only one hash remaining, this is the merkle root.
+#### Records
 
-##### Transaction Types
+Every name can represent a series of key/value pairs, much like DNS. These records can be any info the owner wishes to convey with their name. It could anything from an IP address/DNS name for a website, to an NPUB, email address, etc.
 
-| Transaction Type | Description            |
-|------------------|------------------------|
-| 0                | Initiation Transaction |
+To update records, publish a `38301` event to Nostr. The `d` tag should be the `NAMESPACE ID`. The `nom` tag should have the value of the `name`. The event must be signed by the owning keypair. The `content` must be a JSON-encoded object representing the record key/value pairs. Because this is a replaceable event, updating records just means publishing a new record event.
 
-##### Standard Name Types
+**Note:** This event type does _NOT_ have an on-chain equivalent, as there is no ownership change involved here.
 
-| Name Type | Description      |
-|-----------|------------------|
-| 4         | IPv4 address     |
-| 6         | IPv6 address     |
-| NPUB      | Nostr public key |
+#### Transfer
+
+After publishing a `0x01` transfer transaction, publish a `38302` kind Nostr event. The `d` tag for the event should be the lower case hex representation of the `NAMESPACE ID` published to the blockchain. Additionally, there should be a `nom` tag with the `name` value as the parameter. `content` must be lowercase hex encoded value of the pubkey of the **_new_** owner. The published event must be signed by the current owner of the name, in order to properly establish chain of custody.
+
+When receiving new events, and indexer should recalculate the namespace ID and compare to the `d` tag to validate, then use the namespace ID to link to blockchain for correct ordering. Unlike publishing new names, the namespace ID in this case is not constructed from the pubkey of the original owner, but the pubkey of the **_new_** owner.
+
+## Appendix A: Name format
+
+It is necessary to limit the characters used in names. While it might be tempting to allow any valid UTF-8 string, there are good reasons not to do this. In the UNICODE standards, there are sometimes different ways to the construct the same character, invisible characters, or "whitespace" characters that may not necessarily be rendered, etc. This could allow for malicious individuals to trick unsuspecting users into clicking/pasting incorrect names.
+
+While it is desirable to have a wide range of characters and languages be usable, for the time being it is necessary to restrict the use of characters to the basic characters typically used in domain names today.
+
+Names must match the following regular expression `[0-0a-z\-]{3,256}` and must be ignored by indexers otherwise.
+
+## Appendix B: Protocol expansion
+
+In the event of backward incompatible changes to the protocol (such as character expansions mentioned in Appendix A), it would be preferred to set an activation blockheight where this feature becomes available. This should curb anyone attempting to "front run" a protocol expansion by registering new things early, before a feature is available.
+
+## Appendix C: Squatting
+
+Squatting is definitely a problem in decentralized name systems. Some take it as a necessary evil, but under Nomen this is triviably solveable if it ever becomes a major issue. In the standard protocol, anyone can publish a claim to a name (by publishing an on-chain transaction and `38300` Nostr event). However, indexers will ignore additional claims after the first.
+
+However, if it becomes well known that a certain name is held by a squatter, an index could choose to ignore claims in favor of later ones. If Bob claims the name `amazon`, but the real Amazon comes along later and registers a claim, many indexers may just choose to ignore the first claim by Bob in favor of the real Amazon.
+
+However, this protocol is intended to be self-sovereign and censorship resistant, so any individual or organization may run their own indexer and use any such rules they wish.
+
+In the future, a protocol addition may even include the ability for indexers to subscribe to spam lists (published as Nostr events) from trusted third parties which crowsource the hard work of figuring out which individuals are squatters, similar to spam blockers.
