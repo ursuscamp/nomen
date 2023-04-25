@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bitcoin::hashes::hex::ToHex;
 use bitcoincore_rpc::RawTx;
 
@@ -24,7 +26,8 @@ pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()
         .fingerprint();
     let tx = create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Create).await?;
 
-    let event = create_event(nsid, args, keys)?;
+    let event = super::record_event(keys.public_key(), &HashMap::new(), &args.name)?.sign(&keys)?;
+    // let event = create_event(nsid, args, keys)?;
     let (_k, nostr) = config.nostr_random_client().await?;
     let event_id = nostr.send_event(event).await?;
 

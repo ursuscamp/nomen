@@ -2,18 +2,18 @@ mod new;
 mod record;
 mod transfer;
 
-use std::io::Write;
+use std::{collections::HashMap, io::Write};
 
 pub use anyhow::anyhow;
-use bitcoin::secp256k1::SecretKey;
+use bitcoin::{secp256k1::SecretKey, XOnlyPublicKey};
 use bitcoincore_rpc::RpcApi;
 pub use new::*;
-use nostr_sdk::Keys;
+use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag, UnsignedEvent};
 pub use record::*;
 
 use crate::{
     config::{Config, NameSubcommand, TxInfo},
-    util::{NomenKind, Nsid},
+    util::{NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
@@ -98,4 +98,24 @@ pub(crate) async fn create_unsigned_tx(
         output: vec![txout, op_return],
     };
     Ok(tx)
+}
+
+pub(crate) fn record_event(
+    pubkey: XOnlyPublicKey,
+    records: &HashMap<String, String>,
+    name: &str,
+) -> anyhow::Result<UnsignedEvent> {
+    let records = serde_json::to_string(&records)?;
+    let nsid = NsidBuilder::new(name, &pubkey).finalize();
+    let event = EventBuilder::new(
+        NameKind::Record.into(),
+        records,
+        &[
+            Tag::Identifier(nsid.to_string()),
+            Tag::Generic(TagKind::Custom("nom".to_owned()), vec![name.to_owned()]),
+        ],
+    )
+    .to_unsigned_event(pubkey);
+
+    Ok(event)
 }
