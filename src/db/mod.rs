@@ -9,13 +9,11 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 17] = [
+static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
-    "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
-    "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
-    "CREATE TABLE records_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at);",
-    "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey);",
-    "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
+    "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at);",
+    "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
+    "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
     "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(nsid)",
 
@@ -31,7 +29,7 @@ static MIGRATIONS: [&str; 17] = [
     "CREATE VIEW ranked_name_vw AS
         SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
         FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.nsid = ne.nsid;",
+        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid;",
 
     // We select everyone that has rank 1. This is always going to be first claimed on blockchain.
     "CREATE VIEW name_vw AS 
@@ -56,17 +54,11 @@ static MIGRATIONS: [&str; 17] = [
     // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
     "CREATE TABLE name_owners (name, pubkey);",
 
-    "CREATE VIEW records_vw AS
-        SELECT nvw.nsid, nvw.name, re.records FROM name_vw nvw
-        JOIN name_owners no ON nvw.name = no.name
-        LEFT JOIN records_events re ON nvw.name = re.name AND no.pubkey = re.pubkey;",
-
     "CREATE VIEW detail_vw AS
-        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(re.records, '{}') as records, no.pubkey, re.created_at as records_created_at
+        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(ne.records, '{}') as records, no.pubkey, ne.created_at as records_created_at
         FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.nsid = ne.nsid
-        JOIN name_owners no ON ne.name = no.name
-        LEFT JOIN records_events re on ne.name = re.name AND no.pubkey = re.pubkey;",
+        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        JOIN name_owners no ON ne.name = no.name;",
 
     "CREATE TABLE event_log (created_at, type, data);",
 ];
@@ -187,13 +179,13 @@ pub async fn name_details(conn: &SqlitePool, nsid: Nsid) -> anyhow::Result<NameD
 }
 
 pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
-    let (t,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM records_events;")
-            .fetch_one(conn)
-            .await?;
+    let (t,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM name_events;")
+        .fetch_one(conn)
+        .await?;
     Ok(t as u64)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_records_event(
     conn: &SqlitePool,
     name: String,
