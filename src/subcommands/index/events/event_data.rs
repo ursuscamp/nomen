@@ -4,11 +4,12 @@ use anyhow::bail;
 use bitcoin::XOnlyPublicKey;
 use nostr_sdk::{Event, EventId};
 
-use crate::util::{EventExtractor, Nsid};
+use crate::util::{EventExtractor, Hash160, Nsid};
 
 #[derive(Debug, Clone)]
 pub struct EventData {
     pub event_id: EventId,
+    pub fingerprint: [u8; 5],
     pub nsid: Nsid,
     pub calculated_nsid: Nsid,
     pub pubkey: XOnlyPublicKey,
@@ -23,10 +24,14 @@ impl EventData {
         let nsid = event.extract_nsid()?;
         let calculated_nsid = event.clone().try_into()?;
         let name = event.extract_name()?;
+        let fingerprint = Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint();
         let records = event.extract_records().ok();
 
         Ok(EventData {
             event_id: event.id,
+            fingerprint,
             nsid,
             calculated_nsid,
             pubkey: event.pubkey,

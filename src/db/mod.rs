@@ -13,7 +13,7 @@ static MIGRATIONS: [&str; 17] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(nsid)",
-    "CREATE TABLE records_events (name, pubkey, created_at, event_id, records, indexed_at);",
+    "CREATE TABLE records_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at);",
     "CREATE UNIQUE INDEX records_events_unique_idx ON records_events(name, pubkey);",
     "CREATE INDEX records_events_created_at_idx ON records_events(created_at);",
     "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
@@ -196,17 +196,21 @@ pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
 
 pub async fn insert_records_event(
     conn: &SqlitePool,
+    name: String,
+    fingerprint: [u8; 5],
+    nsid: Nsid,
     pubkey: XOnlyPublicKey,
     created_at: i64,
     event_id: EventId,
-    name: String,
     records: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_records_event.sql"))
+        .bind(name)
+        .bind(fingerprint.to_hex())
+        .bind(nsid.to_hex())
         .bind(pubkey.to_string())
         .bind(created_at)
         .bind(event_id.to_string())
-        .bind(name)
         .bind(records)
         .execute(conn)
         .await?;
