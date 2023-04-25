@@ -9,7 +9,7 @@ use crate::{
     util::{NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 14] = [
+static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
@@ -54,11 +54,26 @@ static MIGRATIONS: [&str; 14] = [
     // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
     "CREATE TABLE name_owners (name, pubkey);",
 
+    "CREATE VIEW records_vw AS
+        SELECT ne.* FROM name_owners no
+        JOIN name_events ne on no.name = ne.name AND no.pubkey = ne.pubkey
+        ORDER BY ne.created_at DESC
+        LIMIT 1;",
+
     "CREATE VIEW detail_vw AS
-        SELECT b.nsid, b.blockhash, b.blocktime, b.txid, b.vout, b.blockheight, ne.name, COALESCE(ne.records, '{}') as records, no.pubkey, ne.created_at as records_created_at
-        FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
-        JOIN name_owners no ON ne.name = no.name;",
+        SELECT 
+            b.nsid,
+            b.blockhash,
+            b.blocktime,
+            b.txid,
+            b.vout,
+            b.blockheight,
+            r.name, 
+            COALESCE(r.records, '{}') as records,
+            r.pubkey,
+            r.created_at as records_created_at
+        FROM records_vw r
+        JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid;",
 
     "CREATE TABLE event_log (created_at, type, data);",
 ];
