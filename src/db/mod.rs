@@ -6,7 +6,7 @@ use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::Config,
-    util::{NomenKind, Nsid},
+    util::{Name, NomenKind, Nsid},
 };
 
 static MIGRATIONS: [&str; 15] = [
@@ -203,7 +203,7 @@ pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_name_event(
     conn: &SqlitePool,
-    name: String,
+    name: Name,
     fingerprint: [u8; 5],
     nsid: Nsid,
     pubkey: XOnlyPublicKey,
@@ -212,7 +212,7 @@ pub async fn insert_name_event(
     records: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_name_event.sql"))
-        .bind(name)
+        .bind(name.to_string())
         .bind(fingerprint.to_hex())
         .bind(nsid.to_hex())
         .bind(pubkey.to_string())
@@ -282,7 +282,7 @@ pub async fn insert_transfer_event(
     pubkey: XOnlyPublicKey,
     created_at: i64,
     event_id: EventId,
-    name: String,
+    name: Name,
     children: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
@@ -290,7 +290,7 @@ pub async fn insert_transfer_event(
         .bind(pubkey.to_hex())
         .bind(created_at)
         .bind(event_id.to_hex())
-        .bind(name)
+        .bind(name.to_string())
         .bind(children)
         .execute(conn)
         .await?;

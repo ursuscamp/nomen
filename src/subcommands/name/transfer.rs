@@ -17,9 +17,10 @@ struct CmdOutput {
 }
 
 pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow::Result<()> {
-    let nsid = NsidBuilder::new(&args.name, &args.new).finalize();
+    let name = args.name.as_ref();
+    let nsid = NsidBuilder::new(name, &args.new).finalize();
     let fingerprint = Hash160::default()
-        .chain_update(args.name.as_bytes())
+        .chain_update(name.as_bytes())
         .fingerprint();
     let unsigned_tx =
         create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Transfer).await?;
@@ -50,7 +51,10 @@ fn create_event(
         args.new.to_hex(),
         &[
             Tag::Identifier(nsid.to_hex()),
-            Tag::Generic(TagKind::Custom("nom".to_owned()), vec![args.name.clone()]),
+            Tag::Generic(
+                TagKind::Custom("nom".to_owned()),
+                vec![args.name.to_string()],
+            ),
         ],
     )
     .to_unsigned_event(args.previous);

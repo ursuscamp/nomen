@@ -4,7 +4,7 @@ use anyhow::bail;
 use bitcoin::XOnlyPublicKey;
 use nostr_sdk::{Event, EventId};
 
-use crate::util::{EventExtractor, Hash160, Nsid};
+use crate::util::{EventExtractor, Hash160, Name, Nsid};
 
 #[derive(Debug, Clone)]
 pub struct EventData {
@@ -13,7 +13,7 @@ pub struct EventData {
     pub nsid: Nsid,
     pub calculated_nsid: Nsid,
     pub pubkey: XOnlyPublicKey,
-    pub name: String,
+    pub name: Name,
     pub created_at: i64,
     pub raw_content: String,
     pub records: Option<HashMap<String, String>>,
@@ -35,7 +35,7 @@ impl EventData {
             nsid,
             calculated_nsid,
             pubkey: event.pubkey,
-            name,
+            name: name.parse()?,
             created_at: event.created_at.as_i64(),
             raw_content: event.content.clone(),
             records,
@@ -46,7 +46,6 @@ impl EventData {
         if self.nsid != self.calculated_nsid {
             bail!("Invalid nsid")
         }
-        // TODO: validate name regex here
         Ok(())
     }
 }

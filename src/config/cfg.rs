@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use bitcoin::{secp256k1::SecretKey, Network, XOnlyPublicKey};
 use clap::Parser;
 use nostr_sdk::{
-    prelude::{FromSkStr, ToBech32}, Options,
+    prelude::{FromSkStr, ToBech32},
+    Options,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal};
+use crate::util::{KeyVal, Name};
 
 use super::ConfigFile;
 
@@ -251,7 +252,7 @@ pub enum NameSubcommand {
 #[derive(clap::Args, Debug, Clone)]
 pub struct NameNewSubcommand {
     /// The root name of the new namespace.
-    pub name: String,
+    pub name: Name,
 
     #[command(flatten)]
     pub txinfo: TxInfo,
@@ -269,7 +270,7 @@ pub struct NameNewSubcommand {
 #[derive(clap::Args, Debug, Clone)]
 pub struct NameRecordSubcomand {
     /// The name you are broadcasting records for
-    pub name: String,
+    pub name: Name,
 
     /// Records to broadcast (format "key=value")
     pub records: Vec<KeyVal>,
@@ -283,7 +284,7 @@ pub struct NameRecordSubcomand {
 #[derive(clap::Args, Debug, Clone)]
 pub struct NameTransferSubcommand {
     /// The name to be transferred.
-    pub name: String,
+    pub name: Name,
 
     /// The public key of the previous owner.
     pub previous: XOnlyPublicKey,

@@ -10,7 +10,8 @@ use crate::{
 
 pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyhow::Result<()> {
     let keys = get_keys(&record_data.privkey)?;
-    let nsid = NsidBuilder::new(&record_data.name, &keys.public_key()).finalize();
+    let name = record_data.name.as_ref();
+    let nsid = NsidBuilder::new(name, &keys.public_key()).finalize();
     let map: HashMap<String, String> = record_data
         .records
         .iter()
@@ -18,7 +19,7 @@ pub async fn record(config: &Config, record_data: &NameRecordSubcomand) -> anyho
         .collect();
     let records = serde_json::to_string(&map)?;
 
-    let event = super::name_event(keys.public_key(), &map, &record_data.name)?.sign(&keys)?;
+    let event = super::name_event(keys.public_key(), &map, name)?.sign(&keys)?;
 
     let (_keys, client) = config.nostr_random_client().await?;
     let event_id = client.send_event(event).await?;

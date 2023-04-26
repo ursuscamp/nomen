@@ -20,13 +20,15 @@ struct CmdOutput {
 
 pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
     let keys = get_keys(&args.privkey)?;
-    let nsid = NsidBuilder::new(&args.name, &keys.public_key()).finalize();
+    let name = args.name.as_ref();
+    let nsid = NsidBuilder::new(name, &keys.public_key()).finalize();
     let fingerprint = Hash160::default()
-        .chain_update(args.name.as_bytes())
+        .chain_update(name.as_bytes())
         .fingerprint();
     let tx = create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Create).await?;
 
-    let event = super::name_event(keys.public_key(), &HashMap::new(), &args.name)?.sign(&keys)?;
+    let event =
+        super::name_event(keys.public_key(), &HashMap::new(), args.name.as_ref())?.sign(&keys)?;
     let (_k, nostr) = config.nostr_random_client().await?;
     let event_id = nostr.send_event(event).await?;
 
@@ -57,7 +59,10 @@ fn create_event(
         "",
         &[
             Tag::Identifier(nsid.to_hex()),
-            Tag::Generic(TagKind::Custom("nom".to_owned()), vec![args.name.clone()]),
+            Tag::Generic(
+                TagKind::Custom("nom".to_owned()),
+                vec![args.name.to_string()],
+            ),
         ],
     )
     .to_event(&keys)?;

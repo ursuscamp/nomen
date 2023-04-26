@@ -2,6 +2,7 @@ mod extractor;
 mod hash160;
 mod keyval;
 mod kind;
+mod name;
 mod nsid;
 mod nsid_builder;
 
@@ -10,6 +11,7 @@ pub use extractor::*;
 pub use hash160::*;
 pub use keyval::*;
 pub use kind::*;
+pub use name::*;
 pub use nsid::*;
 pub use nsid_builder::*;
 use yansi::Paint;
