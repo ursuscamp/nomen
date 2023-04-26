@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_event_data() {
-        let event = r#"{"id":"468dcefb10b9c5cef7451129beb7be37a266af063ac76c259a537822871b9d88","pubkey":"d57b873363d2233d3cd54453416deff9546df50d963bb1208da37f10a4c23d6f","created_at":1681352172,"kind":38300,"tags":[["d","28d63a9a61c6c5ce6be37a830105c92cf7a8f365"],["ind","smith"]],"content":"","sig":"b00a78ff3901063deb9b915d7cb17afa5a5fbe8be3cbf2808f3281dabd2ab134b4b32b380db88aa4c9677d1b870346f6594948cdd7abf5a7897ae3480347c6d8"}"#;
+        let event = r#"{"id":"4fb5485ad12706f3ddbde1cdeab3199fcbef01b4c2456a7420ef5acb400d29e5","pubkey":"d57b873363d2233d3cd54453416deff9546df50d963bb1208da37f10a4c23d6f","created_at":1682476154,"kind":38300,"tags":[["d","28d63a9a61c6c5ce6be37a830105c92cf7a8f365"],["nom","smith"]],"content":"{\"IP4\":\"127.0.0.1\",\"NPUB\":\"npub1234\"}","sig":"53a629c8169c29abc971653b71ebf8ceb185735170b702dd48377a3336819680577ef28a257b8e4db5e8101531232e1c886a35721b5af1399c32cb526fd61bb6"}"#;
         let event = Event::from_json(event).unwrap();
         let mut ed: EventData = EventData::from_event(&event).unwrap();
         assert!(ed.validate().is_ok());
