@@ -9,5 +9,4 @@
   - [ ] Explore tracing
   - [ ] Review log levels/message
   - [ ] Improve log messages
-- [ ] Simplify config structure
-- [ ] Review and improve tests.
+- [ ] Show ownership history in block explorer.
