@@ -1,7 +1,11 @@
 use std::time::Duration;
 
 use askama_axum::IntoResponse;
-use axum::{http::StatusCode, routing::get, Router};
+use axum::{
+    http::StatusCode,
+    routing::{get, post},
+    Router,
+};
 use sqlx::SqlitePool;
 
 use crate::{
@@ -52,7 +56,8 @@ pub async fn start(
             .route("/faqs", get(site::faqs))
             .route("/explorer", get(site::explorer))
             .route("/explorer/:nsid", get(site::explore_nsid))
-            .route("/newname", get(site::new_name));
+            .route("/newname", get(site::new_name_form))
+            .route("/newname", post(site::new_name_submit));
     }
 
     if !server.without_api {
@@ -88,7 +93,12 @@ async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
 mod site {
     use std::collections::HashMap;
 
-    use axum::extract::{Path, Query, State};
+    use anyhow::{anyhow, bail};
+    use axum::{
+        extract::{Path, Query, State},
+        Form,
+    };
+    use bitcoin::{Address, Txid};
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
@@ -191,31 +201,45 @@ mod site {
         vout: String,
         name: String,
         address: String,
+        error: String,
     }
 
-    impl TryFrom<NewNameQuery> for NewNameTemplate {
-        type Error = anyhow::Error;
+    // impl TryFrom<NewNameForm> for NewNameTemplate {
+    //     type Error = anyhow::Error;
 
-        fn try_from(value: NewNameQuery) -> Result<Self, Self::Error> {
-            Ok(NewNameTemplate {
-                txid: value.txid.unwrap_or_default(),
-                vout: value.vout.unwrap_or_default(),
-                name: value.name.unwrap_or_default(),
-                address: value.address.unwrap_or_default(),
-            })
-        }
-    }
+    //     fn try_from(value: NewNameForm) -> Result<Self, Self::Error> {
+    //         Ok(NewNameTemplate {
+    //             txid: value.txid.unwrap_or_default(),
+    //             vout: value.vout.unwrap_or_default(),
+    //             name: value.name.unwrap_or_default(),
+    //             address: value.address.unwrap_or_default(),
+    //             error: Default::default(),
+    //         })
+    //     }
+    // }
 
     #[derive(Deserialize)]
-    pub struct NewNameQuery {
-        txid: Option<String>,
-        vout: Option<String>,
-        name: Option<String>,
-        address: Option<String>,
+    pub struct NewNameForm {
+        txid: Txid,
+        vout: u64,
+        name: String,
+        address: Address,
     }
 
-    pub async fn new_name(Query(query): Query<NewNameQuery>) -> Result<NewNameTemplate, WebError> {
-        Ok(query.try_into()?)
+    pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {
+        Ok(Default::default())
+    }
+
+    pub async fn new_name_submit(
+        Form(form): Form<NewNameForm>,
+    ) -> Result<NewNameTemplate, WebError> {
+        Ok(NewNameTemplate {
+            txid: form.txid.to_string(),
+            vout: form.vout.to_string(),
+            name: form.name,
+            address: form.address.to_string(),
+            error: String::new(),
+        })
     }
 }
 
