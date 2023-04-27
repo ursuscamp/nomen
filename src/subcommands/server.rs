@@ -51,7 +51,8 @@ pub async fn start(
             .route("/", get(site::index))
             .route("/faqs", get(site::faqs))
             .route("/explorer", get(site::explorer))
-            .route("/explorer/:nsid", get(site::explore_nsid));
+            .route("/explorer/:nsid", get(site::explore_nsid))
+            .route("/newname", get(site::new_name));
     }
 
     if !server.without_api {
@@ -87,7 +88,7 @@ async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
 mod site {
     use std::collections::HashMap;
 
-    use axum::extract::{Path, State};
+    use axum::extract::{Path, Query, State};
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
@@ -181,6 +182,40 @@ mod site {
         let details = db::name_details(&conn, nsid.parse()?).await?;
 
         Ok(details.try_into()?)
+    }
+
+    #[derive(askama::Template, Default)]
+    #[template(path = "newname.html")]
+    pub struct NewNameTemplate {
+        txid: String,
+        vout: String,
+        name: String,
+        address: String,
+    }
+
+    impl TryFrom<NewNameQuery> for NewNameTemplate {
+        type Error = anyhow::Error;
+
+        fn try_from(value: NewNameQuery) -> Result<Self, Self::Error> {
+            Ok(NewNameTemplate {
+                txid: value.txid.unwrap_or_default(),
+                vout: value.vout.unwrap_or_default(),
+                name: value.name.unwrap_or_default(),
+                address: value.address.unwrap_or_default(),
+            })
+        }
+    }
+
+    #[derive(Deserialize)]
+    pub struct NewNameQuery {
+        txid: Option<String>,
+        vout: Option<String>,
+        name: Option<String>,
+        address: Option<String>,
+    }
+
+    pub async fn new_name(Query(query): Query<NewNameQuery>) -> Result<NewNameTemplate, WebError> {
+        Ok(query.try_into()?)
     }
 }
 
