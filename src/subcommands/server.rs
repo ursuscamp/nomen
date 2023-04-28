@@ -98,7 +98,7 @@ mod site {
         extract::{Path, Query, State},
         Form,
     };
-    use bitcoin::{Address, Txid};
+    use bitcoin::{Address, Transaction, Txid, XOnlyPublicKey};
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
@@ -201,22 +201,9 @@ mod site {
         vout: String,
         name: String,
         address: String,
-        error: String,
+        pubkey: String,
+        unsigned_tx: Option<String>,
     }
-
-    // impl TryFrom<NewNameForm> for NewNameTemplate {
-    //     type Error = anyhow::Error;
-
-    //     fn try_from(value: NewNameForm) -> Result<Self, Self::Error> {
-    //         Ok(NewNameTemplate {
-    //             txid: value.txid.unwrap_or_default(),
-    //             vout: value.vout.unwrap_or_default(),
-    //             name: value.name.unwrap_or_default(),
-    //             address: value.address.unwrap_or_default(),
-    //             error: Default::default(),
-    //         })
-    //     }
-    // }
 
     #[derive(Deserialize)]
     pub struct NewNameForm {
@@ -224,6 +211,7 @@ mod site {
         vout: u64,
         name: String,
         address: Address,
+        pubkey: XOnlyPublicKey,
     }
 
     pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {
@@ -238,7 +226,8 @@ mod site {
             vout: form.vout.to_string(),
             name: form.name,
             address: form.address.to_string(),
-            error: String::new(),
+            pubkey: form.pubkey.to_string(),
+            unsigned_tx: None,
         })
     }
 }

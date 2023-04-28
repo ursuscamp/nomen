@@ -28,9 +28,30 @@
       <input type="text" id="address" name="address" value="{{ address }}">
     </p>
 
+    <p><strong>Nostr</strong></p>
+    
+    <p>
+      <label for="pubkey">Pubkey (hex-encoded)</label>
+      <input type="text" id="pubkey" name="pubkey" value="{{ pubkey }}">
+      <br>
+      <small><a href="#" id="nip07">Use NIP-07</a></small>
+    </p>
+
     <p>
       <input type="submit" value="Submit">
     </p>
   </form>
 </main>
+
+<script>
+  document.getElementById('nip07').addEventListener('click', async (event) => {
+    console.log('getting pubkey');
+    event.preventDefault();
+    if (window.nostr) {
+      let pubkey = await window.nostr.getPublicKey();
+      document.getElementById('pubkey').value = pubkey;
+    }
+  });
+
+</script>
 {% endblock %}
