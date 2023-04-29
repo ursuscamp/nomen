@@ -4,13 +4,21 @@
 <main>
   <h1>New Records</h1>
   <form action="newrecords" method="post">
-    <p>Enter records below. Each record should be on its own line, with a key and value separated by an equal (=) sign.</p>
+    <p>
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ name }}">
+    </p>
 
-    <textarea name="records" id="records" cols="30" rows="10">KEY=value</textarea>
+    <p>
+      <label for="records">
+        Enter records below. Each record should be on its own line, with a key and value separated by an equal (=) sign.
+      </label>
+      <textarea name="records" id="records" cols="30" rows="10">KEY=value</textarea>
+    </p>
 
-    {% include "pubkey.html" %}
-
-    <input type="submit" value="Create Event">
+    <p>
+      <input type="submit" value="Create Event">
+    </p>
   </form>
 </main>
 {% endblock %}

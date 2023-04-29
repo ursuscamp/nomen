@@ -262,12 +262,21 @@ mod site {
     #[derive(askama::Template)]
     #[template(path = "newrecords.html")]
     pub struct NewRecordsTemplate {
+        name: String,
         pubkey: String,
         unsigned_event: String,
     }
 
-    pub async fn new_records_form() -> Result<NewRecordsTemplate, WebError> {
+    #[derive(Deserialize)]
+    pub struct NewRecordsQuery {
+        name: Option<String>,
+    }
+
+    pub async fn new_records_form(
+        Query(query): Query<NewRecordsQuery>,
+    ) -> Result<NewRecordsTemplate, WebError> {
         Ok(NewRecordsTemplate {
+            name: query.name.unwrap_or_default(),
             pubkey: Default::default(),
             unsigned_event: Default::default(),
         })
@@ -276,6 +285,7 @@ mod site {
     #[derive(Deserialize, Debug)]
     pub struct NewRecordsForm {
         records: String,
+        name: String,
         pubkey: XOnlyPublicKey,
     }
 
@@ -284,6 +294,7 @@ mod site {
     ) -> Result<NewRecordsTemplate, WebError> {
         log::debug!("{form:?}");
         Ok(NewRecordsTemplate {
+            name: form.name,
             pubkey: form.pubkey.to_string(),
             unsigned_event: Default::default(),
         })
