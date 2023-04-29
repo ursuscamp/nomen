@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h1>New Records</h1>
+  <form action="newrecords" method="post">
+    <p>Enter records below. Each record should be on its own line, with a key and value separated by an equal (=) sign.</p>
+
+    <textarea name="records" id="records" cols="30" rows="10">KEY=value</textarea>
+
+    {% include "pubkey.html" %}
+
+    <input type="submit" value="Create Event">
+  </form>
+</main>
+{% endblock %}

@@ -62,7 +62,9 @@ pub async fn start(
             .route("/explorer", get(site::explorer))
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
-            .route("/newname", post(site::new_name_submit));
+            .route("/newname", post(site::new_name_submit))
+            .route("/newrecords", get(site::new_records_form))
+            .route("/newrecords", post(site::new_records_submit));
     }
 
     if !server.without_api {
@@ -254,6 +256,36 @@ mod site {
             pubkey: form.pubkey.to_string(),
             fee: form.fee,
             unsigned_tx: unsigned_tx.raw_hex(),
+        })
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "newrecords.html")]
+    pub struct NewRecordsTemplate {
+        pubkey: String,
+        unsigned_event: String,
+    }
+
+    pub async fn new_records_form() -> Result<NewRecordsTemplate, WebError> {
+        Ok(NewRecordsTemplate {
+            pubkey: Default::default(),
+            unsigned_event: Default::default(),
+        })
+    }
+
+    #[derive(Deserialize, Debug)]
+    pub struct NewRecordsForm {
+        records: String,
+        pubkey: XOnlyPublicKey,
+    }
+
+    pub async fn new_records_submit(
+        Form(form): Form<NewRecordsForm>,
+    ) -> Result<NewRecordsTemplate, WebError> {
+        log::debug!("{form:?}");
+        Ok(NewRecordsTemplate {
+            pubkey: form.pubkey.to_string(),
+            unsigned_event: Default::default(),
         })
     }
 }
