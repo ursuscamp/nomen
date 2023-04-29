@@ -4,6 +4,27 @@
 <main>
   <p>You must build an unsigned transaction to reserve a name. Please enter UTXO data below.</p>
 
+  {% if !unsigned_tx.is_empty() %}
+  <p>Sign and broadcast this transaction with your bitcoin wallet:</p>
+  <pre id="unsigned-tx">{{ unsigned_tx }}</pre>
+  <button id="copy">Copy</button>
+
+  <p>After signing and transmitting the transaction, <a href="/new-records">setup your records.</a></p>
+
+  <script>
+    let btn = document.getElementById('copy');
+    btn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      let tx = document.getElementById('unsigned-tx').innerHTML;
+      await navigator.clipboard.writeText(tx);
+      btn.innerHTML = 'Copied'
+      setTimeout(() => {
+        btn.innerHTML = 'Copy'
+      }, 1000);
+    });
+  </script>
+  
+  {% else %}
   <form action="/newname" method="POST">
     <p><strong>Input</strong></p>
     <p>
@@ -28,8 +49,6 @@
       <input type="text" id="address" name="address" value="{{ address }}">
     </p>
 
-    <p><strong>Nostr</strong></p>
-    
     <p>
       <label for="pubkey">Pubkey (hex-encoded)</label>
       <input type="text" id="pubkey" name="pubkey" value="{{ pubkey }}">
@@ -38,20 +57,27 @@
     </p>
 
     <p>
+      <label for="fee">fee</label>
+      <input type="text" id="fee" name="fee" value="{{ fee }}">
+    </p>
+
+    <p>
       <input type="submit" value="Submit">
     </p>
   </form>
+
+  <script>
+    document.getElementById('nip07').addEventListener('click', async (event) => {
+      console.log('getting pubkey');
+      event.preventDefault();
+      if (window.nostr) {
+        let pubkey = await window.nostr.getPublicKey();
+        document.getElementById('pubkey').value = pubkey;
+      }
+    });
+  </script>
+
+  {% endif %}
 </main>
 
-<script>
-  document.getElementById('nip07').addEventListener('click', async (event) => {
-    console.log('getting pubkey');
-    event.preventDefault();
-    if (window.nostr) {
-      let pubkey = await window.nostr.getPublicKey();
-      document.getElementById('pubkey').value = pubkey;
-    }
-  });
-
-</script>
 {% endblock %}

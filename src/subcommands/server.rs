@@ -40,6 +40,12 @@ where
     }
 }
 
+#[derive(Clone)]
+pub struct AppState {
+    config: Config,
+    pool: SqlitePool,
+}
+
 pub async fn start(
     config: &Config,
     conn: &SqlitePool,
@@ -53,7 +59,6 @@ pub async fn start(
     if !server.without_explorer {
         app = app
             .route("/", get(site::index))
-            .route("/faqs", get(site::faqs))
             .route("/explorer", get(site::explorer))
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
@@ -64,7 +69,11 @@ pub async fn start(
         app = app.route("/api/name", get(api::name));
     }
 
-    let app = app.with_state(conn.clone());
+    let state = AppState {
+        config: config.clone(),
+        pool: conn.clone(),
+    };
+    let app = app.with_state(state);
 
     let addr = config
         .server_bind()
@@ -99,13 +108,19 @@ mod site {
         Form,
     };
     use bitcoin::{Address, Transaction, Txid, XOnlyPublicKey};
+    use bitcoincore_rpc::RawTx;
     use itertools::Itertools;
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
-    use crate::db::{self, NameDetails};
+    use crate::{
+        config::{Config, TxInfo},
+        db::{self, NameDetails},
+        subcommands::create_unsigned_tx,
+        util::{Hash160, NomenKind, NsidBuilder},
+    };
 
-    use super::{util, WebError};
+    use super::{util, AppState, WebError};
 
     #[derive(askama::Template)]
     #[template(path = "index.html")]
@@ -113,14 +128,6 @@ mod site {
 
     pub async fn index() -> IndexTemplate {
         IndexTemplate {}
-    }
-
-    #[derive(askama::Template)]
-    #[template(path = "faqs.html")]
-    pub struct FaqsTemplate {}
-
-    pub async fn faqs() -> FaqsTemplate {
-        FaqsTemplate {}
     }
 
     #[derive(Deserialize)]
@@ -135,7 +142,8 @@ mod site {
         last_index_time: String,
     }
 
-    pub async fn explorer(State(conn): State<SqlitePool>) -> Result<ExplorerTemplate, WebError> {
+    pub async fn explorer(State(state): State<AppState>) -> Result<ExplorerTemplate, WebError> {
+        let conn = state.pool;
         let last_index_time = db::last_index_time(&conn).await?;
         let last_index_time = util::format_time(last_index_time)?;
 
@@ -186,9 +194,10 @@ mod site {
     }
 
     pub async fn explore_nsid(
-        State(conn): State<SqlitePool>,
+        State(state): State<AppState>,
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
+        let conn = state.pool;
         let details = db::name_details(&conn, nsid.parse()?).await?;
 
         Ok(details.try_into()?)
@@ -202,16 +211,18 @@ mod site {
         name: String,
         address: String,
         pubkey: String,
-        unsigned_tx: Option<String>,
+        fee: u32,
+        unsigned_tx: String,
     }
 
     #[derive(Deserialize)]
     pub struct NewNameForm {
         txid: Txid,
-        vout: u64,
+        vout: u32,
         name: String,
         address: Address,
         pubkey: XOnlyPublicKey,
+        fee: u32,
     }
 
     pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {
@@ -219,15 +230,30 @@ mod site {
     }
 
     pub async fn new_name_submit(
+        State(state): State<AppState>,
         Form(form): Form<NewNameForm>,
     ) -> Result<NewNameTemplate, WebError> {
+        let txinfo = TxInfo {
+            txid: form.txid,
+            vout: form.vout,
+            address: form.address.clone(),
+            fee: form.fee,
+        };
+        let fingerprint = Hash160::default()
+            .chain_update(form.name.as_bytes())
+            .fingerprint();
+        let nsid = NsidBuilder::new(&form.name, &form.pubkey).finalize();
+        let unsigned_tx =
+            create_unsigned_tx(&state.config, &txinfo, fingerprint, nsid, NomenKind::Create)
+                .await?;
         Ok(NewNameTemplate {
             txid: form.txid.to_string(),
             vout: form.vout.to_string(),
             name: form.name,
             address: form.address.to_string(),
             pubkey: form.pubkey.to_string(),
-            unsigned_tx: None,
+            fee: form.fee,
+            unsigned_tx: unsigned_tx.raw_hex(),
         })
     }
 }
@@ -246,7 +272,7 @@ mod api {
 
     use crate::db;
 
-    use super::WebError;
+    use super::{AppState, WebError};
 
     #[derive(Deserialize)]
     pub struct NameQuery {
@@ -255,8 +281,9 @@ mod api {
 
     pub async fn name(
         Query(name): Query<NameQuery>,
-        State(conn): State<SqlitePool>,
+        State(state): State<AppState>,
     ) -> Result<Json<HashMap<String, String>>, WebError> {
+        let conn = state.pool;
         let name = db::name_records(&conn, name.name).await?;
 
         name.map(Json)
