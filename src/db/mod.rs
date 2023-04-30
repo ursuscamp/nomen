@@ -6,7 +6,7 @@ use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::Config,
-    util::{Name, NomenKind, Nsid},
+    util::{Hash160, Name, NomenKind, Nsid},
 };
 
 static MIGRATIONS: [&str; 15] = [
@@ -296,4 +296,18 @@ pub async fn insert_transfer_event(
         .await?;
 
     Ok(())
+}
+
+pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<bool> {
+    let fingerprint = Hash160::default()
+        .chain_update(name.as_bytes())
+        .fingerprint()
+        .to_hex();
+    let (count,) = sqlx::query_as::<_, (i64,)>(
+        "SELECT COUNT(*) FROM blockchain where fingerprint = ? AND kind = 'create';",
+    )
+    .bind(&fingerprint)
+    .fetch_one(conn)
+    .await?;
+    Ok(count == 0)
 }

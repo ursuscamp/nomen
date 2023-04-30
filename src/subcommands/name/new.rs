@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::bail;
 use bitcoin::hashes::hex::ToHex;
 use bitcoincore_rpc::RawTx;
 
@@ -7,6 +8,7 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
 use crate::{
     config::{Config, NameNewSubcommand},
+    db::{self},
     subcommands::name::{create_unsigned_tx, get_keys},
     util::{tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
@@ -19,6 +21,7 @@ struct CmdOutput {
 }
 
 pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
+    check_name(config, args.name.as_ref()).await?;
     let keys = get_keys(&args.privkey)?;
     let name = args.name.as_ref();
     let nsid = NsidBuilder::new(name, &keys.public_key()).finalize();
@@ -67,4 +70,13 @@ fn create_event(
     )
     .to_event(&keys)?;
     Ok(event)
+}
+
+async fn check_name(config: &Config, name: &str) -> anyhow::Result<()> {
+    let conn = config.sqlite().await?;
+    let available = db::name_available(&conn, name).await?;
+    if !available {
+        bail!("Name {name} is unavailable");
+    }
+    Ok(())
 }
