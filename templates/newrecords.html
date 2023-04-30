@@ -1,8 +1,57 @@
 {% extends "base.html" %}
 
 {% block body %}
+<script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+
 <main>
   <h1>New Records</h1>
+  {% if !unsigned_event.is_empty() %}
+  
+  <p>The following event was created. You can use a NIP-07 browser extension to sign and broadcast this event, using the same keypair that was used to register the name on the blockchain.</p>
+  
+  <pre id="unsigned-event">{{ unsigned_event }}</pre>
+
+  <p>
+    <button id="sign-button">Sign and Broadcast</button>
+  </p>
+
+  <div id="error-message" style="color: red;"></div>
+  <div id="success-message" style="color: green;"></div>
+
+  <script>
+    function append_msg(type, msg) {
+      let p = document.createElement('p');
+      p.innerHTML = `<p>${msg}</p>`;
+      document.getElementById(`${type}-message`).appendChild(p);
+    }
+
+    document.getElementById('sign-button').addEventListener('click', async (event) => {
+      event.preventDefault();
+      let unsigned_event = document.getElementById('unsigned-event').innerHTML;
+      let signed_event = await window.nostr.signEvent(JSON.parse(unsigned_event));
+      console.log(signed_event);
+
+      let relays = ["ws://127.0.0.1:8080"]
+
+      relays.forEach(async (relay_url) => {
+        let relay = window.NostrTools.relayInit(relay_url);
+        relay.on('connect', () => { console.log('connected to relay') })
+        await relay.connect();
+  
+        let pub = relay.publish(signed_event);
+        pub.on('ok', () => {
+          append_msg('success', `Event successfully published to ${relay.url}`);
+        });
+        pub.on('failed', () => {
+          append_msg('error', `Event failed to publish to ${relay.url}`);
+        });
+      });
+
+    });
+  </script>
+
+  {% else %}
+  
   <form action="newrecords" method="post">
     <p>
       <label for="name">Name</label>
@@ -16,9 +65,13 @@
       <textarea name="records" id="records" cols="30" rows="10">KEY=value</textarea>
     </p>
 
+    {% include "pubkey.html" %}
+
     <p>
       <input type="submit" value="Create Event">
     </p>
   </form>
+
+  {% endif %}
 </main>
 {% endblock %}

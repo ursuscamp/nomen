@@ -118,8 +118,8 @@ mod site {
     use crate::{
         config::{Config, TxInfo},
         db::{self, NameDetails},
-        subcommands::create_unsigned_tx,
-        util::{Hash160, NomenKind, NsidBuilder},
+        subcommands::{create_unsigned_tx, name_event},
+        util::{Hash160, KeyVal, NomenKind, NsidBuilder},
     };
 
     use super::{util, AppState, WebError};
@@ -292,11 +292,20 @@ mod site {
     pub async fn new_records_submit(
         Form(form): Form<NewRecordsForm>,
     ) -> Result<NewRecordsTemplate, WebError> {
-        log::debug!("{form:?}");
+        let records = form
+            .records
+            .lines()
+            .map(|line| line.parse::<KeyVal>())
+            .collect::<Result<Vec<KeyVal>, _>>()?
+            .iter()
+            .map(|kv| kv.clone().pair())
+            .collect::<HashMap<_, _>>();
+        let event = name_event(form.pubkey, &records, &form.name)?;
+        let unsigned_event = serde_json::to_string_pretty(&event)?;
         Ok(NewRecordsTemplate {
             name: form.name,
             pubkey: form.pubkey.to_string(),
-            unsigned_event: Default::default(),
+            unsigned_event,
         })
     }
 }
