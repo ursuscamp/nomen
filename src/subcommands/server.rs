@@ -271,6 +271,7 @@ mod site {
     #[derive(Deserialize)]
     pub struct NewRecordsQuery {
         name: Option<String>,
+        pubkey: Option<XOnlyPublicKey>,
     }
 
     pub async fn new_records_form(
@@ -278,7 +279,7 @@ mod site {
     ) -> Result<NewRecordsTemplate, WebError> {
         Ok(NewRecordsTemplate {
             name: query.name.unwrap_or_default(),
-            pubkey: Default::default(),
+            pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
         })
     }
