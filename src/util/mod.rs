@@ -16,6 +16,8 @@ pub use nsid::*;
 pub use nsid_builder::*;
 use yansi::Paint;
 
+use crate::{config::Config, db};
+
 pub enum NameKind {
     Name = 38300,
     Transfer = 38301,
@@ -42,4 +44,13 @@ impl TryFrom<nostr_sdk::Kind> for NameKind {
 
 pub fn tag_print(tag: &str, message: &str) {
     println!("{}: {}", Paint::green(tag), message);
+}
+
+pub async fn check_name(config: &Config, name: &str) -> anyhow::Result<()> {
+    let conn = config.sqlite().await?;
+    let available = db::name_available(&conn, name).await?;
+    if !available {
+        bail!("Name {name} is unavailable");
+    }
+    Ok(())
 }

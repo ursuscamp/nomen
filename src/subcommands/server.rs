@@ -117,9 +117,9 @@ mod site {
 
     use crate::{
         config::{Config, TxInfo},
-        db::{self, NameDetails},
+        db::{self, name_available, NameDetails},
         subcommands::{create_unsigned_tx, name_event},
-        util::{Hash160, KeyVal, NomenKind, NsidBuilder},
+        util::{check_name, Hash160, KeyVal, NomenKind, NsidBuilder},
     };
 
     use super::{util, AppState, WebError};
@@ -235,6 +235,7 @@ mod site {
         State(state): State<AppState>,
         Form(form): Form<NewNameForm>,
     ) -> Result<NewNameTemplate, WebError> {
+        check_name(&state.config, &form.name).await?;
         let txinfo = TxInfo {
             txid: form.txid,
             vout: form.vout,

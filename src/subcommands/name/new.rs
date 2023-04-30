@@ -10,7 +10,7 @@ use crate::{
     config::{Config, NameNewSubcommand},
     db::{self},
     subcommands::name::{create_unsigned_tx, get_keys},
-    util::{tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
+    util::{check_name, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
 #[derive(serde::Serialize)]
@@ -70,13 +70,4 @@ fn create_event(
     )
     .to_event(&keys)?;
     Ok(event)
-}
-
-async fn check_name(config: &Config, name: &str) -> anyhow::Result<()> {
-    let conn = config.sqlite().await?;
-    let available = db::name_available(&conn, name).await?;
-    if !available {
-        bail!("Name {name} is unavailable");
-    }
-    Ok(())
 }
