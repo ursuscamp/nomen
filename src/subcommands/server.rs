@@ -13,6 +13,8 @@ use crate::{
     subcommands,
 };
 
+use self::site::ErrorTemplate;
+
 pub struct WebError(anyhow::Error, Option<StatusCode>);
 
 impl WebError {
@@ -23,11 +25,10 @@ impl WebError {
 
 impl IntoResponse for WebError {
     fn into_response(self) -> askama_axum::Response {
-        (
-            self.1.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
+        ErrorTemplate {
+            message: self.0.to_string(),
+        }
+        .into_response()
     }
 }
 
@@ -106,9 +107,11 @@ mod site {
 
     use anyhow::{anyhow, bail};
     use axum::{
-        extract::{Path, Query, State},
+        extract::{rejection::FailedToDeserializeForm, Path, Query, State},
+        http::StatusCode,
         Form,
     };
+    use axum_extra::extract::WithRejection;
     use bitcoin::{Address, Transaction, Txid, XOnlyPublicKey};
     use bitcoincore_rpc::RawTx;
     use itertools::Itertools;
@@ -119,10 +122,16 @@ mod site {
         config::{Config, TxInfo},
         db::{self, name_available, NameDetails},
         subcommands::{create_unsigned_tx, name_event},
-        util::{check_name, Hash160, KeyVal, NomenKind, NsidBuilder},
+        util::{check_name, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
     use super::{util, AppState, WebError};
+
+    #[derive(askama::Template)]
+    #[template(path = "error.html")]
+    pub struct ErrorTemplate {
+        pub message: String,
+    }
 
     #[derive(askama::Template)]
     #[template(path = "index.html")]
@@ -221,7 +230,7 @@ mod site {
     pub struct NewNameForm {
         txid: Txid,
         vout: u32,
-        name: String,
+        name: Name,
         address: Address,
         pubkey: XOnlyPublicKey,
         fee: u32,
@@ -233,9 +242,9 @@ mod site {
 
     pub async fn new_name_submit(
         State(state): State<AppState>,
-        Form(form): Form<NewNameForm>,
+        WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
     ) -> Result<NewNameTemplate, WebError> {
-        check_name(&state.config, &form.name).await?;
+        check_name(&state.config, form.name.as_ref()).await?;
         let txinfo = TxInfo {
             txid: form.txid,
             vout: form.vout,
@@ -243,16 +252,16 @@ mod site {
             fee: form.fee,
         };
         let fingerprint = Hash160::default()
-            .chain_update(form.name.as_bytes())
+            .chain_update(form.name.as_ref().as_bytes())
             .fingerprint();
-        let nsid = NsidBuilder::new(&form.name, &form.pubkey).finalize();
+        let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
         let unsigned_tx =
             create_unsigned_tx(&state.config, &txinfo, fingerprint, nsid, NomenKind::Create)
                 .await?;
         Ok(NewNameTemplate {
             txid: form.txid.to_string(),
             vout: form.vout.to_string(),
-            name: form.name,
+            name: form.name.to_string(),
             address: form.address.to_string(),
             pubkey: form.pubkey.to_string(),
             fee: form.fee,
@@ -270,7 +279,7 @@ mod site {
 
     #[derive(Deserialize)]
     pub struct NewRecordsQuery {
-        name: Option<String>,
+        name: Option<Name>,
         pubkey: Option<XOnlyPublicKey>,
     }
 
@@ -278,7 +287,7 @@ mod site {
         Query(query): Query<NewRecordsQuery>,
     ) -> Result<NewRecordsTemplate, WebError> {
         Ok(NewRecordsTemplate {
-            name: query.name.unwrap_or_default(),
+            name: query.name.unwrap_or_default().to_string(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
         })
@@ -287,7 +296,7 @@ mod site {
     #[derive(Deserialize, Debug)]
     pub struct NewRecordsForm {
         records: String,
-        name: String,
+        name: Name,
         pubkey: XOnlyPublicKey,
     }
 
@@ -302,10 +311,10 @@ mod site {
             .iter()
             .map(|kv| kv.clone().pair())
             .collect::<HashMap<_, _>>();
-        let event = name_event(form.pubkey, &records, &form.name)?;
+        let event = name_event(form.pubkey, &records, &form.name.to_string())?;
         let unsigned_event = serde_json::to_string_pretty(&event)?;
         Ok(NewRecordsTemplate {
-            name: form.name,
+            name: form.name.to_string(),
             pubkey: form.pubkey.to_string(),
             unsigned_event,
         })
