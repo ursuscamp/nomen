@@ -230,7 +230,7 @@ mod site {
     pub struct NewNameForm {
         txid: Txid,
         vout: u32,
-        name: Name,
+        name: String,
         address: Address,
         pubkey: XOnlyPublicKey,
         fee: u32,
@@ -244,6 +244,7 @@ mod site {
         State(state): State<AppState>,
         WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
     ) -> Result<NewNameTemplate, WebError> {
+        let name: Name = form.name.parse()?;
         check_name(&state.config, form.name.as_ref()).await?;
         let txinfo = TxInfo {
             txid: form.txid,
@@ -252,7 +253,7 @@ mod site {
             fee: form.fee,
         };
         let fingerprint = Hash160::default()
-            .chain_update(form.name.as_ref().as_bytes())
+            .chain_update(name.as_ref().as_bytes())
             .fingerprint();
         let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
         let unsigned_tx =
@@ -279,7 +280,7 @@ mod site {
 
     #[derive(Deserialize)]
     pub struct NewRecordsQuery {
-        name: Option<Name>,
+        name: Option<String>,
         pubkey: Option<XOnlyPublicKey>,
     }
 
@@ -287,7 +288,7 @@ mod site {
         Query(query): Query<NewRecordsQuery>,
     ) -> Result<NewRecordsTemplate, WebError> {
         Ok(NewRecordsTemplate {
-            name: query.name.unwrap_or_default().to_string(),
+            name: query.name.unwrap_or_default(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
         })
@@ -296,13 +297,14 @@ mod site {
     #[derive(Deserialize, Debug)]
     pub struct NewRecordsForm {
         records: String,
-        name: Name,
+        name: String,
         pubkey: XOnlyPublicKey,
     }
 
     pub async fn new_records_submit(
         Form(form): Form<NewRecordsForm>,
     ) -> Result<NewRecordsTemplate, WebError> {
+        let name: Name = form.name.parse()?;
         let records = form
             .records
             .lines()
@@ -311,7 +313,7 @@ mod site {
             .iter()
             .map(|kv| kv.clone().pair())
             .collect::<HashMap<_, _>>();
-        let event = name_event(form.pubkey, &records, &form.name.to_string())?;
+        let event = name_event(form.pubkey, &records, &form.name)?;
         let unsigned_event = serde_json::to_string_pretty(&event)?;
         Ok(NewRecordsTemplate {
             name: form.name.to_string(),

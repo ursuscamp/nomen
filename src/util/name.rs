@@ -3,9 +3,8 @@ use std::str::FromStr;
 use anyhow::bail;
 use derive_more::{AsRef, Display, Into};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 
-#[derive(Display, Into, AsRef, Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Display, AsRef, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Name(String);
 
 impl FromStr for Name {
@@ -23,7 +22,7 @@ impl FromStr for Name {
 
 #[cfg(test)]
 mod tests {
-    use std::any;
+    use std::{any, collections::HashMap};
 
     use super::*;
 
