@@ -75,6 +75,7 @@ impl Config {
             without_explorer,
             without_api,
             without_indexer,
+            indexer_delay,
         }) = &mut self.subcommand
         {
             let mut server = cf.server.unwrap_or_default();
@@ -85,6 +86,10 @@ impl Config {
             *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
             *without_api = *without_api || server.without_api.unwrap_or_default();
             *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
+            *indexer_delay = indexer_delay
+                .take()
+                .or_else(|| server.indexer_delay.take())
+                .or(Some(30));
         }
     }
 
@@ -242,6 +247,10 @@ pub struct ServerSubcommand {
     /// Start server without indexer.
     #[arg(long)]
     pub without_indexer: bool,
+
+    /// Delay (in seconds) between indexing operations.
+    #[arg(long)]
+    pub indexer_delay: Option<usize>,
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]

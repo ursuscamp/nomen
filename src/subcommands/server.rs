@@ -53,7 +53,7 @@ pub async fn start(
     server: &ServerSubcommand,
 ) -> anyhow::Result<()> {
     if !server.without_indexer {
-        let _indexer = tokio::spawn(indexer(config.clone(), conn.clone()));
+        let _indexer = tokio::spawn(indexer(config.clone(), server.clone(), conn.clone()));
     }
     let mut app = Router::new();
 
@@ -91,12 +91,12 @@ pub async fn start(
     Ok(())
 }
 
-async fn indexer(config: Config, pool: SqlitePool) -> anyhow::Result<()> {
+async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> anyhow::Result<()> {
     let guard = elegant_departure::get_shutdown_guard();
     loop {
         subcommands::index(&config, &pool).await?;
         tokio::select! {
-            _ = tokio::time::sleep(Duration::from_secs(30)) => {},
+            _ = tokio::time::sleep(Duration::from_secs(server.indexer_delay.unwrap() as u64)) => {},
             _ = guard.wait() => return Ok(())
         }
     }
