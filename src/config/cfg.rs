@@ -158,6 +158,13 @@ impl Config {
         let sk = keys.secret_key()?.to_bech32()?;
         self.nostr_client(&sk).await
     }
+
+    pub fn starting_block_height(&self) -> usize {
+        match self.network {
+            Some(Network::Bitcoin) => 787000,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]

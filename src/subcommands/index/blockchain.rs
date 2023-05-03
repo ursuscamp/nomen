@@ -10,16 +10,18 @@ use crate::{
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
     let client = config.rpc_client()?;
-    let index_height = db::next_index_height(pool).await?;
+    let index_height = db::next_index_height(pool)
+        .await?
+        .max(config.starting_block_height());
 
     log::info!("Starting blockchain index at height {index_height}");
 
     let indexed_txs = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut index_txs = Vec::new();
         let mut blockhash = client.get_block_hash(index_height as u64)?;
-        let mut blockinfo = client.get_block_info(&blockhash)?;
+        let mut blockinfo = client.get_block_header_info(&blockhash)?;
 
-        while let Some(next_hash) = blockinfo.nextblockhash {
+        while let Some(next_hash) = blockinfo.next_block_hash {
             if (blockinfo.confirmations as usize) < 3 {
                 log::info!(
                     "Minimum confirmations not met at block height {}.",
@@ -31,9 +33,10 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 log::info!("Index block height {}", blockinfo.height);
             }
 
-            for (txheight, txid) in blockinfo.tx.iter().enumerate() {
-                let tx = client.get_raw_transaction(txid, None)?;
-                for (vout, output) in tx.output.into_iter().enumerate() {
+            let block = client.get_block(&blockhash)?;
+
+            for (txheight, tx) in block.txdata.iter().enumerate() {
+                for (vout, output) in tx.output.iter().enumerate() {
                     if output.script_pubkey.is_op_return() {
                         let b = &output.script_pubkey.as_bytes()[2..];
 
@@ -49,7 +52,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                         fingerprint,
                                         nsid,
                                         blockhash,
-                                        *txid,
+                                        tx.txid(),
                                         blockinfo.time,
                                         blockinfo.height,
                                         txheight,
@@ -65,7 +68,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 }
             }
             blockhash = next_hash;
-            blockinfo = client.get_block_info(&blockhash)?;
+            blockinfo = client.get_block_header_info(&blockhash)?;
         }
 
         Ok(index_txs)
