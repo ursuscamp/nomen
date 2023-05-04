@@ -7,7 +7,7 @@ use bitcoincore_rpc::RawTx;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
 use crate::{
-    config::{Config, NameNewSubcommand},
+    config::{Cli, Config, NameNewSubcommand},
     db::{self},
     subcommands::name::{create_unsigned_tx, get_keys},
     util::{check_name, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},

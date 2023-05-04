@@ -1,128 +1,48 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network, XOnlyPublicKey};
-use clap::Parser;
+use bitcoin::Network;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
 };
-use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal, Name};
+use super::{Cli, ConfigFile, ServerSubcommand, Subcommand};
 
-use super::ConfigFile;
-
-#[derive(Parser, Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
-    /// Location of config file: Default: .nomen.toml
-    #[arg(short, long)]
-    pub config: Option<PathBuf>,
-
-    /// Path for index data. Default: nomen.db
-    #[arg(short, long)]
-    pub data: Option<PathBuf>,
-
-    /// Location to Bitcoin Core cookie file.
-    #[arg(long)]
-    pub cookie: Option<PathBuf>,
-
-    /// RPC username.
-    #[arg(long)]
-    pub rpcuser: Option<String>,
-
-    /// RPC password.
-    #[arg(long)]
-    pub rpcpass: Option<String>,
-
-    /// RPC host
-    #[arg(long)]
-    pub rpchost: Option<String>,
-
-    /// RPC port number
-    #[arg(long)]
-    pub rpcport: Option<u16>,
-
-    /// Bitcoin network
-    #[arg(long)]
-    pub network: Option<Network>,
-
-    /// Nostr relays for commands that interact with relays.
-    /// Can be specified multiple times.
-    #[arg(long, short, action = clap::ArgAction::Append)]
-    pub relays: Option<Vec<String>>,
-
-    #[command(subcommand)]
-    pub subcommand: Subcommand,
+    pub cli: Cli,
+    pub file: ConfigFile,
 }
 
 impl Config {
-    pub fn merge_config_file(&mut self, cf: ConfigFile) {
-        self.data = self
-            .data
-            .take()
-            .or(cf.data)
-            .or_else(|| Some("nomen.db".into()));
-        self.cookie = self.cookie.take().or(cf.cookie);
-        self.rpcuser = self.rpcuser.take().or(cf.rpcuser);
-        self.rpcpass = self.rpcpass.take().or(cf.rpcpass);
-        self.rpchost = self.rpchost.take().or(cf.rpchost);
-        self.rpcport = self.rpcport.or(cf.rpcport);
-        self.network = self.network.or(cf.network);
-        self.relays = self.relays.take().or(cf.relays);
-        if let Subcommand::Server(ServerSubcommand {
-            bind,
-            without_explorer,
-            without_api,
-            without_indexer,
-            indexer_delay,
-        }) = &mut self.subcommand
-        {
-            let mut server = cf.server.unwrap_or_default();
-            *bind = bind
-                .take()
-                .or_else(|| server.bind.take())
-                .or_else(|| Some("0.0.0.0:8080".into()));
-            *without_explorer = *without_explorer || server.without_explorer.unwrap_or_default();
-            *without_api = *without_api || server.without_api.unwrap_or_default();
-            *without_indexer = *without_indexer || server.without_indexer.unwrap_or_default();
-            *indexer_delay = indexer_delay
-                .take()
-                .or_else(|| server.indexer_delay.take())
-                .or(Some(30));
-        }
+    pub fn new(cli: Cli, file: ConfigFile) -> Self {
+        Self { cli, file }
     }
 
     pub fn rpc_auth(&self) -> bitcoincore_rpc::Auth {
-        if let Some(cookie) = &self.cookie {
+        if let Some(cookie) = &self.rpc_cookie() {
             bitcoincore_rpc::Auth::CookieFile(cookie.clone())
-        } else if self.rpcuser.is_some() || self.rpcpass.is_some() {
+        } else if self.rpc_user().is_some() || self.rpc_password().is_some() {
             bitcoincore_rpc::Auth::UserPass(
-                self.rpcuser.clone().expect("RPC user not configured"),
-                self.rpcpass.clone().expect("RPC password not configured"),
+                self.rpc_user().expect("RPC user not configured"),
+                self.rpc_password().expect("RPC password not configured"),
             )
         } else {
             bitcoincore_rpc::Auth::None
         }
     }
 
-    pub fn server_bind(&self) -> Option<String> {
-        match &self.subcommand {
-            Subcommand::Server(ServerSubcommand { bind, .. }) => bind.clone(),
-            _ => None,
-        }
-    }
-
     pub fn rpc_client(&self) -> anyhow::Result<bitcoincore_rpc::Client> {
-        let host = self.rpchost.clone().unwrap_or_else(|| "127.0.0.1".into());
-        let port = self.rpcport.unwrap_or(8332);
+        let host = self.rpc_host();
+        let port = self.rpc_port();
         let url = format!("{host}:{port}");
         let auth = self.rpc_auth();
         Ok(bitcoincore_rpc::Client::new(&url, auth)?)
     }
 
     pub async fn sqlite(&self) -> anyhow::Result<sqlite::SqlitePool> {
-        let db = self.data.clone().expect("No database configured");
+        let db = self.data();
 
         // SQLx doesn't seem to like it if a db file does not already exist, so let's create an empty one
         if !tokio::fs::try_exists(&db).await? {
@@ -133,13 +53,7 @@ impl Config {
                 .await?;
         }
 
-        let db = self
-            .data
-            .as_ref()
-            .and_then(|d| d.to_str().map(|s| s.to_owned()))
-            .expect("No database configured");
-
-        Ok(SqlitePool::connect(&format!("sqlite:{db}")).await?)
+        Ok(SqlitePool::connect(&format!("sqlite:{}", db.to_string_lossy())).await?)
     }
 
     pub async fn nostr_client(
@@ -148,7 +62,7 @@ impl Config {
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
         let keys = nostr_sdk::Keys::from_sk_str(sk)?;
         let client = nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
-        let relays = self.relays.as_ref().expect("No relays configured");
+        let relays = self.relays();
         for relay in relays {
             client.add_relay(relay, None).await?;
         }
@@ -165,183 +79,96 @@ impl Config {
     }
 
     pub fn starting_block_height(&self) -> usize {
-        match self.network {
-            Some(Network::Bitcoin) => 787000,
+        match self.network() {
+            Network::Bitcoin => 787000,
             _ => 0,
         }
     }
-}
 
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum Subcommand {
-    #[command(skip)]
-    Noop,
-
-    /// Generate a private/public keypair.
-    GenerateKeypair,
-
-    /// Sign/broadcast a raw Nostr event
-    SignEvent(SignEventCommand),
-
-    /// Create and broadcast new names.
-    #[command(subcommand)]
-    Name(Box<NameSubcommand>),
-
-    /// Scan and index the blockchain.
-    Index,
-
-    /// Useful debugging commands
-    #[command(subcommand)]
-    Debug(DebugSubcommand),
-
-    /// Start the HTTP server
-    Server(ServerSubcommand),
-}
-
-impl Default for Subcommand {
-    fn default() -> Self {
-        Subcommand::Noop
+    fn rpc_cookie(&self) -> Option<PathBuf> {
+        self.cli
+            .cookie
+            .as_ref()
+            .or(self.file.rpc.cookie.as_ref())
+            .cloned()
     }
-}
 
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum DebugSubcommand {
-    ListNamespaces,
-    NamesIndex,
-}
+    fn rpc_user(&self) -> Option<String> {
+        self.cli
+            .rpcuser
+            .as_ref()
+            .or(self.file.rpc.user.as_ref())
+            .cloned()
+    }
 
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum IndexSubcommand {
-    /// Index the blockchain and look for new namespaces.
-    Blockchain {
-        /// Minimum block confirmations for indexer. Default: 3
-        #[arg(short, long)]
-        confirmations: Option<usize>,
+    fn rpc_password(&self) -> Option<String> {
+        self.cli
+            .rpcpass
+            .as_ref()
+            .or(self.file.rpc.password.as_ref())
+            .cloned()
+    }
 
-        /// Starting block height to index. Default: most recently scanned block
-        #[arg(long)]
-        height: Option<usize>,
-    },
+    fn rpc_port(&self) -> u16 {
+        self.cli
+            .rpcport
+            .or(self.file.rpc.port)
+            .expect("RPC port required")
+    }
 
-    /// Query relays for missing create events.
-    CreateEvents,
+    fn rpc_host(&self) -> String {
+        self.cli
+            .rpchost
+            .as_ref()
+            .or(self.file.rpc.host.as_ref())
+            .cloned()
+            .unwrap_or_else(|| "127.0.0.1".to_string())
+    }
 
-    /// Query relays for records
-    RecordsEvents,
-}
+    fn data(&self) -> PathBuf {
+        self.cli
+            .data
+            .as_ref()
+            .or(self.file.data.as_ref())
+            .cloned()
+            .unwrap_or_else(|| "nomen.db".into())
+    }
 
-#[derive(clap::Args, Debug, Clone, Serialize, Deserialize)]
-pub struct ServerSubcommand {
-    /// Address and port to bind.
-    #[arg(short, long)]
-    pub bind: Option<String>,
+    fn relays(&self) -> Vec<String> {
+        self.cli
+            .relays
+            .as_ref()
+            .or(self.file.nostr.relays.as_ref())
+            .cloned()
+            .unwrap_or_else(|| {
+                vec![
+                    "wss://relay.damus.io".into(),
+                    "wss://relay.snort.social".into(),
+                ]
+            })
+    }
 
-    /// Start server without explorer.
-    #[arg(long)]
-    pub without_explorer: bool,
+    fn network(&self) -> Network {
+        self.cli
+            .network
+            .or(self.file.rpc.network)
+            .unwrap_or(Network::Bitcoin)
+    }
 
-    /// Start server without API.
-    #[arg(long)]
-    pub without_api: bool,
+    pub fn server_bind(&self) -> Option<String> {
+        match &self.cli.subcommand {
+            Subcommand::Server(ServerSubcommand { bind, .. }) => bind.clone(),
+            _ => None,
+        }
+        .or_else(|| self.file.server.bind.clone())
+    }
 
-    /// Start server without indexer.
-    #[arg(long)]
-    pub without_indexer: bool,
-
-    /// Delay (in seconds) between indexing operations.
-    #[arg(long)]
-    pub indexer_delay: Option<usize>,
-}
-
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum NameSubcommand {
-    /// Create a new name.
-    New(NameNewSubcommand),
-
-    /// Broadcast a new record for your name.
-    Record(NameRecordSubcomand),
-
-    /// Transfer a domain to a new keypair.
-    Transfer(NameTransferSubcommand),
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct NameNewSubcommand {
-    /// The root name of the new namespace.
-    pub name: Name,
-
-    #[command(flatten)]
-    pub txinfo: TxInfo,
-
-    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-    /// Will prompt if not provided.
-    #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
-
-    /// JSON command output
-    #[arg(short, long)]
-    pub json: bool,
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct NameRecordSubcomand {
-    /// The name you are broadcasting records for
-    pub name: Name,
-
-    /// Records to broadcast (format "key=value")
-    pub records: Vec<KeyVal>,
-
-    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-    /// Will prompt if not provided.
-    #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct NameTransferSubcommand {
-    /// The name to be transferred.
-    pub name: Name,
-
-    /// The public key of the previous owner.
-    pub previous: XOnlyPublicKey,
-
-    /// The public key of the new owner.
-    pub new: XOnlyPublicKey,
-
-    #[command(flatten)]
-    pub txinfo: TxInfo,
-
-    /// JSON command output
-    #[arg(short, long)]
-    pub json: bool,
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct TxInfo {
-    /// The txid to use as input.
-    pub txid: bitcoin::Txid,
-
-    /// Tx output number to use as input.
-    pub vout: u32,
-
-    /// New address to send outputs
-    pub address: bitcoin::Address,
-
-    /// Fee to use for the transaction
-    #[arg(short, long, default_value = "10000")]
-    pub fee: u32,
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct SignEventCommand {
-    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-    /// Will prompt if not provided.
-    #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
-
-    /// Broadcast event to configured relays.
-    #[arg(short, long)]
-    pub broadcast: bool,
-
-    pub event: String,
+    pub fn server_indexer_delay(&self) -> u64 {
+        match &self.cli.subcommand {
+            Subcommand::Server(ServerSubcommand { indexer_delay, .. }) => *indexer_delay,
+            _ => None,
+        }
+        .or(self.file.server.indexer_delay)
+        .unwrap_or(30)
+    }
 }

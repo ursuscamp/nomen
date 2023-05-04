@@ -1,6 +1,9 @@
 use sqlx::SqlitePool;
 
-use crate::{config::Config, db};
+use crate::{
+    config::{Cli, Config},
+    db,
+};
 
 mod blockchain;
 mod events;

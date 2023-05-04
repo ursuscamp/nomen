@@ -6,8 +6,9 @@ mod subcommands;
 mod util;
 
 use clap::Parser;
+use config::Config;
 
-use crate::config::Config;
+use crate::config::{Cli, ConfigFile};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -16,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
 
     let pool = db::initialize(&config).await?;
 
-    match &config.subcommand {
+    match &config.cli.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
         config::Subcommand::SignEvent(event) => subcommands::sign_event(&config, event).await?,
@@ -33,19 +34,19 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn parse_config() -> anyhow::Result<Config> {
-    let mut config = config::Config::parse();
-    let config_name = config
-        .config
-        .clone()
-        .unwrap_or_else(|| ".nomen.toml".into());
+    let mut cli = config::Cli::parse();
+    let config_name = cli.config.clone().unwrap_or_else(|| ".nomen.toml".into());
 
-    if config_name.is_file() {
+    let file = if config_name.is_file() {
         let config_str = std::fs::read_to_string(config_name)?;
-        let config_file = toml::from_str(&config_str)?;
-        config.merge_config_file(config_file);
+
+        toml::from_str(&config_str)?
     } else {
         log::info!("Config file not found. Skipping.");
-    }
+        ConfigFile::default()
+    };
+
+    let config = Config::new(cli, file);
 
     log::debug!("Config loaded: {config:?}");
 

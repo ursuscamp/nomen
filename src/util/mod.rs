@@ -16,7 +16,10 @@ pub use nsid::*;
 pub use nsid_builder::*;
 use yansi::Paint;
 
-use crate::{config::Config, db};
+use crate::{
+    config::{Cli, Config},
+    db,
+};
 
 pub enum NameKind {
     Name = 38300,

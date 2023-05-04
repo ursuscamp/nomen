@@ -9,7 +9,7 @@ use axum::{
 use sqlx::SqlitePool;
 
 use crate::{
-    config::{Config, ServerSubcommand},
+    config::{Cli, Config, ServerSubcommand},
     subcommands,
 };
 
@@ -96,7 +96,7 @@ async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> 
     loop {
         subcommands::index(&config, &pool).await?;
         tokio::select! {
-            _ = tokio::time::sleep(Duration::from_secs(server.indexer_delay.unwrap() as u64)) => {},
+            _ = tokio::time::sleep(Duration::from_secs(config.server_indexer_delay())) => {},
             _ = guard.wait() => return Ok(())
         }
     }
@@ -119,7 +119,7 @@ mod site {
     use sqlx::SqlitePool;
 
     use crate::{
-        config::{Config, TxInfo},
+        config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
         subcommands::{create_unsigned_tx, name_event},
         util::{check_name, Hash160, KeyVal, Name, NomenKind, NsidBuilder},

@@ -3,7 +3,7 @@ use bitcoincore_rpc::RawTx;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 
 use crate::{
-    config::{Config, NameTransferSubcommand},
+    config::{Cli, Config, NameTransferSubcommand},
     util::{tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 

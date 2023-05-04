@@ -3,7 +3,7 @@ use bitcoincore_rpc::RpcApi;
 use sqlx::SqlitePool;
 
 use crate::{
-    config::Config,
+    config::{Cli, Config},
     db,
     util::{NomenKind, NomenTx, Nsid},
 };

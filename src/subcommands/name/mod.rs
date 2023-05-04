@@ -12,7 +12,7 @@ use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag, UnsignedEvent};
 pub use record::*;
 
 use crate::{
-    config::{Config, NameSubcommand, TxInfo},
+    config::{Cli, Config, NameSubcommand, TxInfo},
     util::{NameKind, NomenKind, Nsid, NsidBuilder},
 };
 

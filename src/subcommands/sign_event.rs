@@ -1,6 +1,6 @@
 use nostr_sdk::UnsignedEvent;
 
-use crate::config::{Config, SignEventCommand};
+use crate::config::{Cli, Config, SignEventCommand};
 
 use super::get_keys;
 

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 
 use crate::{
-    config::{Config, NameRecordSubcomand},
+    config::{Cli, Config, NameRecordSubcomand},
     subcommands::get_keys,
     util::{NameKind, NsidBuilder},
 };

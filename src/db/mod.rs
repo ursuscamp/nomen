@@ -5,7 +5,7 @@ use nostr_sdk::EventId;
 use sqlx::{FromRow, SqlitePool};
 
 use crate::{
-    config::Config,
+    config::{Cli, Config},
     util::{Hash160, Name, NomenKind, Nsid},
 };
 
