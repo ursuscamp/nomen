@@ -24,10 +24,6 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,
         config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
-        config::Subcommand::Debug(debug) => match debug {
-            config::DebugSubcommand::ListNamespaces => subcommands::list_namespaces()?,
-            config::DebugSubcommand::NamesIndex => subcommands::names_index()?,
-        },
     }
 
     Ok(())

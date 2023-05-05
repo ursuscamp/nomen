@@ -74,10 +74,6 @@ pub enum Subcommand {
     /// Scan and index the blockchain.
     Index,
 
-    /// Useful debugging commands
-    #[command(subcommand)]
-    Debug(DebugSubcommand),
-
     /// Start the HTTP server
     Server(ServerSubcommand),
 }
@@ -86,12 +82,6 @@ impl Default for Subcommand {
     fn default() -> Self {
         Subcommand::Noop
     }
-}
-
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum DebugSubcommand {
-    ListNamespaces,
-    NamesIndex,
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
