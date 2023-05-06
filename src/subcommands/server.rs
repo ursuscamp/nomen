@@ -88,18 +88,18 @@ pub async fn start(
         .serve(app.into_make_service())
         .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
         .await?;
+
+    log::info!("Server shutdown complete.");
+    elegant_departure::shutdown();
     Ok(())
 }
 
 async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> anyhow::Result<()> {
-    let guard = elegant_departure::get_shutdown_guard();
     loop {
         subcommands::index(&config, &pool).await?;
-        tokio::select! {
-            _ = tokio::time::sleep(Duration::from_secs(config.server_indexer_delay())) => {},
-            _ = guard.wait() => return Ok(())
-        }
+        tokio::time::sleep(Duration::from_secs(config.server_indexer_delay())).await;
     }
+    Ok(())
 }
 
 mod site {

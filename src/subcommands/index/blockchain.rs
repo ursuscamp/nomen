@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use bitcoin::{hashes::hex::ToHex, BlockHash, Txid};
 use bitcoincore_rpc::RpcApi;
 use sqlx::SqlitePool;
@@ -13,15 +15,21 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     let index_height = db::next_index_height(pool)
         .await?
         .max(config.starting_block_height());
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
     log::info!("Starting blockchain index at height {index_height}");
 
-    let indexed_txs = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
-        let mut index_txs = Vec::new();
+    let thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut blockhash = client.get_block_hash(index_height as u64)?;
         let mut blockinfo = client.get_block_header_info(&blockhash)?;
 
         while let Some(next_hash) = blockinfo.next_block_hash {
+            // If the channel is closed, let's stop
+            if sender.is_closed() {
+                log::info!("Stopping index operation.");
+                break;
+            }
+
             if (blockinfo.confirmations as usize) < 3 {
                 log::info!(
                     "Minimum confirmations not met at block height {}.",
@@ -29,6 +37,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 );
                 break;
             }
+
             if blockinfo.height % 10 == 0 {
                 log::info!("Index block height {}", blockinfo.height);
             }
@@ -48,7 +57,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                     nsid,
                                     kind,
                                 }) => {
-                                    index_txs.push((
+                                    sender.blocking_send((
                                         fingerprint,
                                         nsid,
                                         blockhash,
@@ -71,30 +80,73 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
             blockinfo = client.get_block_header_info(&blockhash)?;
         }
 
-        Ok(index_txs)
-    })
-    .await??;
+        Ok(())
+    });
 
-    for (fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind) in
-        indexed_txs
-    {
-        if let Err(e) = index_output(
-            pool,
-            fingerprint,
-            nsid,
-            &blockhash,
-            &txid,
-            blocktime,
-            blockheight,
-            txheight,
-            vout,
-            kind,
-        )
-        .await
-        {
-            log::error!("Index error: {e}");
+    let guard = elegant_departure::get_shutdown_guard();
+    'select: loop {
+        tokio::select! {
+            msg = receiver.recv() => {
+                match msg {
+                    Some((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)) => {
+                        if let Err(e) = index_output(
+                            pool,
+                            fingerprint,
+                            nsid,
+                            &blockhash,
+                            &txid,
+                            blocktime,
+                            blockheight,
+                            txheight,
+                            vout,
+                            kind,
+                        )
+                        .await
+                        {
+                            log::error!("Index error: {e}");
+                        }
+                    }
+                    None => break 'select,
+                }
+            }
+            _ = guard.wait() => {
+                receiver.close();
+                // std::mem::drop(receiver);
+                break 'select;
+            }
         }
     }
+
+    // while let Some(
+    //     ((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)),
+    // ) = receiver.recv().await
+    // {
+    //     if let Err(e) = index_output(
+    //         pool,
+    //         fingerprint,
+    //         nsid,
+    //         &blockhash,
+    //         &txid,
+    //         blocktime,
+    //         blockheight,
+    //         txheight,
+    //         vout,
+    //         kind,
+    //     )
+    //     .await
+    //     {
+    //         log::error!("Index error: {e}");
+    //     }
+    // }
+
+    // let guard = elegant_departure::get_shutdown_guard();
+    // let mut indexed_txs = tokio::select! {
+    //     _ = guard.wait() => {
+    //         log::info!("Index shutdown requested.");
+    //         vec![]
+    //     },
+    //     Ok(Ok(v)) = thread => v,
+    // };
 
     log::info!("Blockchain index complete.");
     Ok(())
