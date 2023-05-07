@@ -11,10 +11,10 @@ use crate::{
 
 static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
-    "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at);",
+    "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
-    "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at);",
+    "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(nsid)",
 
     // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
@@ -210,6 +210,7 @@ pub async fn insert_name_event(
     created_at: i64,
     event_id: EventId,
     records: String,
+    raw_event: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_name_event.sql"))
         .bind(name.to_string())
@@ -219,6 +220,7 @@ pub async fn insert_name_event(
         .bind(created_at)
         .bind(event_id.to_string())
         .bind(records)
+        .bind(raw_event)
         .execute(conn)
         .await?;
     Ok(())
@@ -276,6 +278,7 @@ pub async fn last_transfer_time(conn: &SqlitePool) -> anyhow::Result<u64> {
     Ok(t as u64)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_transfer_event(
     conn: &SqlitePool,
     nsid: Nsid,
@@ -284,6 +287,7 @@ pub async fn insert_transfer_event(
     event_id: EventId,
     name: Name,
     children: String,
+    raw_event: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
         .bind(nsid.to_hex())
@@ -292,6 +296,7 @@ pub async fn insert_transfer_event(
         .bind(event_id.to_hex())
         .bind(name.to_string())
         .bind(children)
+        .bind(raw_event)
         .execute(conn)
         .await?;
 

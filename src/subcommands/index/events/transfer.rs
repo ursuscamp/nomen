@@ -47,9 +47,20 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         created_at,
         raw_content,
         records: _,
+        raw_event,
     } = ed;
 
-    db::insert_transfer_event(pool, nsid, pubkey, created_at, event_id, name, raw_content).await?;
+    db::insert_transfer_event(
+        pool,
+        nsid,
+        pubkey,
+        created_at,
+        event_id,
+        name,
+        raw_content,
+        raw_event,
+    )
+    .await?;
 
     Ok(())
 }

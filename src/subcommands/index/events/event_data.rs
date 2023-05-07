@@ -17,6 +17,7 @@ pub struct EventData {
     pub created_at: i64,
     pub raw_content: String,
     pub records: Option<HashMap<String, String>>,
+    pub raw_event: String,
 }
 
 impl EventData {
@@ -28,6 +29,7 @@ impl EventData {
             .chain_update(name.as_bytes())
             .fingerprint();
         let records = event.extract_records().ok();
+        let raw_event = serde_json::to_string(event)?;
 
         Ok(EventData {
             event_id: event.id,
@@ -39,6 +41,7 @@ impl EventData {
             created_at: event.created_at.as_i64(),
             raw_content: event.content.clone(),
             records,
+            raw_event,
         })
     }
 
