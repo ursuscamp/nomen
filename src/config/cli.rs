@@ -64,6 +64,12 @@ pub enum Subcommand {
     /// Generate a private/public keypair.
     GenerateKeypair,
 
+    /// Initialize a new config file.
+    Init {
+        /// Optional filename to write
+        file: Option<PathBuf>,
+    },
+
     /// Sign/broadcast a raw Nostr event
     SignEvent(SignEventCommand),
 
