@@ -50,7 +50,6 @@ impl Hash160 {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::hashes::hex::ToHex;
 
     use super::*;
 
@@ -58,7 +57,7 @@ mod tests {
     fn test_update() {
         let mut h = Hash160::default();
         h.update(b"hello");
-        let d = h.finalize().to_hex();
+        let d = hex::encode(h.finalize());
         assert_eq!(d, "b6a9c8c230722b7c748331a8b450f05566dc7d0f");
     }
 
@@ -66,21 +65,21 @@ mod tests {
     fn test_fingerprint() {
         let mut h = Hash160::default();
         h.update(b"hello");
-        let d = h.fingerprint().to_hex();
+        let d = hex::encode(h.fingerprint());
         assert_eq!(d, "b6a9c8c230");
     }
 
     #[test]
     fn test_digest() {
         assert_eq!(
-            Hash160::digest(b"hello").to_hex(),
+            hex::encode(Hash160::digest(b"hello")),
             "b6a9c8c230722b7c748331a8b450f05566dc7d0f"
         );
     }
 
     #[test]
     fn test_digest_slices() {
-        let hashed = Hash160::digest_slices(&[b"hello", b"world"]).to_hex();
+        let hashed = hex::encode(Hash160::digest_slices(&[b"hello", b"world"]));
         assert_eq!(hashed, "b36c87f1c6d9182eb826d7d987f9081adf15b772");
     }
 }

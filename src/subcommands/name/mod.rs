@@ -5,11 +5,12 @@ mod transfer;
 use std::{collections::HashMap, io::Write};
 
 pub use anyhow::anyhow;
-use bitcoin::{secp256k1::SecretKey, XOnlyPublicKey};
+use bitcoin::{script::PushBytesBuf, secp256k1::SecretKey};
 use bitcoincore_rpc::RpcApi;
 pub use new::*;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag, UnsignedEvent};
 pub use record::*;
+use secp256k1::XOnlyPublicKey;
 
 use crate::{
     config::{Cli, Config, NameSubcommand, TxInfo},
@@ -79,21 +80,26 @@ pub(crate) async fn create_unsigned_tx(
             txid: args.txid,
             vout: args.vout,
         },
-        script_sig: bitcoin::Script::new(), // Unsigned tx with empty script
+        script_sig: bitcoin::ScriptBuf::new(), // Unsigned tx with empty script
         sequence: bitcoin::Sequence::ZERO,
         witness: bitcoin::Witness::new(),
     };
     let txout = bitcoin::TxOut {
         value: new_amount,
-        script_pubkey: args.address.script_pubkey(),
+        script_pubkey: args
+            .address
+            .clone()
+            .require_network(config.network())?
+            .script_pubkey(),
     };
+    let op_return: PushBytesBuf = op_return(fingerprint, nsid, kind).try_into()?;
     let op_return = bitcoin::TxOut {
         value: 0,
-        script_pubkey: bitcoin::Script::new_op_return(&op_return(fingerprint, nsid, kind)),
+        script_pubkey: bitcoin::ScriptBuf::new_op_return(&op_return),
     };
     let tx = bitcoin::Transaction {
         version: 1,
-        lock_time: bitcoin::PackedLockTime::ZERO,
+        lock_time: bitcoin::absolute::LockTime::ZERO,
         input: vec![txin],
         output: vec![txout, op_return],
     };

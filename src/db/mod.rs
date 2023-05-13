@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
 use nostr_sdk::EventId;
+use secp256k1::XOnlyPublicKey;
 use sqlx::{FromRow, SqlitePool};
 
 use crate::{
@@ -120,8 +120,8 @@ pub async fn insert_blockchain(
     kind: NomenKind,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_namespace.sql"))
-        .bind(fingerprint.to_hex())
-        .bind(nsid.to_hex())
+        .bind(hex::encode(fingerprint))
+        .bind(nsid.to_string())
         .bind(blockhash)
         .bind(txid)
         .bind(blocktime as i64)
@@ -160,8 +160,8 @@ pub async fn insert_create_event(
     children: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_name_event.sql"))
-        .bind(nsid.to_hex())
-        .bind(pubkey.to_hex())
+        .bind(nsid.to_string())
+        .bind(pubkey.to_string())
         .bind(created_at)
         .bind(event_id.to_hex())
         .bind(name)
@@ -187,7 +187,7 @@ pub struct NameDetails {
 
 pub async fn name_details(conn: &SqlitePool, nsid: Nsid) -> anyhow::Result<NameDetails> {
     let details = sqlx::query_as::<_, NameDetails>("SELECT * FROM detail_vw WHERE nsid = ?")
-        .bind(nsid.to_hex())
+        .bind(nsid.to_string())
         .fetch_one(conn)
         .await?;
     Ok(details)
@@ -214,8 +214,8 @@ pub async fn insert_name_event(
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_name_event.sql"))
         .bind(name.to_string())
-        .bind(fingerprint.to_hex())
-        .bind(nsid.to_hex())
+        .bind(hex::encode(fingerprint))
+        .bind(nsid.to_string())
         .bind(pubkey.to_string())
         .bind(created_at)
         .bind(event_id.to_string())
@@ -290,8 +290,8 @@ pub async fn insert_transfer_event(
     raw_event: String,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
-        .bind(nsid.to_hex())
-        .bind(pubkey.to_hex())
+        .bind(nsid.to_string())
+        .bind(pubkey.to_string())
         .bind(created_at)
         .bind(event_id.to_hex())
         .bind(name.to_string())
@@ -304,10 +304,11 @@ pub async fn insert_transfer_event(
 }
 
 pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<bool> {
-    let fingerprint = Hash160::default()
-        .chain_update(name.as_bytes())
-        .fingerprint()
-        .to_hex();
+    let fingerprint = hex::encode(
+        Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint(),
+    );
     let (count,) = sqlx::query_as::<_, (i64,)>(
         "SELECT COUNT(*) FROM blockchain where fingerprint = ? AND kind = 'create';",
     )

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Context};
-use bitcoin::XOnlyPublicKey;
 use itertools::Itertools;
 use nostr_sdk::Event;
+use secp256k1::XOnlyPublicKey;
 
 use super::Nsid;
 

@@ -1,11 +1,16 @@
 use std::path::PathBuf;
 
-use bitcoin::{secp256k1::SecretKey, Network, XOnlyPublicKey};
+use bitcoin::{
+    address::{NetworkChecked, NetworkUnchecked},
+    secp256k1::SecretKey,
+    Network,
+};
 use clap::Parser;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
 };
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
@@ -205,7 +210,7 @@ pub struct TxInfo {
     pub vout: u32,
 
     /// New address to send outputs
-    pub address: bitcoin::Address,
+    pub address: bitcoin::Address<NetworkUnchecked>,
 
     /// Fee to use for the transaction
     #[arg(short, long, default_value = "10000")]

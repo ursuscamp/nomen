@@ -1,4 +1,4 @@
-use bitcoin::XOnlyPublicKey;
+use bitcoin::secp256k1::XOnlyPublicKey;
 
 use crate::util::Hash160;
 

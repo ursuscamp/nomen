@@ -112,9 +112,10 @@ mod site {
         Form,
     };
     use axum_extra::extract::WithRejection;
-    use bitcoin::{Address, Transaction, Txid, XOnlyPublicKey};
+    use bitcoin::{address::NetworkUnchecked, Address, Transaction, Txid};
     use bitcoincore_rpc::RawTx;
     use itertools::Itertools;
+    use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
@@ -231,7 +232,7 @@ mod site {
         txid: Txid,
         vout: u32,
         name: String,
-        address: Address,
+        address: Address<NetworkUnchecked>,
         pubkey: XOnlyPublicKey,
         fee: u32,
     }
@@ -263,7 +264,10 @@ mod site {
             txid: form.txid.to_string(),
             vout: form.vout.to_string(),
             name: form.name.to_string(),
-            address: form.address.to_string(),
+            address: form
+                .address
+                .require_network(state.config.network())?
+                .to_string(),
             pubkey: form.pubkey.to_string(),
             fee: form.fee,
             unsigned_tx: unsigned_tx.raw_hex(),

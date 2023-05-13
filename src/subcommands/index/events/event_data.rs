@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use anyhow::bail;
-use bitcoin::XOnlyPublicKey;
 use nostr_sdk::{Event, EventId};
+use secp256k1::XOnlyPublicKey;
 
 use crate::util::{EventExtractor, Hash160, Name, Nsid};
 

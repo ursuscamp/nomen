@@ -61,7 +61,7 @@ impl Config {
         sk: &str,
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
         let keys = nostr_sdk::Keys::from_sk_str(sk)?;
-        let client = nostr_sdk::Client::new_with_opts(&keys, Options::new().wait_for_send(true));
+        let client = nostr_sdk::Client::with_opts(&keys, Options::new().wait_for_send(true));
         let relays = self.relays();
         for relay in relays {
             client.add_relay(relay, None).await?;
@@ -148,7 +148,7 @@ impl Config {
             })
     }
 
-    fn network(&self) -> Network {
+    pub fn network(&self) -> Network {
         self.cli
             .network
             .or(self.file.rpc.network)

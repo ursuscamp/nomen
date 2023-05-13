@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use anyhow::bail;
-use bitcoin::hashes::hex::ToHex;
 use bitcoincore_rpc::RawTx;
 
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
@@ -36,7 +35,7 @@ pub async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()
     let event_id = nostr.send_event(event).await?;
 
     let output = CmdOutput {
-        nsid: nsid.to_hex(),
+        nsid: nsid.to_string(),
         unsigned_tx: tx.raw_hex(),
         event_id: event_id.to_string(),
     };
@@ -61,7 +60,7 @@ fn create_event(
         NameKind::Name.into(),
         "",
         &[
-            Tag::Identifier(nsid.to_hex()),
+            Tag::Identifier(nsid.to_string()),
             Tag::Generic(
                 TagKind::Custom("nom".to_owned()),
                 vec![args.name.to_string()],

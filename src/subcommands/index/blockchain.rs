@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use bitcoin::{hashes::hex::ToHex, BlockHash, Txid};
+use bitcoin::{BlockHash, Txid};
 use bitcoincore_rpc::RpcApi;
 use sqlx::SqlitePool;
 
@@ -111,42 +111,10 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
             }
             _ = guard.wait() => {
                 receiver.close();
-                // std::mem::drop(receiver);
                 break 'select;
             }
         }
     }
-
-    // while let Some(
-    //     ((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)),
-    // ) = receiver.recv().await
-    // {
-    //     if let Err(e) = index_output(
-    //         pool,
-    //         fingerprint,
-    //         nsid,
-    //         &blockhash,
-    //         &txid,
-    //         blocktime,
-    //         blockheight,
-    //         txheight,
-    //         vout,
-    //         kind,
-    //     )
-    //     .await
-    //     {
-    //         log::error!("Index error: {e}");
-    //     }
-    // }
-
-    // let guard = elegant_departure::get_shutdown_guard();
-    // let mut indexed_txs = tokio::select! {
-    //     _ = guard.wait() => {
-    //         log::info!("Index shutdown requested.");
-    //         vec![]
-    //     },
-    //     Ok(Ok(v)) = thread => v,
-    // };
 
     log::info!("Blockchain index complete.");
     Ok(())
@@ -174,8 +142,8 @@ async fn index_output(
         conn,
         fingerprint,
         nsid,
-        blockhash.to_hex(),
-        txid.to_hex(),
+        blockhash.to_string(),
+        txid.to_string(),
         blocktime,
         blockheight,
         txheight,

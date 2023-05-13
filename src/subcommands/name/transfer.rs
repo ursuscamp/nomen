@@ -1,4 +1,3 @@
-use bitcoin::hashes::hex::ToHex;
 use bitcoincore_rpc::RawTx;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
 
@@ -26,7 +25,7 @@ pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow:
         create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Transfer).await?;
     let unsigned_event = create_event(nsid, args)?;
     let output = CmdOutput {
-        nsid: nsid.to_hex(),
+        nsid: nsid.to_string(),
         unsigned_tx: unsigned_tx.raw_hex(),
         unsigned_event: serde_json::to_string(&unsigned_event)?,
     };
@@ -48,9 +47,9 @@ fn create_event(
 ) -> Result<nostr_sdk::UnsignedEvent, anyhow::Error> {
     let event = EventBuilder::new(
         NameKind::Transfer.into(),
-        args.new.to_hex(),
+        args.new.to_string(),
         &[
-            Tag::Identifier(nsid.to_hex()),
+            Tag::Identifier(nsid.to_string()),
             Tag::Generic(
                 TagKind::Custom("nom".to_owned()),
                 vec![args.name.to_string()],

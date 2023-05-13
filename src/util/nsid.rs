@@ -1,9 +1,10 @@
 use std::{
     fmt::{Debug, Display},
+    io::Read,
     str::FromStr,
 };
 
-use bitcoin::{hashes::hex::ToHex, XOnlyPublicKey};
+use bitcoin::secp256k1::XOnlyPublicKey;
 use derive_more::{AsMut, AsRef, Deref, DerefMut, From};
 use nostr_sdk::Event;
 
@@ -62,6 +63,6 @@ impl Debug for Nsid {
 
 impl Display for Nsid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_hex())
+        write!(f, "{}", hex::encode(self.0))
     }
 }
