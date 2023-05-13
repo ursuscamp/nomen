@@ -1,6 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 
 use super::Nsid;
 
@@ -64,6 +64,18 @@ impl From<NomenKind> for u8 {
         match value {
             NomenKind::Create => 0x00,
             NomenKind::Transfer => 0x01,
+        }
+    }
+}
+
+impl FromStr for NomenKind {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "create" => Ok(NomenKind::Create),
+            "transfer" => Ok(NomenKind::Transfer),
+            _ => Err(anyhow!("Unrecognized Nomen transaction type")),
         }
     }
 }

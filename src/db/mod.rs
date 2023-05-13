@@ -29,20 +29,24 @@ static MIGRATIONS: [&str; 15] = [
     "CREATE VIEW ranked_name_vw AS
         SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
         FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid;",
+        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        WHERE b.kind = 'create';",
 
     // We select everyone that has rank 1. This is always going to be first claimed on blockchain.
     "CREATE VIEW name_vw AS 
         SELECT * FROM ranked_name_vw WHERE row = 1;",
 
-    // Starting with a valid name event, follow the graph recrusively to each successive transfer_event (if such exists),
-    // connecting punbkey -> content (next pubkey) -> pubkey -> content (next pubkey), etc. The resulting query returns
+    // Starting with a valid name event, follow the graph recursively to each successive transfer_event (if such exists),
+    // connecting pubkey -> content (next pubkey) -> pubkey -> content (next pubkey), etc. The resulting query returns
     // the successive owners of each name
     "CREATE VIEW ownership_chain_vw AS
         WITH RECURSIVE owners(name, pk) as (
             SELECT name, pubkey FROM name_vw
             UNION ALL
-            SELECT te.name, te.content FROM transfer_events te JOIN owners ON te.pubkey = owners.pk AND te.name = owners.name
+            SELECT te.name, te.content
+                FROM transfer_events te
+                JOIN owners ON te.pubkey = owners.pk AND te.name = owners.name
+                JOIN blockchain b on te.nsid = b.nsid
         )
         SELECT name, pk FROM owners;",
 

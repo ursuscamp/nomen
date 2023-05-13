@@ -14,7 +14,7 @@ use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal, Name};
+use crate::util::{KeyVal, Name, NomenKind};
 
 use super::ConfigFile;
 
@@ -105,6 +105,19 @@ pub enum UtilSubcommand {
     Lookup {
         /// Name to look up
         name: String,
+    },
+
+    /// Generate the data to be used in an OP_RETURN.
+    /// Useful when constructing transaction separately.
+    OpReturn {
+        /// The name to register
+        name: String,
+
+        /// The public key of the owner
+        pubkey: XOnlyPublicKey,
+
+        /// Transaction kind. Possible values: create, transfer
+        kind: NomenKind,
     },
 }
 

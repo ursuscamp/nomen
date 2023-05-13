@@ -20,12 +20,17 @@ async fn main() -> anyhow::Result<()> {
     match &config.cli.subcommand {
         config::Subcommand::Noop => {}
         config::Subcommand::Util(util) => match util {
-            config::UtilSubcommand::GenerateKeypair => subcommands::generate_keypair(),
-            config::UtilSubcommand::Init { file } => subcommands::init_config(file)?,
+            config::UtilSubcommand::GenerateKeypair => subcommands::util::generate_keypair(),
+            config::UtilSubcommand::Init { file } => subcommands::util::init_config(file)?,
             config::UtilSubcommand::SignEvent(event) => {
-                subcommands::sign_event(&config, event).await?
+                subcommands::util::sign_event(&config, event).await?
             }
-            config::UtilSubcommand::Lookup { name } => subcommands::lookup(&config, name).await?,
+            config::UtilSubcommand::Lookup { name } => {
+                subcommands::util::lookup(&config, name).await?
+            }
+            config::UtilSubcommand::OpReturn { name, pubkey, kind } => {
+                subcommands::util::op_return(name, pubkey, *kind)?
+            }
         },
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,
