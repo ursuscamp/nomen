@@ -71,10 +71,7 @@ pub(crate) async fn create_unsigned_tx(
 ) -> Result<bitcoin::Transaction, anyhow::Error> {
     let tx = get_transaction(config, &args.txid).await?;
     let txout = &tx.output[args.vout as usize];
-    let new_amount = txout
-        .value
-        .checked_sub(args.fee as u64)
-        .ok_or_else(|| anyhow!("Fee is over available amount in tx"))?;
+    let value = txout.value;
     let txin = bitcoin::TxIn {
         previous_output: bitcoin::OutPoint {
             txid: args.txid,
@@ -85,7 +82,7 @@ pub(crate) async fn create_unsigned_tx(
         witness: bitcoin::Witness::new(),
     };
     let txout = bitcoin::TxOut {
-        value: new_amount,
+        value,
         script_pubkey: args
             .address
             .clone()
@@ -97,12 +94,17 @@ pub(crate) async fn create_unsigned_tx(
         value: 0,
         script_pubkey: bitcoin::ScriptBuf::new_op_return(&op_return),
     };
-    let tx = bitcoin::Transaction {
+    let mut tx = bitcoin::Transaction {
         version: 1,
         lock_time: bitcoin::absolute::LockTime::ZERO,
         input: vec![txin],
         output: vec![txout, op_return],
     };
+    let estimated_size = tx.vsize() as u64 + 65; // Estimate transaction size w/ signature. TODO: Is there a better way to do this?
+    let fee = estimated_size * config.fee()?.to_sat_per_vb_ceil();
+    tx.output[0].value = value
+        .checked_sub(fee)
+        .ok_or_else(|| anyhow!("Insufficient sats in input"))?;
     Ok(tx)
 }
 

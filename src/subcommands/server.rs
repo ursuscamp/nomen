@@ -223,7 +223,7 @@ mod site {
         name: String,
         address: String,
         pubkey: String,
-        fee: u32,
+        fee: u64,
         unsigned_tx: String,
     }
 
@@ -234,7 +234,7 @@ mod site {
         name: String,
         address: Address<NetworkUnchecked>,
         pubkey: XOnlyPublicKey,
-        fee: u32,
+        fee: u64,
     }
 
     pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {

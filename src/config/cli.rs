@@ -212,9 +212,9 @@ pub struct TxInfo {
     /// New address to send outputs
     pub address: bitcoin::Address<NetworkUnchecked>,
 
-    /// Fee to use for the transaction
-    #[arg(short, long, default_value = "10000")]
-    pub fee: u32,
+    /// Fee to use for the transaction (sats/vb)
+    #[arg(short, long, default_value = "1")]
+    pub fee: u64,
 }
 
 #[derive(clap::Args, Debug, Clone)]

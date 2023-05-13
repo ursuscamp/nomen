@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use bitcoin::Network;
+use anyhow::anyhow;
+use bitcoin::{FeeRate, Network};
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
@@ -170,5 +171,18 @@ impl Config {
         }
         .or(self.file.server.indexer_delay)
         .unwrap_or(30)
+    }
+
+    pub fn fee(&self) -> anyhow::Result<FeeRate> {
+        match &self.cli.subcommand {
+            Subcommand::Name(name) => match name.as_ref() {
+                super::NameSubcommand::New(new_name) => {
+                    FeeRate::from_sat_per_vb(new_name.txinfo.fee)
+                        .ok_or_else(|| anyhow!("Invalid fee rate"))
+                }
+                _ => Ok(FeeRate::BROADCAST_MIN),
+            },
+            _ => Ok(FeeRate::BROADCAST_MIN),
+        }
     }
 }
