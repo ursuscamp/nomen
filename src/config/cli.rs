@@ -66,17 +66,9 @@ pub enum Subcommand {
     #[command(skip)]
     Noop,
 
-    /// Generate a private/public keypair.
-    GenerateKeypair,
-
-    /// Initialize a new config file.
-    Init {
-        /// Optional filename to write
-        file: Option<PathBuf>,
-    },
-
-    /// Sign/broadcast a raw Nostr event
-    SignEvent(SignEventCommand),
+    /// Extra utilities
+    #[command(subcommand)]
+    Util(UtilSubcommand),
 
     /// Create and broadcast new names.
     #[command(subcommand)]
@@ -93,6 +85,21 @@ impl Default for Subcommand {
     fn default() -> Self {
         Subcommand::Noop
     }
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum UtilSubcommand {
+    /// Generate a private/public keypair.
+    GenerateKeypair,
+
+    /// Initialize a new config file.
+    Init {
+        /// Optional filename to write
+        file: Option<PathBuf>,
+    },
+
+    /// Sign/broadcast a raw Nostr event
+    SignEvent(SignEventCommand),
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]

@@ -27,7 +27,7 @@ What you will need:
 1. `git clone https://github.com/ursuscamp/nomen.git`
 2. `cd nomem`
 3. `cargo build --release`
-4. **OPTIONAL**: `target/release/nomen generate-keypair` to obtain a new keypair
+4. **OPTIONAL**: `target/release/nomen util generate-keypair` to obtain a new keypair
 5. `target/release/nomen name new --privkey $PRIVATE_KEY $NAME $TXID $VOUT $ADDRESS`
    * Use required data mentioned above in place of variables
 6. Copy unsigned transaction, then sign and broadcast with your Bitcoin wallet.

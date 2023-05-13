@@ -16,4 +16,4 @@ UEVENT=$(echo $DATA | jq -r .unsigned_event)
 STX=$($CMD signrawtransactionwithwallet $UTX | jq -r .hex)
 $CMD sendrawtransaction $STX
 $CMD generatetoaddress 3 $ADDR
-RUST_LOG=off cargo run -q -- sign-event --privkey $OLD_PRIVKEY --broadcast $UEVENT
+RUST_LOG=off cargo run -q -- util sign-event --privkey $OLD_PRIVKEY --broadcast $UEVENT

@@ -19,9 +19,13 @@ async fn main() -> anyhow::Result<()> {
 
     match &config.cli.subcommand {
         config::Subcommand::Noop => {}
-        config::Subcommand::GenerateKeypair => subcommands::generate_keypair(),
-        config::Subcommand::Init { file } => subcommands::init_config(file)?,
-        config::Subcommand::SignEvent(event) => subcommands::sign_event(&config, event).await?,
+        config::Subcommand::Util(util) => match util {
+            config::UtilSubcommand::GenerateKeypair => subcommands::generate_keypair(),
+            config::UtilSubcommand::Init { file } => subcommands::init_config(file)?,
+            config::UtilSubcommand::SignEvent(event) => {
+                subcommands::sign_event(&config, event).await?
+            }
+        },
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,
         config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
