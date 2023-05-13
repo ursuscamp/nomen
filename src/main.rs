@@ -25,6 +25,7 @@ async fn main() -> anyhow::Result<()> {
             config::UtilSubcommand::SignEvent(event) => {
                 subcommands::sign_event(&config, event).await?
             }
+            config::UtilSubcommand::Lookup { name } => subcommands::lookup(&config, name).await?,
         },
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
         config::Subcommand::Index => subcommands::index(&config, &pool).await?,

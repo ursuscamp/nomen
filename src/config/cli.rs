@@ -100,6 +100,12 @@ pub enum UtilSubcommand {
 
     /// Sign/broadcast a raw Nostr event
     SignEvent(SignEventCommand),
+
+    /// Check if a name already exists
+    Lookup {
+        /// Name to look up
+        name: String,
+    },
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
