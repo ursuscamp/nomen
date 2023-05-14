@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bitcoin::{BlockHash, Txid};
-use bitcoincore_rpc::RpcApi;
+use bitcoincore_rpc::{Client, RpcApi};
 use sqlx::SqlitePool;
 
 use crate::{
@@ -11,6 +11,9 @@ use crate::{
 };
 
 pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
+    // Check if the index is on a stale chain, and rewind the index if necessary
+    rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
+
     let client = config.rpc_client()?;
     let index_height = db::next_index_height(pool)
         .await?
@@ -151,5 +154,57 @@ async fn index_output(
         kind,
     )
     .await?;
+    Ok(())
+}
+
+async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Result<()> {
+    // Get the latest indexed blockhash and blockheight
+    let result = sqlx::query_as::<_, (String, i32)>(
+        "SELECT blockhash, blockheight FROM blockchain ORDER BY blockheight DESC LIMIT 1;",
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    // No transactions indexed yet, skip the rest
+    if result.is_none() {
+        return Ok(());
+    }
+
+    let (blockhash, blockheight) = result.unwrap();
+
+    // Loop backwards from recently indexed block, continuing to the previous block, until we find the most recent ancestor which is not stale
+    let stale_block =
+        tokio::task::spawn_blocking(move || -> Result<Option<usize>, anyhow::Error> {
+            let mut next_block = Some(blockhash.parse()?);
+            let mut stale_block = None;
+
+            while let Some(next_blockhash) = next_block {
+                let blockinfo = client.get_block_info(&next_blockhash)?;
+                if blockinfo.confirmations >= 0 {
+                    next_block = None;
+                } else {
+                    log::info!(
+                        "Stale block {} detected at height {}",
+                        blockinfo.hash,
+                        blockinfo.height
+                    );
+                    stale_block = Some(blockinfo.height);
+                    next_block = blockinfo.previousblockhash;
+                }
+            }
+
+            Ok(stale_block)
+        })
+        .await??;
+
+    // Delete entries from blockchain table
+    if let Some(stale_block) = stale_block {
+        log::info!("Reindexing beginning at height {stale_block}");
+        sqlx::query("DELETE FROM blockchain WHERE blockheight >= ?;")
+            .bind(stale_block as i32)
+            .execute(&pool)
+            .await;
+    }
+
     Ok(())
 }
