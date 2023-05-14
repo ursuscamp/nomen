@@ -81,7 +81,7 @@ impl Config {
 
     pub fn starting_block_height(&self) -> usize {
         match self.network() {
-            Network::Bitcoin => 787000,
+            Network::Bitcoin => 789000,
             _ => 0,
         }
     }
