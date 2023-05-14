@@ -210,7 +210,7 @@ mod site {
         Path(nsid): Path<String>,
     ) -> Result<NsidTemplate, WebError> {
         let conn = state.pool;
-        let details = db::name_details(&conn, nsid.parse()?).await?;
+        let details = db::name_details(&conn, &nsid).await?;
 
         Ok(details.try_into()?)
     }

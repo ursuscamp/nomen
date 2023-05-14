@@ -189,11 +189,13 @@ pub struct NameDetails {
     pub records_created_at: i64,
 }
 
-pub async fn name_details(conn: &SqlitePool, nsid: Nsid) -> anyhow::Result<NameDetails> {
-    let details = sqlx::query_as::<_, NameDetails>("SELECT * FROM detail_vw WHERE nsid = ?")
-        .bind(nsid.to_string())
-        .fetch_one(conn)
-        .await?;
+pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
+    let details =
+        sqlx::query_as::<_, NameDetails>("SELECT * FROM detail_vw WHERE nsid = ? or name = ?")
+            .bind(query)
+            .bind(query)
+            .fetch_one(conn)
+            .await?;
     Ok(details)
 }
 

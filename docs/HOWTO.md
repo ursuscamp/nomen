@@ -34,3 +34,11 @@ What you will need:
 7. `target/release/nomen name records --privkey $PRIVATE_KEY KEY1=value1 KEY2=value`
    * Create and broadcast new records to Nostr
    * Replace key/values with records of your choosing
+
+# Using bitcoin-cli (raw transaction workflow)
+
+1. `nomen util op-return $NAME $PUBLICK_KEY` to generate the OP_RETURN data.
+2. Find the UTXO you wish you create a new transaction for, and the address you will send the transaction to.
+3. `bitcoin-cli createrawtransaction '[{"txid": "$TXID", "vout":$VOUT}]' '[{"$ADDRESS":$AMOUNT},{"data": "$OP_RETURN"}]'`
+4. This will create a raw, unsigned transaction. You can sign and broadcast this with your bitcoin wallet, or bitcoin-cli if you use that, with `bitcoin-cli signrawtransaction` and `bitcoin-cli sendrawtransaction`.
+5. `nomen name record --privkey $PRIVKEY NPUB=npub...` to broadcast a record set.
