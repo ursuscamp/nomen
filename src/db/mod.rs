@@ -9,7 +9,8 @@ use crate::{
     util::{Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 15] = [
+static MIGRATIONS: [&str; 16] = [
+    "CREATE TABLE index_height (height INTEGER PRIMARY KEY);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
