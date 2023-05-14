@@ -14,7 +14,7 @@ static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
-    "CREATE TABLE transfer_events (nsid, name, pubkey, created_at, event_id, content, indexed_at, raw_event);",
+    "CREATE TABLE transfer_events (nsid, name, fingerprint, pubkey, created_at, event_id, content, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(nsid)",
 
     // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
@@ -46,7 +46,8 @@ static MIGRATIONS: [&str; 15] = [
             SELECT te.name, te.content
                 FROM transfer_events te
                 JOIN owners ON te.pubkey = owners.pk AND te.name = owners.name
-                JOIN blockchain b on te.nsid = b.nsid
+                JOIN blockchain b on te.nsid = b.nsid AND te.fingerprint = b.fingerprint
+                WHERE b.kind = 'transfer'
         )
         SELECT name, pk FROM owners;",
 
@@ -292,6 +293,7 @@ pub async fn insert_transfer_event(
     created_at: i64,
     event_id: EventId,
     name: Name,
+    fingerprint: [u8; 5],
     children: String,
     raw_event: String,
 ) -> anyhow::Result<()> {
@@ -301,6 +303,7 @@ pub async fn insert_transfer_event(
         .bind(created_at)
         .bind(event_id.to_hex())
         .bind(name.to_string())
+        .bind(hex::encode(fingerprint))
         .bind(children)
         .bind(raw_event)
         .execute(conn)
