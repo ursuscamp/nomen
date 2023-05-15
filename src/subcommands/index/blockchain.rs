@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 
 use crate::{
     config::{Cli, Config},
-    db,
+    db::{self, insert_index_height},
     util::{NomenKind, NomenTx, Nsid},
 };
 
@@ -61,20 +61,25 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                     kind,
                                 }) => {
                                     sender.blocking_send((
-                                        fingerprint,
-                                        nsid,
-                                        blockhash,
-                                        tx.txid(),
-                                        blockinfo.time,
-                                        blockinfo.height,
-                                        txheight,
-                                        vout,
-                                        kind,
+                                        (blockinfo.height, blockhash),
+                                        Some((
+                                            fingerprint,
+                                            nsid,
+                                            blockhash,
+                                            tx.txid(),
+                                            blockinfo.time,
+                                            blockinfo.height,
+                                            txheight,
+                                            vout,
+                                            kind,
+                                        )),
                                     ));
                                 }
 
                                 Err(e) => log::error!("Index error: {e}"),
                             }
+                        } else {
+                            sender.blocking_send(((blockinfo.height, blockhash), None));
                         }
                     }
                 }
@@ -91,7 +96,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         tokio::select! {
             msg = receiver.recv() => {
                 match msg {
-                    Some((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)) => {
+                    Some(((height, hash), Some((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)))) => {
                         if let Err(e) = index_output(
                             pool,
                             fingerprint,
@@ -108,7 +113,11 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                         {
                             log::error!("Index error: {e}");
                         }
+                        insert_index_height(pool, height as i64, &hash).await?;
                     }
+                    Some(((height, hash), None)) => {
+                        insert_index_height(pool, height as i64, &hash).await?;
+                    },
                     None => break 'select,
                 }
             }
@@ -159,8 +168,8 @@ async fn index_output(
 
 async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Result<()> {
     // Get the latest indexed blockhash and blockheight
-    let result = sqlx::query_as::<_, (String, i32)>(
-        "SELECT blockhash, blockheight FROM blockchain ORDER BY blockheight DESC LIMIT 1;",
+    let result = sqlx::query_as::<_, (i32, String)>(
+        "SELECT blockheight, blockhash FROM index_height ORDER BY blockheight DESC LIMIT 1;",
     )
     .fetch_optional(&pool)
     .await?;
@@ -170,7 +179,7 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
         return Ok(());
     }
 
-    let (blockhash, blockheight) = result.unwrap();
+    let (blockheight, blockhash) = result.unwrap();
 
     // Loop backwards from recently indexed block, continuing to the previous block, until we find the most recent ancestor which is not stale
     let stale_block =
@@ -200,10 +209,16 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
     // Delete entries from blockchain table
     if let Some(stale_block) = stale_block {
         log::info!("Reindexing beginning at height {stale_block}");
+        let mut tx = pool.begin().await?;
         sqlx::query("DELETE FROM blockchain WHERE blockheight >= ?;")
             .bind(stale_block as i32)
-            .execute(&pool)
-            .await;
+            .execute(&mut tx)
+            .await?;
+        sqlx::query("DELETE FROM index_height WHERE blockheight >= ?;")
+            .bind(stale_block as i32)
+            .execute(&mut tx)
+            .await?;
+        tx.commit().await?;
     }
 
     Ok(())

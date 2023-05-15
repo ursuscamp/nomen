@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use bitcoin::BlockHash;
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{FromRow, SqlitePool};
@@ -10,7 +11,7 @@ use crate::{
 };
 
 static MIGRATIONS: [&str; 16] = [
-    "CREATE TABLE index_height (height INTEGER PRIMARY KEY);",
+    "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
@@ -143,10 +144,25 @@ pub async fn insert_blockchain(
 
 pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
     let (h,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM blockchain;")
+        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM index_height;")
             .fetch_one(conn)
             .await?;
     Ok(h as usize)
+}
+
+pub async fn insert_index_height(
+    conn: &SqlitePool,
+    height: i64,
+    blockhash: &BlockHash,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "INSERT INTO index_height (blockheight, blockhash) VALUES (?, ?) ON CONFLICT DO NOTHING;",
+    )
+    .bind(height)
+    .bind(blockhash.to_string())
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
