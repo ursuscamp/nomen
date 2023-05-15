@@ -64,8 +64,7 @@ static MIGRATIONS: [&str; 16] = [
     "CREATE VIEW records_vw AS
         SELECT ne.* FROM name_owners no
         JOIN name_events ne on no.name = ne.name AND no.pubkey = ne.pubkey
-        ORDER BY ne.created_at DESC
-        LIMIT 1;",
+        ORDER BY ne.created_at DESC;",
 
     "CREATE VIEW detail_vw AS
         SELECT 
@@ -269,7 +268,7 @@ pub async fn name_records(
 
 pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, String)>> {
     Ok(
-        sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM name_vw;")
+        sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM detail_vw ORDER BY name;")
             .fetch_all(conn)
             .await?,
     )
