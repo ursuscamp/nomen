@@ -266,12 +266,21 @@ pub async fn name_records(
     Ok(records)
 }
 
-pub async fn top_level_names(conn: &SqlitePool) -> anyhow::Result<Vec<(String, String)>> {
-    Ok(
-        sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM detail_vw ORDER BY name;")
-            .fetch_all(conn)
-            .await?,
-    )
+pub async fn top_level_names(
+    conn: &SqlitePool,
+    query: Option<String>,
+) -> anyhow::Result<Vec<(String, String)>> {
+    let sql = match query {
+        Some(q) => sqlx::query_as::<_, (String, String)>(
+            "SELECT nsid, name FROM detail_vw WHERE instr(name, ?) ORDER BY name;",
+        )
+        .bind(q.to_lowercase()),
+        None => {
+            sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM detail_vw ORDER BY name;")
+        }
+    };
+
+    Ok(sql.fetch_all(conn).await?)
 }
 
 pub async fn save_event(conn: &SqlitePool, evt_type: &str, evt_data: &str) -> anyhow::Result<()> {

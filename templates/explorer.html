@@ -6,8 +6,12 @@
 
   <p><small>Last indexed at {{ last_index_time }}.</small></p>
 
+  <form action="/explorer">
+    <input name="q" value="{{ q }}" placeholder="Search...">
+  </form>
+
   <p>
-    Select a name to see its current record set and descendants.
+    Select a name to see its current record set.
   </p>
 
   <p>

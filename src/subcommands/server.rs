@@ -144,23 +144,28 @@ mod site {
 
     #[derive(Deserialize)]
     pub struct ExplorerQuery {
-        pub nsid: Option<String>,
+        pub q: Option<String>,
     }
 
     #[derive(askama::Template)]
     #[template(path = "explorer.html")]
     pub struct ExplorerTemplate {
+        q: String,
         names: Vec<(String, String)>,
         last_index_time: String,
     }
 
-    pub async fn explorer(State(state): State<AppState>) -> Result<ExplorerTemplate, WebError> {
+    pub async fn explorer(
+        State(state): State<AppState>,
+        Query(query): Query<ExplorerQuery>,
+    ) -> Result<ExplorerTemplate, WebError> {
         let conn = state.pool;
         let last_index_time = db::last_index_time(&conn).await?;
         let last_index_time = util::format_time(last_index_time)?;
 
         Ok(ExplorerTemplate {
-            names: db::top_level_names(&conn).await?,
+            q: query.q.clone().unwrap_or_default(),
+            names: db::top_level_names(&conn, query.q).await?,
             last_index_time,
         })
     }
