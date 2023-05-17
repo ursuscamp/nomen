@@ -82,6 +82,7 @@ impl Config {
     pub fn starting_block_height(&self) -> usize {
         match self.network() {
             Network::Bitcoin => 789000,
+            Network::Signet => 143100,
             _ => 0,
         }
     }
@@ -184,5 +185,9 @@ impl Config {
             },
             _ => Ok(FeeRate::BROADCAST_MIN),
         }
+    }
+
+    pub fn confirmations(&self) -> anyhow::Result<usize> {
+        Ok(self.file.server.confirmations.unwrap_or(3))
     }
 }

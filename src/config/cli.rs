@@ -121,26 +121,6 @@ pub enum UtilSubcommand {
     },
 }
 
-#[derive(clap::Subcommand, Debug, Clone)]
-pub enum IndexSubcommand {
-    /// Index the blockchain and look for new namespaces.
-    Blockchain {
-        /// Minimum block confirmations for indexer. Default: 3
-        #[arg(short, long)]
-        confirmations: Option<usize>,
-
-        /// Starting block height to index. Default: most recently scanned block
-        #[arg(long)]
-        height: Option<usize>,
-    },
-
-    /// Query relays for missing create events.
-    CreateEvents,
-
-    /// Query relays for records
-    RecordsEvents,
-}
-
 #[derive(clap::Args, Debug, Clone, Serialize, Deserialize)]
 pub struct ServerSubcommand {
     /// Address and port to bind.

@@ -10,6 +10,7 @@ pub struct ServerConfig {
     pub without_api: Option<bool>,
     pub without_indexer: Option<bool>,
     pub indexer_delay: Option<u64>,
+    pub confirmations: Option<usize>,
 }
 impl ServerConfig {
     fn init() -> ServerConfig {
@@ -19,6 +20,7 @@ impl ServerConfig {
             without_api: Some(false),
             without_indexer: Some(false),
             indexer_delay: Some(30),
+            confirmations: Some(3),
         }
     }
 }

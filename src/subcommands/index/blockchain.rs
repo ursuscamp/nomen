@@ -21,6 +21,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
     log::info!("Starting blockchain index at height {index_height}");
+    let min_confirmations = config.confirmations()?;
 
     let thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut blockhash = client.get_block_hash(index_height as u64)?;
@@ -33,7 +34,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 break;
             }
 
-            if (blockinfo.confirmations as usize) < 3 {
+            if (blockinfo.confirmations as usize) < min_confirmations {
                 log::info!(
                     "Minimum confirmations not met at block height {}.",
                     blockinfo.height
