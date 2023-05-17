@@ -2,7 +2,7 @@
 
 Nomen is a protocol for globally unique, decentralized "domain names". The Nomen Explorer is the first indexer (or name server) for this protocol.
 
-Try it [here](https://nomen.directory)! You can explore existing names or create a new one. Note: You will need to sign and broadcast a Bitcoin transaction with your wallet to do it.
+Try it [here](https://nomenexplorer.com)! You can explore existing names or create a new one. Note: You will need to sign and broadcast a Bitcoin transaction with your wallet to do it.
 
 If you download the project yourself, you can build it and run the indexer for your own use, or use the CLI to experiment with Nomen.
 
