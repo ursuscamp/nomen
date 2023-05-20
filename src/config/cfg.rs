@@ -8,7 +8,9 @@ use nostr_sdk::{
 };
 use sqlx::{sqlite, SqlitePool};
 
-use super::{Cli, ConfigFile, ServerSubcommand, Subcommand};
+use super::{
+    Cli, ConfigFile, NameNewSubcommand, NameTransferSubcommand, ServerSubcommand, Subcommand,
+};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -82,7 +84,7 @@ impl Config {
     pub fn starting_block_height(&self) -> usize {
         match self.network() {
             Network::Bitcoin => 789000,
-            Network::Signet => 143100,
+            Network::Signet => 143500,
             _ => 0,
         }
     }
@@ -172,19 +174,6 @@ impl Config {
         }
         .or(self.file.server.indexer_delay)
         .unwrap_or(30)
-    }
-
-    pub fn fee(&self) -> anyhow::Result<FeeRate> {
-        match &self.cli.subcommand {
-            Subcommand::Name(name) => match name.as_ref() {
-                super::NameSubcommand::New(new_name) => {
-                    FeeRate::from_sat_per_vb(new_name.txinfo.fee)
-                        .ok_or_else(|| anyhow!("Invalid fee rate"))
-                }
-                _ => Ok(FeeRate::BROADCAST_MIN),
-            },
-            _ => Ok(FeeRate::BROADCAST_MIN),
-        }
     }
 
     pub fn confirmations(&self) -> anyhow::Result<usize> {

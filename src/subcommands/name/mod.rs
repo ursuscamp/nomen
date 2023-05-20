@@ -2,10 +2,15 @@ mod new;
 mod record;
 mod transfer;
 
-use std::{collections::HashMap, io::Write};
+use std::{collections::HashMap, io::Write, path::PathBuf, str::FromStr};
 
 pub use anyhow::anyhow;
-use bitcoin::{script::PushBytesBuf, secp256k1::SecretKey};
+use bitcoin::{
+    psbt::{Output, Psbt},
+    script::PushBytesBuf,
+    secp256k1::SecretKey,
+    ScriptBuf, TxOut,
+};
 use bitcoincore_rpc::RpcApi;
 pub use new::*;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag, UnsignedEvent};
@@ -44,6 +49,27 @@ pub(crate) fn get_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Erro
     Ok(keys)
 }
 
+pub(crate) fn insert_outputs(
+    psbt: &mut Psbt,
+    fingerprint: [u8; 5],
+    nsid: Nsid,
+    kind: NomenKind,
+) -> anyhow::Result<()> {
+    let op_return: PushBytesBuf =
+        super::op_return(fingerprint, nsid, NomenKind::Create).try_into()?;
+    let op_return = ScriptBuf::new_op_return(&op_return);
+    psbt.unsigned_tx.output.push(TxOut {
+        value: 0,
+        script_pubkey: op_return.clone(),
+    });
+    psbt.outputs.push(Output {
+        redeem_script: Some(op_return),
+        ..Default::default()
+    });
+
+    Ok(())
+}
+
 pub(crate) async fn get_transaction(
     config: &Config,
     txid: &bitcoin::Txid,
@@ -60,52 +86,6 @@ pub(crate) fn op_return(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) -> Ve
     v.extend(fingerprint);
     v.extend(nsid.as_ref());
     v
-}
-
-pub(crate) async fn create_unsigned_tx(
-    config: &Config,
-    args: &TxInfo,
-    fingerprint: [u8; 5],
-    nsid: Nsid,
-    kind: NomenKind,
-) -> Result<bitcoin::Transaction, anyhow::Error> {
-    let tx = get_transaction(config, &args.txid).await?;
-    let txout = &tx.output[args.vout as usize];
-    let value = txout.value;
-    let txin = bitcoin::TxIn {
-        previous_output: bitcoin::OutPoint {
-            txid: args.txid,
-            vout: args.vout,
-        },
-        script_sig: bitcoin::ScriptBuf::new(), // Unsigned tx with empty script
-        sequence: bitcoin::Sequence::ZERO,
-        witness: bitcoin::Witness::new(),
-    };
-    let txout = bitcoin::TxOut {
-        value,
-        script_pubkey: args
-            .address
-            .clone()
-            .require_network(config.network())?
-            .script_pubkey(),
-    };
-    let op_return: PushBytesBuf = op_return(fingerprint, nsid, kind).try_into()?;
-    let op_return = bitcoin::TxOut {
-        value: 0,
-        script_pubkey: bitcoin::ScriptBuf::new_op_return(&op_return),
-    };
-    let mut tx = bitcoin::Transaction {
-        version: 1,
-        lock_time: bitcoin::absolute::LockTime::ZERO,
-        input: vec![txin],
-        output: vec![txout, op_return],
-    };
-    let estimated_size = tx.vsize() as u64 + 65; // Estimate transaction size w/ signature. TODO: Is there a better way to do this?
-    let fee = estimated_size * config.fee()?.to_sat_per_vb_ceil();
-    tx.output[0].value = value
-        .checked_sub(fee)
-        .ok_or_else(|| anyhow!("Insufficient sats in input"))?;
-    Ok(tx)
 }
 
 pub(crate) fn name_event(
@@ -126,4 +106,11 @@ pub(crate) fn name_event(
     .to_unsigned_event(pubkey);
 
     Ok(event)
+}
+
+pub(crate) fn parse_psbt(psbt: &str) -> anyhow::Result<Psbt> {
+    Ok(match PathBuf::from_str(psbt) {
+        Ok(path) if path.exists() => Psbt::deserialize(&std::fs::read(path)?)?,
+        _ => Psbt::from_str(psbt)?,
+    })
 }

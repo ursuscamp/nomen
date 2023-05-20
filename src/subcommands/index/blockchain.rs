@@ -27,7 +27,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         let mut blockhash = client.get_block_hash(index_height as u64)?;
         let mut blockinfo = client.get_block_header_info(&blockhash)?;
 
-        while let Some(next_hash) = blockinfo.next_block_hash {
+        loop {
             // If the channel is closed, let's stop
             if sender.is_closed() {
                 log::info!("Stopping index operation.");
@@ -42,7 +42,8 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 break;
             }
 
-            if blockinfo.height % 10 == 0 {
+            // if blockinfo.height % 10 == 0 {
+            if true {
                 log::info!("Index block height {}", blockinfo.height);
             }
 
@@ -82,11 +83,18 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                         } else {
                             sender.blocking_send(((blockinfo.height, blockhash), None));
                         }
+                    } else {
+                        sender.blocking_send(((blockinfo.height, blockhash), None));
                     }
                 }
             }
-            blockhash = next_hash;
-            blockinfo = client.get_block_header_info(&blockhash)?;
+            match blockinfo.next_block_hash {
+                Some(next_hash) => {
+                    blockhash = next_hash;
+                    blockinfo = client.get_block_header_info(&blockhash)?;
+                }
+                None => break,
+            }
         }
 
         Ok(())

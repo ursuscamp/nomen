@@ -4,7 +4,7 @@ CREDS="-regtest -rpcuser=regtest -rpcpassword=regtest"
 while getopts r flag
 do
     case "${flag}" in
-        r) rm -rf .bitcoin;;
+        r) rm -rf .bitcoin/regtest;;
     esac
 done
 

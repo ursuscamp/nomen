@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use bitcoin::{
     address::{NetworkChecked, NetworkUnchecked},
+    psbt::Psbt,
     secp256k1::SecretKey,
     Network,
 };
@@ -147,6 +148,10 @@ pub struct ServerSubcommand {
 #[derive(clap::Subcommand, Debug, Clone)]
 pub enum NameSubcommand {
     /// Create a new name.
+    // New(NameNewSubcommand),
+
+    // TODO: pull this out to its own subcommand
+    /// New from psbt
     New(NameNewSubcommand),
 
     /// Broadcast a new record for your name.
@@ -158,20 +163,23 @@ pub enum NameSubcommand {
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct NameNewSubcommand {
-    /// The root name of the new namespace.
+    /// New name to register.
     pub name: Name,
 
-    #[command(flatten)]
-    pub txinfo: TxInfo,
+    /// The transaction to sign. May be a path to a PSBT file or a Base64 encoded PSBT string.
+    pub psbt: String,
 
-    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-    /// Will prompt if not provided.
+    /// The private key of the owner of the new name.
     #[arg(short, long)]
     pub privkey: Option<SecretKey>,
 
-    /// JSON command output
+    /// Command output as JSON
     #[arg(short, long)]
     pub json: bool,
+
+    /// Broadcast the associated Nostr event
+    #[arg(short, long)]
+    pub broadcast: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -190,21 +198,28 @@ pub struct NameRecordSubcomand {
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct NameTransferSubcommand {
-    /// The name to be transferred.
+    /// The name to broadcast records
     pub name: Name,
 
-    /// The public key of the previous owner.
-    pub previous: XOnlyPublicKey,
+    /// Public key of the new owner
+    pub pubkey: XOnlyPublicKey,
 
-    /// The public key of the new owner.
-    pub new: XOnlyPublicKey,
+    /// The transaction to sign. May be a path to a PSBT file or a Base64 encoded PSBT string.
+    pub psbt: String,
 
-    #[command(flatten)]
-    pub txinfo: TxInfo,
+    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
+    /// Will prompt if not provided.
+    /// This is the private key of the current owner of the name.
+    #[arg(short, long)]
+    pub privkey: Option<SecretKey>,
 
     /// JSON command output
     #[arg(short, long)]
     pub json: bool,
+
+    /// Broadcast the associated Nostr event
+    #[arg(short, long)]
+    pub broadcast: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]

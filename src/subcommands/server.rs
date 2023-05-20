@@ -63,7 +63,7 @@ pub async fn start(
             .route("/explorer", get(site::explorer))
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
-            .route("/newname", post(site::new_name_submit))
+            // .route("/newname", post(site::new_name_submit))
             .route("/newrecords", get(site::new_records_form))
             .route("/newrecords", post(site::new_records_submit));
     }
@@ -112,7 +112,7 @@ mod site {
         Form,
     };
     use axum_extra::extract::WithRejection;
-    use bitcoin::{address::NetworkUnchecked, Address, Transaction, Txid};
+    use bitcoin::{address::NetworkUnchecked, psbt::Psbt, Address, Transaction, Txid};
     use bitcoincore_rpc::RawTx;
     use itertools::Itertools;
     use secp256k1::XOnlyPublicKey;
@@ -122,7 +122,7 @@ mod site {
     use crate::{
         config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
-        subcommands::{create_unsigned_tx, name_event},
+        subcommands::name_event,
         util::{check_name, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
@@ -246,38 +246,41 @@ mod site {
         Ok(Default::default())
     }
 
-    pub async fn new_name_submit(
-        State(state): State<AppState>,
-        WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
-    ) -> Result<NewNameTemplate, WebError> {
-        let name: Name = form.name.parse()?;
-        check_name(&state.config, form.name.as_ref()).await?;
-        let txinfo = TxInfo {
-            txid: form.txid,
-            vout: form.vout,
-            address: form.address.clone(),
-            fee: form.fee,
-        };
-        let fingerprint = Hash160::default()
-            .chain_update(name.as_ref().as_bytes())
-            .fingerprint();
-        let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
-        let unsigned_tx =
-            create_unsigned_tx(&state.config, &txinfo, fingerprint, nsid, NomenKind::Create)
-                .await?;
-        Ok(NewNameTemplate {
-            txid: form.txid.to_string(),
-            vout: form.vout.to_string(),
-            name: form.name.to_string(),
-            address: form
-                .address
-                .require_network(state.config.network())?
-                .to_string(),
-            pubkey: form.pubkey.to_string(),
-            fee: form.fee,
-            unsigned_tx: unsigned_tx.raw_hex(),
-        })
-    }
+    // pub async fn new_name_submit(
+    //     State(state): State<AppState>,
+    //     WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
+    // ) -> Result<NewNameTemplate, WebError> {
+    //     let name: Name = form.name.parse()?;
+    //     check_name(&state.config, form.name.as_ref()).await?;
+    //     let txinfo = TxInfo {
+    //         txid: form.txid,
+    //         vout: form.vout,
+    //         address: form.address.clone(),
+    //         fee: form.fee,
+    //     };
+    //     let fingerprint = Hash160::default()
+    //         .chain_update(name.as_ref().as_bytes())
+    //         .fingerprint();
+    //     let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
+    //     // let unsigned_tx =
+    //     //     create_unsigned_tx(&state.config, &txinfo, fingerprint, nsid, NomenKind::Create)
+    //     //         .await?;
+    //     // let mut psbt = Psbt::from_unsigned_tx(unsigned_tx)?;
+    //     // psbt.inputs = vec![Default::default(); 1];
+    //     // psbt.outputs = vec![Default::default(); 2];
+    //     Ok(NewNameTemplate {
+    //         txid: form.txid.to_string(),
+    //         vout: form.vout.to_string(),
+    //         name: form.name.to_string(),
+    //         address: form
+    //             .address
+    //             .require_network(state.config.network())?
+    //             .to_string(),
+    //         pubkey: form.pubkey.to_string(),
+    //         fee: form.fee,
+    //         unsigned_tx: psbt.serialize_hex(),
+    //     })
+    // }
 
     #[derive(askama::Template)]
     #[template(path = "newrecords.html")]

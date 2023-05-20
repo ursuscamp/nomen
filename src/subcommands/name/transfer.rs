@@ -1,33 +1,40 @@
 use bitcoincore_rpc::RawTx;
-use nostr_sdk::{prelude::TagKind, EventBuilder, Tag};
+use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
 use crate::{
     config::{Cli, Config, NameTransferSubcommand},
-    util::{tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
+    util::{check_name, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
-
-use super::create_unsigned_tx;
 
 #[derive(serde::Serialize)]
 struct CmdOutput {
     nsid: String,
     unsigned_tx: String,
-    unsigned_event: String,
+    event: String,
 }
 
 pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow::Result<()> {
     let name = args.name.as_ref();
-    let nsid = NsidBuilder::new(name, &args.new).finalize();
+    check_name(config, name).await?;
+    let mut psbt = super::parse_psbt(&args.psbt)?;
+    let keys = super::get_keys(&args.privkey)?;
+    let nsid = NsidBuilder::new(name, &args.pubkey).finalize();
     let fingerprint = Hash160::default()
         .chain_update(name.as_bytes())
         .fingerprint();
-    let unsigned_tx =
-        create_unsigned_tx(config, &args.txinfo, fingerprint, nsid, NomenKind::Transfer).await?;
-    let unsigned_event = create_event(nsid, args)?;
+
+    super::insert_outputs(&mut psbt, fingerprint, nsid, NomenKind::Transfer)?;
+
+    let event = create_event(nsid, &keys, args)?;
+    if args.broadcast {
+        let (_k, nostr) = config.nostr_random_client().await?;
+        nostr.send_event(event.clone()).await?;
+    }
+
     let output = CmdOutput {
         nsid: nsid.to_string(),
-        unsigned_tx: unsigned_tx.raw_hex(),
-        unsigned_event: serde_json::to_string(&unsigned_event)?,
+        unsigned_tx: psbt.to_string(),
+        event: serde_json::to_string(&event)?,
     };
 
     if args.json {
@@ -35,7 +42,7 @@ pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow:
     } else {
         tag_print("Nsid", &output.nsid);
         tag_print("Unsigned Tx", &output.unsigned_tx);
-        tag_print("Unsigned Event", &output.unsigned_event);
+        tag_print("Event", &output.event);
     }
 
     Ok(())
@@ -43,11 +50,12 @@ pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow:
 
 fn create_event(
     nsid: Nsid,
+    keys: &Keys,
     args: &NameTransferSubcommand,
-) -> Result<nostr_sdk::UnsignedEvent, anyhow::Error> {
+) -> Result<nostr_sdk::Event, anyhow::Error> {
     let event = EventBuilder::new(
         NameKind::Transfer.into(),
-        args.new.to_string(),
+        args.pubkey.to_string(),
         &[
             Tag::Identifier(nsid.to_string()),
             Tag::Generic(
@@ -56,6 +64,6 @@ fn create_event(
             ),
         ],
     )
-    .to_unsigned_event(args.previous);
+    .to_event(keys)?;
     Ok(event)
 }
