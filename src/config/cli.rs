@@ -180,6 +180,11 @@ pub struct NameNewSubcommand {
     /// Broadcast the associated Nostr event
     #[arg(short, long)]
     pub broadcast: bool,
+
+    /// Verify against index that name is available.
+    /// Be sure to run the indexer first, or this is not very useful.
+    #[arg(short, long)]
+    pub validate: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -220,6 +225,11 @@ pub struct NameTransferSubcommand {
     /// Broadcast the associated Nostr event
     #[arg(short, long)]
     pub broadcast: bool,
+
+    /// Verify against the index that the name is exists and is transferrable.
+    /// Be sure to run the indexer first, or this is not very useful.
+    #[arg(short, long)]
+    pub validate: bool,
 }
 
 #[derive(clap::Args, Debug, Clone)]

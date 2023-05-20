@@ -55,8 +55,7 @@ pub(crate) fn insert_outputs(
     nsid: Nsid,
     kind: NomenKind,
 ) -> anyhow::Result<()> {
-    let op_return: PushBytesBuf =
-        super::op_return(fingerprint, nsid, NomenKind::Create).try_into()?;
+    let op_return: PushBytesBuf = super::op_return(fingerprint, nsid, kind).try_into()?;
     let op_return = ScriptBuf::new_op_return(&op_return);
     psbt.unsigned_tx.output.push(TxOut {
         value: 0,

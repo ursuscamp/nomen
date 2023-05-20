@@ -1,9 +1,11 @@
+use anyhow::bail;
 use bitcoincore_rpc::RawTx;
 use nostr_sdk::{prelude::TagKind, EventBuilder, Keys, Tag};
 
 use crate::{
     config::{Cli, Config, NameTransferSubcommand},
-    util::{check_name, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
+    db,
+    util::{check_name_availability, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
 #[derive(serde::Serialize)]
@@ -15,9 +17,9 @@ struct CmdOutput {
 
 pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow::Result<()> {
     let name = args.name.as_ref();
-    check_name(config, name).await?;
-    let mut psbt = super::parse_psbt(&args.psbt)?;
     let keys = super::get_keys(&args.privkey)?;
+    validate(config, args, &keys).await?;
+    let mut psbt = super::parse_psbt(&args.psbt)?;
     let nsid = NsidBuilder::new(name, &args.pubkey).finalize();
     let fingerprint = Hash160::default()
         .chain_update(name.as_bytes())
@@ -66,4 +68,25 @@ fn create_event(
     )
     .to_event(keys)?;
     Ok(event)
+}
+
+async fn validate(
+    config: &Config,
+    args: &NameTransferSubcommand,
+    keys: &Keys,
+) -> anyhow::Result<()> {
+    if args.validate {
+        let conn = config.sqlite().await?;
+        match db::name_owner(&conn, args.name.as_ref()).await? {
+            Some(pk) if keys.public_key() != pk => {
+                bail!("The specified key does not own the domain")
+            }
+            Some(_) => {}
+            None => {
+                bail!("That name does not exist")
+            }
+        }
+    }
+
+    Ok(())
 }

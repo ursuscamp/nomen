@@ -351,3 +351,12 @@ pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<boo
     .await?;
     Ok(count == 0)
 }
+
+pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<XOnlyPublicKey>> {
+    let pubkey = sqlx::query_as::<_, (String,)>("SELECT pubkey FROM name_owners WHERE name = ?;")
+        .bind(name)
+        .fetch_optional(conn)
+        .await?;
+
+    Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
+}

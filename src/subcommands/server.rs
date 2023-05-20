@@ -123,7 +123,7 @@ mod site {
         config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
         subcommands::name_event,
-        util::{check_name, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
+        util::{check_name_availability, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
     use super::{util, AppState, WebError};

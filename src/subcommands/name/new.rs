@@ -16,7 +16,7 @@ use crate::{
     config::{Cli, Config, NameNewSubcommand},
     db::{self},
     subcommands::name::get_keys,
-    util::{check_name, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
+    util::{check_name_availability, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
 #[derive(serde::Serialize)]
@@ -48,7 +48,7 @@ fn create_event(
 
 pub(crate) async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
     let name = args.name.as_ref();
-    check_name(config, name).await?;
+    validate(config, args).await?;
     let mut psbt = super::parse_psbt(&args.psbt)?;
     let keys = get_keys(&args.privkey)?;
     let nsid = NsidBuilder::new(name, &keys.public_key()).finalize();
@@ -78,5 +78,12 @@ pub(crate) async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Re
         tag_print("Event", &output.event);
     }
 
+    Ok(())
+}
+
+pub async fn validate(config: &Config, args: &NameNewSubcommand) -> anyhow::Result<()> {
+    if args.validate {
+        check_name_availability(config, args.name.as_ref()).await?;
+    }
     Ok(())
 }

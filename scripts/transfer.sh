@@ -9,11 +9,11 @@ NEW_PRIVKEY="23dfe0450af72a460acb5322372b43265885facca7b2539bb8c568c432068820"
 NEW_PUBKEY="cb5dd62f5018ddd6dc9c49b492b20c78dc3c84fc7f237b101334c5aed2bb6247"
 
 ADDR=$($CMD getnewaddress)
-TXID=$($CMD listunspent | jq -r .[0].txid)
-DATA=$(RUST_LOG=off cargo run -q -- name transfer --json smith $OLD_PUBKEY $NEW_PUBKEY $TXID 0 $ADDR)
-UTX=$(echo $DATA | jq -r .unsigned_tx)
-UEVENT=$(echo $DATA | jq -r .unsigned_event)
-STX=$($CMD signrawtransactionwithwallet $UTX | jq -r .hex)
-$CMD sendrawtransaction $STX
+FUNDED_PSBT=$($CMD walletcreatefundedpsbt '[]' "[{\"$ADDR\":1}]" 0 "{\"fee_rate\": 5}" | jq -r .psbt)
+DATA=$(RUST_LOG=off cargo run -q -- name transfer --privkey $OLD_PRIVKEY --json --broadcast --validate smith $NEW_PUBKEY $FUNDED_PSBT)
+UNSIGNED_PSBT=$(echo $DATA | jq -r .unsigned_tx)
+SIGNED_PSBT=$($CMD walletprocesspsbt $UNSIGNED_PSBT | jq -r .psbt)
+SIGNED_TX=$($CMD finalizepsbt $SIGNED_PSBT | jq -r .hex)
+$CMD sendrawtransaction $SIGNED_TX
 $CMD generatetoaddress 3 $ADDR
-RUST_LOG=off cargo run -q -- util sign-event --privkey $OLD_PRIVKEY --broadcast $UEVENT
+# RUST_LOG=off cargo run -q -- util sign-event --privkey $OLD_PRIVKEY --broadcast $UEVENT

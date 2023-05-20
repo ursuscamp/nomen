@@ -7,7 +7,7 @@ PUBKEY="d57b873363d2233d3cd54453416deff9546df50d963bb1208da37f10a4c23d6f"
 
 ADDR=$($CMD getnewaddress)
 FUNDED_PSBT=$($CMD walletcreatefundedpsbt '[]' "[{\"$ADDR\":1}]" 0 "{\"fee_rate\": 5}" | jq -r .psbt)
-UNSIGNED_PSBT=$(RUST_LOG=off cargo run -q -- name new --privkey $PRIVKEY --json --broadcast smith $FUNDED_PSBT | jq -r .unsigned_tx)
+UNSIGNED_PSBT=$(RUST_LOG=off cargo run -q -- name new --privkey $PRIVKEY --json --broadcast --validate smith $FUNDED_PSBT | jq -r .unsigned_tx)
 SIGNED_PSBT=$($CMD walletprocesspsbt $UNSIGNED_PSBT | jq -r .psbt)
 SIGNED_TX=$($CMD finalizepsbt $SIGNED_PSBT | jq -r .hex)
 $CMD sendrawtransaction $SIGNED_TX

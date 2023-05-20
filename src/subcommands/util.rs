@@ -7,7 +7,7 @@ use yansi::Paint;
 
 use crate::{
     config::{Config, ConfigFile, SignEventCommand},
-    util::{check_name, Hash160, NomenKind, NsidBuilder},
+    util::{check_name_availability, Hash160, NomenKind, NsidBuilder},
 };
 
 use super::get_keys;
@@ -26,7 +26,7 @@ pub fn generate_keypair() {
 
 pub async fn lookup(config: &Config, name: &str) -> anyhow::Result<()> {
     let name = name.to_lowercase();
-    let (name, msg) = match check_name(config, &name).await {
+    let (name, msg) = match check_name_availability(config, &name).await {
         Ok(_) => (Paint::yellow(&name), Paint::green("available")),
         Err(_) => (Paint::yellow(&name), Paint::red("unavailable")),
     };
