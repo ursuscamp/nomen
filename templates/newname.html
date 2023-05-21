@@ -3,20 +3,25 @@
 {% block body %}
 <main>
   <h1>New Name</h1>
-  <p>You must build an unsigned transaction to reserve a name. Please enter UTXO data below.</p>
+  <p>
+    Using your Bitcoin wallet, create an unsigned PSBT and paste it below (Base64 encoding).
+    Make sure to slightly overestimate fees, because this process below will add an extra output.
+    After you submit the form, you will receive an update PSBT. Just copy and paste it back to into your
+    Bitcoin wallet to sign and broadcast.
+  </p>
 
-  {% if !unsigned_tx.is_empty() %}
-  <p>Sign and broadcast this transaction with your bitcoin wallet:</p>
-  <pre id="unsigned-tx">{{ unsigned_tx }}</pre>
+  {% if !psbt.is_empty() %}
+  <p>Sign and broadcast this transaction with your Bitcoin wallet:</p>
+  <pre id="psbt">{{ psbt }}</pre>
   <button id="copy">Copy</button>
 
-  <p>After signing and transmitting the transaction, <a href="/newrecords?name={{ name }}&pubkey={{ pubkey }}">setup your records.</a></p>
+  <p>After signing and transmitting the transaction, <a href="/newrecords?name={{ name }}&pubkey={{ pubkey }}">setup your records</a> for the indexer to property index your new name.</p>
 
   <script>
     let btn = document.getElementById('copy');
     btn.addEventListener('click', async (event) => {
       event.preventDefault();
-      let tx = document.getElementById('unsigned-tx').innerHTML;
+      let tx = document.getElementById('psbt').innerHTML;
       await navigator.clipboard.writeText(tx);
       btn.innerHTML = 'Copied'
       setTimeout(() => {
@@ -29,13 +34,8 @@
   <form action="/newname" method="POST">
     <p><strong>Input</strong></p>
     <p>
-      <label for="txid">Txid</label>
-      <input type="text" id="txid" name="txid" value="{{ txid }}">
-    </p>
-
-    <p>
-      <label for="vout">Vout</label>
-      <input type="text" id="vout" name="vout" value="{{ vout }}">
+      <label for="psbt">PSBT</label>
+      <textarea name="psbt" id="psbt" cols="30" rows="10">{{ psbt }}</textarea>
     </p>
 
     <p><strong>Output</strong></p>
@@ -44,18 +44,8 @@
       <label for="name">Name</label>
       <input type="text" id="name" name="name" value="{{ name }}">
     </p>
-    
-    <p>
-      <label for="address">Address</label>
-      <input type="text" id="address" name="address" value="{{ address }}">
-    </p>
 
     {% include "pubkey.html" %}
-
-    <p>
-      <label for="fee">Fee Rate (sat/vB)</label>
-      <input type="text" id="fee" name="fee" value="{{ fee }}">
-    </p>
 
     <p>
       <input type="submit" value="Submit">

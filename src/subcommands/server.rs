@@ -63,7 +63,7 @@ pub async fn start(
             .route("/explorer", get(site::explorer))
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
-            // .route("/newname", post(site::new_name_submit))
+            .route("/newname", post(site::new_name_submit))
             .route("/newrecords", get(site::new_records_form))
             .route("/newrecords", post(site::new_records_submit));
     }
@@ -122,7 +122,7 @@ mod site {
     use crate::{
         config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
-        subcommands::name_event,
+        subcommands::{insert_outputs, name_event},
         util::{check_name_availability, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
@@ -223,64 +223,41 @@ mod site {
     #[derive(askama::Template, Default)]
     #[template(path = "newname.html")]
     pub struct NewNameTemplate {
-        txid: String,
-        vout: String,
+        psbt: String,
         name: String,
-        address: String,
         pubkey: String,
-        fee: u64,
-        unsigned_tx: String,
     }
 
     #[derive(Deserialize)]
     pub struct NewNameForm {
-        txid: Txid,
-        vout: u32,
+        psbt: String,
         name: String,
-        address: Address<NetworkUnchecked>,
         pubkey: XOnlyPublicKey,
-        fee: u64,
     }
 
     pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {
         Ok(Default::default())
     }
 
-    // pub async fn new_name_submit(
-    //     State(state): State<AppState>,
-    //     WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
-    // ) -> Result<NewNameTemplate, WebError> {
-    //     let name: Name = form.name.parse()?;
-    //     check_name(&state.config, form.name.as_ref()).await?;
-    //     let txinfo = TxInfo {
-    //         txid: form.txid,
-    //         vout: form.vout,
-    //         address: form.address.clone(),
-    //         fee: form.fee,
-    //     };
-    //     let fingerprint = Hash160::default()
-    //         .chain_update(name.as_ref().as_bytes())
-    //         .fingerprint();
-    //     let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
-    //     // let unsigned_tx =
-    //     //     create_unsigned_tx(&state.config, &txinfo, fingerprint, nsid, NomenKind::Create)
-    //     //         .await?;
-    //     // let mut psbt = Psbt::from_unsigned_tx(unsigned_tx)?;
-    //     // psbt.inputs = vec![Default::default(); 1];
-    //     // psbt.outputs = vec![Default::default(); 2];
-    //     Ok(NewNameTemplate {
-    //         txid: form.txid.to_string(),
-    //         vout: form.vout.to_string(),
-    //         name: form.name.to_string(),
-    //         address: form
-    //             .address
-    //             .require_network(state.config.network())?
-    //             .to_string(),
-    //         pubkey: form.pubkey.to_string(),
-    //         fee: form.fee,
-    //         unsigned_tx: psbt.serialize_hex(),
-    //     })
-    // }
+    pub async fn new_name_submit(
+        State(state): State<AppState>,
+        WithRejection(Form(mut form), _): WithRejection<Form<NewNameForm>, WebError>,
+    ) -> Result<NewNameTemplate, WebError> {
+        println!("***** Hello world!");
+        let name: Name = form.name.parse()?;
+        check_name_availability(&state.config, form.name.as_ref()).await?;
+        let fingerprint = Hash160::default()
+            .chain_update(name.as_ref().as_bytes())
+            .fingerprint();
+        let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
+        let mut psbt: Psbt = form.psbt.parse()?;
+        insert_outputs(&mut psbt, fingerprint, nsid, NomenKind::Create)?;
+        Ok(NewNameTemplate {
+            psbt: psbt.to_string(),
+            name: form.name,
+            pubkey: form.pubkey.to_string(),
+        })
+    }
 
     #[derive(askama::Template)]
     #[template(path = "newrecords.html")]
