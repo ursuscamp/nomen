@@ -31,6 +31,7 @@ pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow:
     if args.broadcast {
         let (_k, nostr) = config.nostr_random_client().await?;
         nostr.send_event(event.clone()).await?;
+        log::info!("Nost event transmitted");
     }
 
     let output = CmdOutput {
