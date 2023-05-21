@@ -1,4 +1,5 @@
 .vscode/
+scripts
 /target
 cookie
 .auth*
