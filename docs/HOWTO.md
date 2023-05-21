@@ -24,21 +24,22 @@ What you will need:
 
 ## Use the CLI
 
+Build the CLI first:
+
 1. `git clone https://github.com/ursuscamp/nomen.git`
 2. `cd nomem`
 3. `cargo build --release`
-4. **OPTIONAL**: `target/release/nomen util generate-keypair` to obtain a new keypair
-5. `target/release/nomen name new --privkey $PRIVATE_KEY $NAME $TXID $VOUT $ADDRESS`
-   * Use required data mentioned above in place of variables
-6. Copy unsigned transaction, then sign and broadcast with your Bitcoin wallet.
-7. `target/release/nomen name records --privkey $PRIVATE_KEY KEY1=value1 KEY2=value`
-   * Create and broadcast new records to Nostr
-   * Replace key/values with records of your choosing
+4. Put `target/release/nomen` somewhere in your $PATH.
 
-# Using bitcoin-cli (raw transaction workflow)
+Using Nomen:
 
-1. `nomen util op-return $NAME $PUBLICK_KEY` to generate the OP_RETURN data.
-2. Find the UTXO you wish you create a new transaction for, and the address you will send the transaction to.
-3. `bitcoin-cli createrawtransaction '[{"txid": "$TXID", "vout":$VOUT}]' '[{"$ADDRESS":$AMOUNT},{"data": "$OP_RETURN"}]'`
-4. This will create a raw, unsigned transaction. You can sign and broadcast this with your bitcoin wallet, or bitcoin-cli if you use that, with `bitcoin-cli signrawtransaction` and `bitcoin-cli sendrawtransaction`.
-5. `nomen name record --privkey $PRIVKEY NPUB=npub...` to broadcast a record set.
+1. **OPTIONAL**: `target/release/nomen util generate-keypair` to obtain a new keypair
+2. Open your Bitcoin wallet, and create a transaction that pays a Bitcoin UTXO back to you. Save that transaction (unsigned) as PSBT. Slightly overestimate your fees to account for an extra output we will add.
+3. `target/release/nomen name new --privkey <PRIVATE KEY> --broadcast --output out.psbt <NAME> <PSBT>`
+   * Replace PRIVATE_KEY with the hex-encoded secp256k1 private key.
+   * Replace NAME with the desired name you wish you register.
+   * Replace PSBT with the path of the PSBT you created.
+4. Open `out.psbt` in your Bitcoin wallet. It should now include an extra output. Sign it with your Bitcoin wallet and broadcast it.
+5. `target/release/nomen name records --privkey $PRIVATE_KEY KEY1=value1 KEY2=value`
+   * Create and broadcast new records to Nostr.
+   * Replace key/values with records of your choosing.
