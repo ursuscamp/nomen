@@ -78,6 +78,10 @@ pub(crate) async fn new(config: &Config, args: &NameNewSubcommand) -> anyhow::Re
         tag_print("Event", &output.event);
     }
 
+    if let Some(output) = &args.output {
+        std::fs::write(output, psbt.serialize())?;
+    }
+
     Ok(())
 }
 

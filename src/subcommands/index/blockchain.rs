@@ -42,8 +42,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                 break;
             }
 
-            // if blockinfo.height % 10 == 0 {
-            if true {
+            if blockinfo.height % 10 == 0 {
                 log::info!("Index block height {}", blockinfo.height);
             }
 

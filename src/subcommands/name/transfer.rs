@@ -47,6 +47,10 @@ pub async fn transfer(config: &Config, args: &NameTransferSubcommand) -> anyhow:
         tag_print("Event", &output.event);
     }
 
+    if let Some(output) = &args.output {
+        std::fs::write(output, psbt.serialize())?;
+    }
+
     Ok(())
 }
 

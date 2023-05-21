@@ -185,6 +185,10 @@ pub struct NameNewSubcommand {
     /// Be sure to run the indexer first, or this is not very useful.
     #[arg(short, long)]
     pub validate: bool,
+
+    /// File path to write a serialized PSBT file
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -230,6 +234,10 @@ pub struct NameTransferSubcommand {
     /// Be sure to run the indexer first, or this is not very useful.
     #[arg(short, long)]
     pub validate: bool,
+
+    /// File path to write a serialized PSBT file
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
 }
 
 #[derive(clap::Args, Debug, Clone)]
