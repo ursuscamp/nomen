@@ -15,7 +15,7 @@ use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite, SqlitePool};
 
-use crate::util::{KeyVal, Name, NomenKind};
+use crate::util::{KeyVal, Name, NomenKind, NostrSk};
 
 use super::ConfigFile;
 
@@ -171,7 +171,7 @@ pub struct NameNewSubcommand {
 
     /// The private key of the owner of the new name.
     #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
+    pub privkey: Option<NostrSk>,
 
     /// Command output as JSON
     #[arg(short, long)]
@@ -202,7 +202,7 @@ pub struct NameRecordSubcomand {
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
     #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
+    pub privkey: Option<NostrSk>,
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -220,7 +220,7 @@ pub struct NameTransferSubcommand {
     /// Will prompt if not provided.
     /// This is the private key of the current owner of the name.
     #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
+    pub privkey: Option<NostrSk>,
 
     /// JSON command output
     #[arg(short, long)]
@@ -261,7 +261,7 @@ pub struct SignEventCommand {
     /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
     /// Will prompt if not provided.
     #[arg(short, long)]
-    pub privkey: Option<SecretKey>,
+    pub privkey: Option<NostrSk>,
 
     /// Broadcast event to configured relays.
     #[arg(short, long)]

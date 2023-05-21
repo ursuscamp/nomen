@@ -19,7 +19,7 @@ use secp256k1::XOnlyPublicKey;
 
 use crate::{
     config::{Cli, Config, NameSubcommand, TxInfo},
-    util::{NameKind, NomenKind, Nsid, NsidBuilder},
+    util::{NameKind, NomenKind, NostrSk, Nsid, NsidBuilder},
 };
 
 pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
@@ -34,9 +34,9 @@ pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn get_keys(privkey: &Option<SecretKey>) -> Result<Keys, anyhow::Error> {
+pub(crate) fn get_keys(privkey: &Option<NostrSk>) -> Result<Keys, anyhow::Error> {
     let privkey = if let Some(s) = privkey {
-        *s
+        *s.as_ref()
     } else {
         // TODO: use a better system for getting secure info than this, like a secure prompt
         print!("Private key: ");

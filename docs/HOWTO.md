@@ -4,7 +4,7 @@ What you will need:
 
 1. A Bitcoin UTXO (txid, vout)
 2. A destination address
-3. A keypair (any schnorr-compatible Bitcoin or hex-encoded Nostr keypair will work)
+3. A keypair (any schnorr-compatible Bitcoin or Nostr keypair will work)
    * If you need one, use optional step below.
 
 
@@ -36,7 +36,7 @@ Using Nomen:
 1. **OPTIONAL**: `target/release/nomen util generate-keypair` to obtain a new keypair
 2. Open your Bitcoin wallet, and create a transaction that pays a Bitcoin UTXO back to you. Save that transaction (unsigned) as PSBT. Slightly overestimate your fees to account for an extra output we will add.
 3. `target/release/nomen name new --privkey <PRIVATE KEY> --broadcast --output out.psbt <NAME> <PSBT>`
-   * Replace PRIVATE_KEY with the hex-encoded secp256k1 private key.
+   * Replace PRIVATE_KEY with the hex-encoded secp256k1 private key or nsec Nostr key.
    * Replace NAME with the desired name you wish you register.
    * Replace PSBT with the path of the PSBT you created.
 4. Open `out.psbt` in your Bitcoin wallet. It should now include an extra output. Sign it with your Bitcoin wallet and broadcast it.

@@ -3,6 +3,7 @@ mod hash160;
 mod keyval;
 mod kind;
 mod name;
+mod nostr;
 mod nsid;
 mod nsid_builder;
 
@@ -12,6 +13,7 @@ pub use hash160::*;
 pub use keyval::*;
 pub use kind::*;
 pub use name::*;
+pub use nostr::*;
 pub use nsid::*;
 pub use nsid_builder::*;
 use yansi::Paint;
