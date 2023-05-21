@@ -4,7 +4,7 @@ scripts
 cookie
 .auth*
 .bitcoin
-.nomen.toml
+nomen.toml
 create.json
 __pycache__
 records.json

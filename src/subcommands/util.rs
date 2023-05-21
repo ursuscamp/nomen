@@ -36,7 +36,7 @@ pub async fn lookup(config: &Config, name: &str) -> anyhow::Result<()> {
 }
 
 pub fn init_config(path: &Option<PathBuf>) -> anyhow::Result<()> {
-    let file = path.clone().unwrap_or_else(|| ".nomen.toml".into());
+    let file = path.clone().unwrap_or_else(|| "nomen.toml".into());
     if file.exists() {
         bail!("Config file already exists.");
     }

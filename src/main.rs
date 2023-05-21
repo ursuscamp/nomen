@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
 
 fn parse_config() -> anyhow::Result<Config> {
     let mut cli = config::Cli::parse();
-    let config_name = cli.config.clone().unwrap_or_else(|| ".nomen.toml".into());
+    let config_name = cli.config.clone().unwrap_or_else(|| "nomen.toml".into());
 
     let file = if config_name.is_file() {
         let config_str = std::fs::read_to_string(config_name)?;

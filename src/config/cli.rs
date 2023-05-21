@@ -21,7 +21,7 @@ use super::ConfigFile;
 
 #[derive(Parser, Debug, Clone)]
 pub struct Cli {
-    /// Location of config file: Default: .nomen.toml
+    /// Location of config file: Default: nomen.toml
     #[arg(short, long)]
     pub config: Option<PathBuf>,
 
