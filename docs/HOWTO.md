@@ -2,18 +2,24 @@
 
 What you will need:
 
-1. A Bitcoin UTXO (txid, vout)
-2. A destination address
-3. A keypair (any schnorr-compatible Bitcoin or Nostr keypair will work)
+1. An unsigned PSBT (Partially Signed Bitcoin Transaction)
+2. A keypair (any schnorr-compatible Bitcoin or Nostr keypair will work)
    * If you need one, use optional step below.
 
+How it works:
+
+You must publish your name on the Bitcoin blockchain, so you need a transaction. The easiest way to do this is to use your Bitcoin wallet to create a PSBT paid back to yourself. Before signing it, save it and we will add the necessary data to the transaction before signing and publishing it.
+
+Make sure to overpay just slightly on fees, because will be adding a few bytes extra data to the transaction.
+
+Once you have used a method below to add the data to the transaction, import it back to your wallet and sign it.
 
 ## Using the Explorer
 
 1. Visit https://nomen.directory
 2. Click `New Name`.
-3. Enter the txid of the Bitcoin UTXO and vout index of the transaction you will be using.
-4. Enter the name you wish to reserve, the address of the output to send the Bitcoin, the pubkey that will be associate with the new name, and the fee to pay to the miners to mine the transaction.
+3. Paste the Base64 encoded PSBT.
+4. Enter the name you wish to reserve and the pubkey of the owner.
   * __Note:__ If you have a NIP-07 compatible browser extension, you can click "Use NIP-07" and it will obtain the public key from your browser extension.
 5. Click `Submit` and it will build a new, unsigned transaction for you. Copy the transaction to sign and broadcast it with your wallet.
 6. After broadcasting the transaction, click `setup your records` to build a new nostr records event.

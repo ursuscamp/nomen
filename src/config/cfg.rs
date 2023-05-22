@@ -148,6 +148,8 @@ impl Config {
                 vec![
                     "wss://relay.damus.io".into(),
                     "wss://relay.snort.social".into(),
+                    "wss://nos.lol".into(),
+                    "wss://nostr.orangepill.dev".into(),
                 ]
             })
     }
