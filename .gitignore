@@ -13,3 +13,4 @@ nomen.db
 records1.json
 *.csv
 *.psbt
+release/
