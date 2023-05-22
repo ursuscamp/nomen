@@ -3,12 +3,6 @@
 {% block body %}
 <main>
   <h1>New Name</h1>
-  <p>
-    Using your Bitcoin wallet, create an unsigned PSBT and paste it below (Base64 encoding).
-    Make sure to slightly overestimate fees, because this process below will add an extra output.
-    After you submit the form, you will receive an update PSBT. Just copy and paste it back to into your
-    Bitcoin wallet to sign and broadcast.
-  </p>
 
   {% if !psbt.is_empty() %}
   <p>Sign and broadcast this transaction with your Bitcoin wallet:</p>
@@ -31,6 +25,13 @@
   </script>
   
   {% else %}
+  <p>
+    Using your Bitcoin wallet, create an unsigned PSBT and paste it below (Base64 encoding).
+    Make sure to slightly overestimate fees, because this process below will add an extra output.
+    After you submit the form, you will receive an update PSBT. Just copy and paste it back to into your
+    Bitcoin wallet to sign and broadcast.
+  </p>
+  
   <form action="/newname" method="POST">
     <p><strong>Input</strong></p>
     <p>
