@@ -236,8 +236,11 @@ mod site {
         pubkey: XOnlyPublicKey,
     }
 
-    pub async fn new_name_form() -> Result<NewNameTemplate, WebError> {
-        Ok(Default::default())
+    pub async fn new_name_form(State(state): State<AppState>) -> Result<NewNameTemplate, WebError> {
+        Ok(NewNameTemplate {
+            confirmations: state.config.confirmations()?,
+            ..Default::default()
+        })
     }
 
     pub async fn new_name_submit(
