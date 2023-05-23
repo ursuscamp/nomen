@@ -3,7 +3,7 @@
 {% block body %}
 <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
 
-<main>
+<main id="main" data-relays="{{relays|json}}">
   <h1>New Records</h1>
   {% if !unsigned_event.is_empty() %}
   
@@ -31,7 +31,7 @@
       let signed_event = await window.nostr.signEvent(JSON.parse(unsigned_event));
       console.log(signed_event);
 
-      let relays = ["ws://127.0.0.1:8080"]
+      let relays = JSON.parse(document.querySelector('#main').dataset.relays);
 
       relays.forEach(async (relay_url) => {
         let relay = window.NostrTools.relayInit(relay_url);

@@ -243,7 +243,6 @@ mod site {
         State(state): State<AppState>,
         WithRejection(Form(mut form), _): WithRejection<Form<NewNameForm>, WebError>,
     ) -> Result<NewNameTemplate, WebError> {
-        println!("***** Hello world!");
         let name: Name = form.name.parse()?;
         check_name_availability(&state.config, form.name.as_ref()).await?;
         let fingerprint = Hash160::default()
@@ -265,6 +264,7 @@ mod site {
         name: String,
         pubkey: String,
         unsigned_event: String,
+        relays: Vec<String>,
     }
 
     #[derive(Deserialize)]
@@ -274,12 +274,14 @@ mod site {
     }
 
     pub async fn new_records_form(
+        State(state): State<AppState>,
         Query(query): Query<NewRecordsQuery>,
     ) -> Result<NewRecordsTemplate, WebError> {
         Ok(NewRecordsTemplate {
             name: query.name.unwrap_or_default(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
+            relays: state.config.relays(),
         })
     }
 
@@ -291,6 +293,7 @@ mod site {
     }
 
     pub async fn new_records_submit(
+        State(state): State<AppState>,
         Form(form): Form<NewRecordsForm>,
     ) -> Result<NewRecordsTemplate, WebError> {
         let name: Name = form.name.parse()?;
@@ -308,6 +311,7 @@ mod site {
             name: form.name.to_string(),
             pubkey: form.pubkey.to_string(),
             unsigned_event,
+            relays: state.config.relays(),
         })
     }
 }

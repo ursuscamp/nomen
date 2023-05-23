@@ -138,7 +138,7 @@ impl Config {
             .unwrap_or_else(|| "nomen.db".into())
     }
 
-    fn relays(&self) -> Vec<String> {
+    pub fn relays(&self) -> Vec<String> {
         self.cli
             .relays
             .as_ref()
