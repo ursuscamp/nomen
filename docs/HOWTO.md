@@ -30,22 +30,22 @@ Once you have used a method below to add the data to the transaction, import it 
 
 ## Use the CLI
 
-Build the CLI first:
+Configuring Nomen:
 
-1. `git clone https://github.com/ursuscamp/nomen.git`
-2. `cd nomem`
-3. `cargo build --release`
-4. Put `target/release/nomen` somewhere in your $PATH.
+1. `nomen util init` will generate a `nomen.toml` config file with some default settings. Nomen Explorer always looks in the current working folder for the config.
+2. Make sure to set the config to point to your node under the `[rpc]` section. All of the important tasks that the CLI can do rely on the presence of a full node.
+3. The `[server]` section mostly just applies to running the Explorer as a web server, such as at https://nomenexplorer.com.
+4. Under the `[nostr]` section, configure the relays you will use to publish events, such as `relays = ["wss://relay.damus.io"]`.
 
 Using Nomen:
 
-1. **OPTIONAL**: `target/release/nomen util generate-keypair` to obtain a new keypair
+1. **OPTIONAL**: `nomen util generate-keypair` to obtain a new keypair
 2. Open your Bitcoin wallet, and create a transaction that pays a Bitcoin UTXO back to you. Save that transaction (unsigned) as PSBT. Slightly overestimate your fees to account for an extra output we will add.
-3. `target/release/nomen name new --privkey <PRIVATE KEY> --broadcast --output out.psbt <NAME> <PSBT>`
+3. `nomen name new --privkey <PRIVATE KEY> --broadcast --output out.psbt <NAME> <PSBT>`
    * Replace PRIVATE_KEY with the hex-encoded secp256k1 private key or nsec Nostr key.
    * Replace NAME with the desired name you wish you register.
    * Replace PSBT with the path of the PSBT you created.
 4. Open `out.psbt` in your Bitcoin wallet. It should now include an extra output. Sign it with your Bitcoin wallet and broadcast it.
-5. `target/release/nomen name records --privkey $PRIVATE_KEY KEY1=value1 KEY2=value`
+5. `nomen name records --privkey $PRIVATE_KEY KEY1=value1 KEY2=value`
    * Create and broadcast new records to Nostr.
    * Replace key/values with records of your choosing.

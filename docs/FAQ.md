@@ -13,3 +13,7 @@ However, not all data can reasonably fit on the blockchain. The limited space me
 ## How does it work?
 
 It's actually very simple. Claims to identities are published to the Bitcoin blockchain. The claims are very small, only hashes. The data in the hash is enough to verify ownership (name + public key). This hash is the "nsid" or namespace identifier. Events are then published to Nostr relays that contain the data necessary to reconstruct the hash, and the events are signed by the same public key in the ownership hash. Per the protocol, even if two individuals claim the same identifier, the Bitcoin blockchain guarantees that one will be first, and thus valid.
+
+## Why not inscriptions?
+
+I considered inscriptions originally when designing this protocol, but it's a complicated protocol designed for loading lots of data on the blockchain. I decided very early that instead of storing data on the blockchain, the chain would only be used for timestamping, as God intended.

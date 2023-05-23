@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
@@ -62,5 +64,7 @@ async fn latest_events(
         .since(index_height.into());
 
     let (_keys, client) = config.nostr_random_client().await?;
-    Ok(client.get_events_of(vec![filter], None).await?)
+    Ok(client
+        .get_events_of(vec![filter], Some(Duration::from_secs(10)))
+        .await?)
 }

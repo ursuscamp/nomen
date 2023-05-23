@@ -226,6 +226,7 @@ mod site {
         psbt: String,
         name: String,
         pubkey: String,
+        confirmations: usize,
     }
 
     #[derive(Deserialize)]
@@ -255,6 +256,7 @@ mod site {
             psbt: psbt.to_string(),
             name: form.name,
             pubkey: form.pubkey.to_string(),
+            confirmations: state.config.confirmations()?,
         })
     }
 

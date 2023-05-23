@@ -56,7 +56,7 @@ pub struct NostrConfig {
 impl NostrConfig {
     fn init() -> NostrConfig {
         NostrConfig {
-            relays: Some(vec![]),
+            relays: Some(vec!["wss://relay.damus.io".into()]),
         }
     }
 }
