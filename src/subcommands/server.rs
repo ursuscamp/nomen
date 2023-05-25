@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use sqlx::SqlitePool;
+use tokio::time::{interval, MissedTickBehavior};
 
 use crate::{
     config::{Cli, Config, ServerSubcommand},
@@ -95,9 +96,12 @@ pub async fn start(
 }
 
 async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> anyhow::Result<()> {
+    let mut interval = interval(Duration::from_secs(config.server_indexer_delay()));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
     loop {
         subcommands::index(&config, &pool).await?;
-        tokio::time::sleep(Duration::from_secs(config.server_indexer_delay())).await;
+        interval.tick().await;
     }
     Ok(())
 }
