@@ -77,13 +77,14 @@ In the future, a protocol addition may even include the ability for indexers to 
 
 There are no restrictions on key/value pairs, but they are recommended by convention for the key names to be uppercase. It would be useful to establish some standard keys by convention for simple interoperability. Here are suggested keys:
 
-| KEY NAME | DESCRIPTION                      |
-|----------|----------------------------------|
-| IP4      | IPv4 address for a website       |
-| IP6      | IPv6 address for a website       |
-| DNS      | DNS name for a website           |
-| NPUB     | Nostr NPUB                       |
-| EMAIL    | Owner email address              |
-| MOTD     | A general message from the owner |
+| KEY NAME | DESCRIPTION                                               |
+|----------|-----------------------------------------------------------|
+| `IP4`    | IPv4 address for a website                                |
+| `IP6`    | IPv6 address for a website                                |
+| `DNS`    | Alias for DNS hostname                                    |
+| `NPUB`   | Nostr NPUB                                                |
+| `EMAIL`  | Owner email address                                       |
+| `MOTD`   | A general message from the owner                          |
+| `WEB`    | Full link for website (not necessarily the same as `DNS`) |
 
 Others may arise later by addition or general public acceptance. The above listed are not required, but if the owner wishes to include any of this data in their records, it is recommended to use the above keys.
