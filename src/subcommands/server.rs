@@ -100,7 +100,10 @@ async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> 
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     loop {
-        subcommands::index(&config, &pool).await?;
+        match subcommands::index(&config, &pool).await {
+            Ok(_) => {}
+            Err(err) => log::error!("Indexing error: {}", err),
+        }
         interval.tick().await;
     }
     Ok(())
