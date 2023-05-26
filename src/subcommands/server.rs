@@ -65,8 +65,8 @@ pub async fn start(
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
             .route("/newname", post(site::new_name_submit))
-            .route("/newrecords", get(site::new_records_form))
-            .route("/newrecords", post(site::new_records_submit));
+            .route("/updaterecords", get(site::new_records_form))
+            .route("/updaterecords", post(site::new_records_submit));
     }
 
     if !server.without_api {
@@ -271,7 +271,7 @@ mod site {
     }
 
     #[derive(askama::Template)]
-    #[template(path = "newrecords.html")]
+    #[template(path = "updaterecords.html")]
     pub struct NewRecordsTemplate {
         name: String,
         pubkey: String,

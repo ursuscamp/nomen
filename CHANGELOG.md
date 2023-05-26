@@ -11,6 +11,8 @@ Bugs:
 
 Other:
   - Added `WEB` record type to spec.
+  - Changes "New Records" to "Update Records" everywhere.
+  - More detailed help instructions.
 
 ## 0.1.0
 
