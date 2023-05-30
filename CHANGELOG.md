@@ -5,6 +5,7 @@
 Features:
   - Explorer now links to a name instead of a NSID. This simply makes it easier for a something to be bookmarked, even after a transfer.
   - Explorer web UI and CLI both automatically capitalizes the keys in records now.
+  - Update Records link added to Explorer name page, which automatically preloads data for user to update, including most recent record set.
 
 Bugs:
   - Indexer will not longer stop randomly.

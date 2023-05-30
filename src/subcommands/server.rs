@@ -277,6 +277,7 @@ mod site {
         pubkey: String,
         unsigned_event: String,
         relays: Vec<String>,
+        records: String,
     }
 
     #[derive(Deserialize)]
@@ -289,12 +290,38 @@ mod site {
         State(state): State<AppState>,
         Query(query): Query<NewRecordsQuery>,
     ) -> Result<NewRecordsTemplate, WebError> {
+        let records = records_from_query(&query, &state).await?;
         Ok(NewRecordsTemplate {
             name: query.name.unwrap_or_default(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
             relays: state.config.relays(),
+            records,
         })
+    }
+
+    async fn records_from_query(
+        query: &NewRecordsQuery,
+        state: &AppState,
+    ) -> Result<String, WebError> {
+        let records = match &query.name {
+            Some(name) => {
+                let (records,) =
+                    sqlx::query_as::<_, (String,)>("SELECT records FROM detail_vw WHERE name = ?;")
+                        .bind(name)
+                        .fetch_optional(&state.pool)
+                        .await?
+                        .unwrap_or_else(|| (String::from(r#"{"KEY":"value"}"#),));
+                let records: HashMap<String, String> = serde_json::from_str(&records)?;
+                records
+                    .iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect_vec()
+                    .join("\n")
+            }
+            None => "KEY=value".into(),
+        };
+        Ok(records)
     }
 
     #[derive(Deserialize, Debug)]
@@ -324,6 +351,7 @@ mod site {
             pubkey: form.pubkey.to_string(),
             unsigned_event,
             relays: state.config.relays(),
+            records: "KEY=value".into(),
         })
     }
 }
