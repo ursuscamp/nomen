@@ -54,7 +54,7 @@ pub async fn start(
     server: &ServerSubcommand,
 ) -> anyhow::Result<()> {
     if !server.without_indexer {
-        let _indexer = tokio::spawn(indexer(config.clone(), server.clone(), conn.clone()));
+        let _indexer = tokio::spawn(indexer(config.clone(), server.clone()));
     }
     let mut app = Router::new();
 
@@ -95,12 +95,12 @@ pub async fn start(
     Ok(())
 }
 
-async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> anyhow::Result<()> {
+async fn indexer(config: Config, server: ServerSubcommand) -> anyhow::Result<()> {
     let mut interval = interval(Duration::from_secs(config.server_indexer_delay()));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     loop {
-        match subcommands::index(&config, &pool).await {
+        match subcommands::index(&config).await {
             Ok(_) => {}
             Err(err) => log::error!("Indexing error: {}", err),
         }
