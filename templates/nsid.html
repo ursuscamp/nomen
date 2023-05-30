@@ -57,7 +57,11 @@
       {% for key in record_keys %}
       <tr>
         <td>{{ key }}</td>
+        {% if key == "WEB" %}
+        <td><a href="{{ records[key] }}">{{ records[key]}}</a></td>
+        {% else %}
         <td>{{ records[key] }}</td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
