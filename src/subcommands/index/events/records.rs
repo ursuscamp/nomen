@@ -64,7 +64,9 @@ async fn latest_events(
         .since(index_height.into());
 
     let (_keys, client) = config.nostr_random_client().await?;
-    Ok(client
+    let events = client
         .get_events_of(vec![filter], Some(Duration::from_secs(10)))
-        .await?)
+        .await?;
+    client.disconnect().await?;
+    Ok(events)
 }
