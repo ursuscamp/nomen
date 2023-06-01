@@ -63,6 +63,10 @@
         <td><a href="https://snort.social/p/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
         {% else if key == "TWITTER" %}
         <td><a href="https://twitter.com/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "MOTD" %}
+        <td>
+          <i>"{{ records[key] }}"</i>
+        </td>
         {% else %}
         <td>{{ records[key] }}</td>
         {% endif %}
