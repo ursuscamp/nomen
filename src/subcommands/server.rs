@@ -169,10 +169,11 @@ mod site {
         let conn = state.pool;
         let last_index_time = db::last_index_time(&conn).await?;
         let last_index_time = util::format_time(last_index_time)?;
+        let q = query.q.map(|s| s.trim().to_string());
 
         Ok(ExplorerTemplate {
-            q: query.q.clone().unwrap_or_default(),
-            names: db::top_level_names(&conn, query.q).await?,
+            q: q.clone().unwrap_or_default(),
+            names: db::top_level_names(&conn, q).await?,
             last_index_time,
         })
     }

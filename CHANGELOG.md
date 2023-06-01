@@ -7,6 +7,8 @@ Features:
   - Explorer web UI and CLI both automatically capitalizes the keys in records now.
   - Update Records link added to Explorer name page, which automatically preloads data for user to update, including most recent record set.
   - Name page now creates links to other resources where appropriate for some record types. For example, WEB records now render as a link to the site.
+  - MOTD records now have a little but of decorative quoting.
+  - The Search bar strips whitespace.
 
 Bugs:
   - Indexer will not longer stop randomly.
