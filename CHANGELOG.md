@@ -5,9 +5,10 @@
 Features:
   - Explorer now links to a name instead of a NSID. This simply makes it easier for a something to be bookmarked, even after a transfer.
   - Explorer web UI and CLI both automatically capitalizes the keys in records now.
-  - Update Records link added to Explorer name page, which automatically preloads data for user to update, including most recent record set.
-  - Name page now creates links to other resources where appropriate for some record types. For example, WEB records now render as a link to the site.
-  - MOTD records now have a little but of decorative quoting.
+  - Name page: Update Records link added, which automatically preloads data for user to update, including most recent record set.
+  - Name page: Blockhash and Txid link to block explorer mempool.space.
+  - Name page: Links for different record types. For example, `WEB` record links to actual webpage.
+  - Name page: MOTD records now have a little but of decorative quoting.
   - The Search bar strips whitespace.
 
 Bugs:
