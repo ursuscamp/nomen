@@ -18,6 +18,6 @@ impl FromStr for KeyVal {
         let (key, val) = s
             .split_once('=')
             .ok_or_else(|| anyhow!("Invalid key=value"))?;
-        Ok(KeyVal(key.to_string(), val.to_string()))
+        Ok(KeyVal(key.to_string().to_uppercase(), val.to_string()))
     }
 }

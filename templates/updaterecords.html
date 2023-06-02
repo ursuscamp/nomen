@@ -4,7 +4,7 @@
 <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
 
 <main id="main" data-relays="{{relays|json}}">
-  <h1>New Records</h1>
+  <h1>Update Records</h1>
   {% if !unsigned_event.is_empty() %}
   
   <p>The following event was created. You can use a NIP-07 browser extension to sign and broadcast this event, using the same keypair that was used to register the name on the blockchain.</p>
@@ -52,7 +52,7 @@
 
   {% else %}
   
-  <form action="newrecords" method="post">
+  <form action="updaterecords" method="post">
     <p>
       <label for="name">Name</label>
       <input type="text" id="name" name="name" value="{{ name }}">
@@ -62,7 +62,7 @@
       <label for="records">
         Enter records below. Each record should be on its own line, with a key and value separated by an equal (=) sign.
       </label>
-      <textarea name="records" id="records" cols="30" rows="10">KEY=value</textarea>
+      <textarea name="records" id="records" cols="30" rows="10">{{ records }}</textarea>
     </p>
 
     {% include "pubkey.html" %}

@@ -10,7 +10,7 @@
     <tbody>
       <tr>
         <td>Blockhash</td>
-        <td>{{ blockhash }}</td>
+        <td><a href="https://mempool.space/block/{{blockhash}}">{{ blockhash }}</a></td>
       </tr>
       <tr>
         <td>Block Height</td>
@@ -18,7 +18,7 @@
       </tr>
       <tr>
         <td>Txid</td>
-        <td>{{ txid }}</td>
+        <td><a href="https://mempool.space/tx/{{ txid }}">{{ txid }}</a></td>
       </tr>
       <tr>
         <td>Vout</td>
@@ -39,6 +39,8 @@
 
   <h3>Records</h3>
 
+  <p><small><a href="/updaterecords?name={{ name }}&pubkey={{ pubkey }}">Update Records</a></small></p>
+
   {% if records.is_empty() %}
   <p>No records found.</p>
   {% else %}
@@ -55,7 +57,19 @@
       {% for key in record_keys %}
       <tr>
         <td>{{ key }}</td>
+        {% if key == "WEB" %}
+        <td><a href="{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "NPUB" %}
+        <td><a href="https://snort.social/p/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "TWITTER" %}
+        <td><a href="https://twitter.com/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "MOTD" %}
+        <td>
+          <i>"{{ records[key] }}"</i>
+        </td>
+        {% else %}
         <td>{{ records[key] }}</td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>

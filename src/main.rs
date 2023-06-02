@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
-        config::Subcommand::Index => subcommands::index(&config, &pool).await?,
+        config::Subcommand::Index => subcommands::index(&config).await?,
         config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
     }
 

@@ -9,7 +9,7 @@
   <pre id="psbt">{{ psbt }}</pre>
   <button id="copy">Copy</button>
 
-  <p>After signing and transmitting the transaction, <a href="/newrecords?name={{ name }}&pubkey={{ pubkey }}">setup your records</a> for the indexer to property index your new name.</p>
+  <p>After signing and transmitting the transaction, <a href="/updaterecords?name={{ name }}&pubkey={{ pubkey }}">setup your records</a> for the indexer to property index your new name.</p>
 
   <script>
     let btn = document.getElementById('copy');
@@ -33,17 +33,22 @@
   </p>
 
   <p>
-    The indexer waits for {{confirmations}} confirmations for all names.
+    The indexer waits for {{confirmations}} block confirmations.
+  </p>
+
+  <p>
+    In order for the indexer to properly index your name, you also need to send your records after you broadcast your transaction!
+    You can comeback anytime and click on <a href="/updaterecords">Update Records</a> in the navigation menu.
   </p>
   
   <form action="/newname" method="POST">
-    <p><strong>Input</strong></p>
+    <h2>Input</h2>
     <p>
       <label for="psbt">PSBT</label>
       <textarea name="psbt" id="psbt" cols="30" rows="10">{{ psbt }}</textarea>
     </p>
 
-    <p><strong>Output</strong></p>
+    <h2>Output</h2>
 
     <p>
       <label for="name">Name</label>

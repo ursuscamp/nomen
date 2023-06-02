@@ -7,6 +7,7 @@ use axum::{
     Router,
 };
 use sqlx::SqlitePool;
+use tokio::time::{interval, MissedTickBehavior};
 
 use crate::{
     config::{Cli, Config, ServerSubcommand},
@@ -53,7 +54,7 @@ pub async fn start(
     server: &ServerSubcommand,
 ) -> anyhow::Result<()> {
     if !server.without_indexer {
-        let _indexer = tokio::spawn(indexer(config.clone(), server.clone(), conn.clone()));
+        let _indexer = tokio::spawn(indexer(config.clone(), server.clone()));
     }
     let mut app = Router::new();
 
@@ -64,8 +65,8 @@ pub async fn start(
             .route("/explorer/:nsid", get(site::explore_nsid))
             .route("/newname", get(site::new_name_form))
             .route("/newname", post(site::new_name_submit))
-            .route("/newrecords", get(site::new_records_form))
-            .route("/newrecords", post(site::new_records_submit));
+            .route("/updaterecords", get(site::new_records_form))
+            .route("/updaterecords", post(site::new_records_submit));
     }
 
     if !server.without_api {
@@ -94,10 +95,16 @@ pub async fn start(
     Ok(())
 }
 
-async fn indexer(config: Config, server: ServerSubcommand, pool: SqlitePool) -> anyhow::Result<()> {
+async fn indexer(config: Config, server: ServerSubcommand) -> anyhow::Result<()> {
+    let mut interval = interval(Duration::from_secs(config.server_indexer_delay()));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
     loop {
-        subcommands::index(&config, &pool).await?;
-        tokio::time::sleep(Duration::from_secs(config.server_indexer_delay())).await;
+        match subcommands::index(&config).await {
+            Ok(_) => {}
+            Err(err) => log::error!("Indexing error: {}", err),
+        }
+        interval.tick().await;
     }
     Ok(())
 }
@@ -162,10 +169,11 @@ mod site {
         let conn = state.pool;
         let last_index_time = db::last_index_time(&conn).await?;
         let last_index_time = util::format_time(last_index_time)?;
+        let q = query.q.map(|s| s.trim().to_string());
 
         Ok(ExplorerTemplate {
-            q: query.q.clone().unwrap_or_default(),
-            names: db::top_level_names(&conn, query.q).await?,
+            q: q.clone().unwrap_or_default(),
+            names: db::top_level_names(&conn, q).await?,
             last_index_time,
         })
     }
@@ -264,12 +272,13 @@ mod site {
     }
 
     #[derive(askama::Template)]
-    #[template(path = "newrecords.html")]
+    #[template(path = "updaterecords.html")]
     pub struct NewRecordsTemplate {
         name: String,
         pubkey: String,
         unsigned_event: String,
         relays: Vec<String>,
+        records: String,
     }
 
     #[derive(Deserialize)]
@@ -282,12 +291,38 @@ mod site {
         State(state): State<AppState>,
         Query(query): Query<NewRecordsQuery>,
     ) -> Result<NewRecordsTemplate, WebError> {
+        let records = records_from_query(&query, &state).await?;
         Ok(NewRecordsTemplate {
             name: query.name.unwrap_or_default(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
             unsigned_event: Default::default(),
             relays: state.config.relays(),
+            records,
         })
+    }
+
+    async fn records_from_query(
+        query: &NewRecordsQuery,
+        state: &AppState,
+    ) -> Result<String, WebError> {
+        let records = match &query.name {
+            Some(name) => {
+                let (records,) =
+                    sqlx::query_as::<_, (String,)>("SELECT records FROM detail_vw WHERE name = ?;")
+                        .bind(name)
+                        .fetch_optional(&state.pool)
+                        .await?
+                        .unwrap_or_else(|| (String::from(r#"{"KEY":"value"}"#),));
+                let records: HashMap<String, String> = serde_json::from_str(&records)?;
+                records
+                    .iter()
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .collect_vec()
+                    .join("\n")
+            }
+            None => "KEY=value".into(),
+        };
+        Ok(records)
     }
 
     #[derive(Deserialize, Debug)]
@@ -317,6 +352,7 @@ mod site {
             pubkey: form.pubkey.to_string(),
             unsigned_event,
             relays: state.config.relays(),
+            records: "KEY=value".into(),
         })
     }
 }
