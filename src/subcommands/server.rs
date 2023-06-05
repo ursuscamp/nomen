@@ -66,7 +66,8 @@ pub async fn start(
             .route("/newname", get(site::new_name_form))
             .route("/newname", post(site::new_name_submit))
             .route("/updaterecords", get(site::new_records_form))
-            .route("/updaterecords", post(site::new_records_submit));
+            .route("/updaterecords", post(site::new_records_submit))
+            .route("/stats", get(site::index_stats));
     }
 
     if !server.without_api {
@@ -353,6 +354,28 @@ mod site {
             unsigned_event,
             relays: state.config.relays(),
             records: "KEY=value".into(),
+        })
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "stats.html")]
+    pub struct IndexerInfo {
+        version: &'static str,
+        commit: &'static str,
+        build_date: &'static str,
+        known_names: i64,
+        index_height: i64,
+        nostr_events: i64,
+    }
+
+    pub async fn index_stats(State(state): State<AppState>) -> Result<IndexerInfo, WebError> {
+        Ok(IndexerInfo {
+            version: env!("CARGO_PKG_VERSION"),
+            commit: env!("VERGEN_GIT_DESCRIBE"),
+            build_date: env!("VERGEN_BUILD_TIMESTAMP"),
+            known_names: db::stats::known_names(&state.pool).await?,
+            index_height: db::stats::index_height(&state.pool).await?,
+            nostr_events: db::stats::nostr_events(&state.pool).await?,
         })
     }
 }
