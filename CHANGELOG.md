@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+This release includes a database migration, so make sure to back up your index before upgrading.
+
+Features:
+  - New page to list blockchain claims for which there are no indexed record events.
+  - Index statistic page.
+
 ## 0.1.1
 
 Features:
