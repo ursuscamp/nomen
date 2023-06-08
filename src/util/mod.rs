@@ -16,6 +16,7 @@ pub use name::*;
 pub use nostr::*;
 pub use nsid::*;
 pub use nsid_builder::*;
+use time::{macros::format_description, OffsetDateTime};
 use yansi::Paint;
 
 use crate::{
@@ -58,4 +59,10 @@ pub async fn check_name_availability(config: &Config, name: &str) -> anyhow::Res
         bail!("Name {name} already exists");
     }
     Ok(())
+}
+
+pub fn format_time(timestamp: i64) -> anyhow::Result<String> {
+    let dt = OffsetDateTime::from_unix_timestamp(timestamp)?;
+    let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+    Ok(dt.format(format)?)
 }

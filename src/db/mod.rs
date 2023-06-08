@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use bitcoin::BlockHash;
+use bitcoin::{BlockHash, Txid};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::{Cli, Config},
-    util::{Hash160, Name, NomenKind, Nsid},
+    util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 16] = [
+static MIGRATIONS: [&str; 17] = [
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
@@ -82,6 +82,12 @@ static MIGRATIONS: [&str; 16] = [
         JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid;",
 
     "CREATE TABLE event_log (created_at, type, data);",
+
+    // This represents claims put on the blockchain that don't have any associated Nostr events.
+    "CREATE VIEW uncorroborated_claims_vw AS
+        SELECT b.* FROM ordered_blockchain_vw b
+        LEFT JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        WHERE b.kind = 'create' AND ne.nsid IS NULL;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -359,6 +365,49 @@ pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<
         .await?;
 
     Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
+}
+
+pub async fn uncorroborated_claims(conn: &SqlitePool) -> anyhow::Result<Vec<String>> {
+    Ok(
+        sqlx::query_as::<_, (String,)>("SELECT txid FROM uncorroborated_claims_vw;")
+            .fetch_all(conn)
+            .await?
+            .into_iter()
+            .map(|s| s.0)
+            .collect(),
+    )
+}
+
+#[derive(Debug, Clone, sqlx::FromRow, PartialEq, Eq)]
+pub struct UncorroboratedClaim {
+    pub fingerprint: String,
+    pub nsid: String,
+    pub blockhash: String,
+    pub txid: String,
+    pub blocktime: i64,
+    pub blockheight: i64,
+    pub txheight: i64,
+    pub vout: i64,
+    pub indexed_at: i64,
+}
+
+impl UncorroboratedClaim {
+    pub fn fmt_blocktime(&self) -> anyhow::Result<String> {
+        util::format_time(self.blocktime)
+    }
+
+    pub fn fmt_indexed_at(&self) -> anyhow::Result<String> {
+        util::format_time(self.indexed_at)
+    }
+}
+
+pub async fn uncorroborated_claim(
+    conn: &SqlitePool,
+    txid: &str,
+) -> anyhow::Result<UncorroboratedClaim> {
+    Ok(sqlx::query_as(
+        "SELECT fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at
+        FROM uncorroborated_claims_vw WHERE txid = ?;").bind(txid).fetch_one(conn).await?)
 }
 
 pub mod stats {
