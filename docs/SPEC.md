@@ -57,7 +57,7 @@ It is necessary to limit the characters used in names. While it might be temptin
 
 While it is desirable to have a wide range of characters and languages be usable, for the time being it is necessary to restrict the use of characters to the basic characters typically used in domain names today.
 
-Names must match the following regular expression `[0-0a-z\-]{3,256}` and must be ignored by indexers otherwise.
+Names must match the following regular expression `[0-9a-z\-]{3,256}` and must be ignored by indexers otherwise.
 
 ## Appendix B: Protocol expansion
 
