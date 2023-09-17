@@ -14,7 +14,9 @@ Indexers (like a DNS name server) link on-chain claims to published Nostr events
 
 ### Blockchain
 
-In order to claim a name, publish an output to the bitcoin blockchain in this format: `OP_RETURN <VERSION><TRANSACTION TYPE><NAME FINGERPRINT><NAMESPACE ID>`. All names have an associated owner, which just a private/public keypair. Public keys are always 32-byte X-Only Public Keys used everywhere in Nostr and Bitcoin Schnorr signatures.
+In order to claim a name, publish an output to the bitcoin blockchain in this format: `OP_RETURN NOM <VERSION> <TRANSACTION TYPE> <NAME FINGERPRINT> <NAMESPACE ID>`. The spaces are for readability and not significant. Do not include spaces in the final `OP_RETURN`. All names have an associated owner, which just a private/public keypair. Public keys are always 32-byte X-Only Public Keys used everywhere in Nostr and Bitcoin Schnorr signatures.
+
+`NOM` is just the byte string "NOM", a tag indicator to let the indexer know this ia Nomen output.
 
 `VERSION` is reserved for future use, for incompatible changes to the protocol, or unlocking additional namespace. It is one byte and must currently be `0x00`.
 
@@ -22,7 +24,7 @@ In order to claim a name, publish an output to the bitcoin blockchain in this fo
 
 `NAME FINGERPRINT` is the first five bytes of the HASH-160 of the name. The purpose is to allow a name to be verified as unreserved, even if a Nostr event cannot be found to prove it.
 
-`NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. If the `TRANSACTION TYPE` is `0x01` (ownership change), then the `NAMESPACE ID` is the HASH-160 of `<NAME><NEW OWNER PUBKEY>`.
+`NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. If the `TRANSACTION TYPE` is `0x01` (ownership change), then the `NAMESPACE ID` is the HASH-160 of `<NAME><NEW OWNER PUBKEY>`. Please be aware that the pubkey is a 32-byte byte string of the pubkey, not any textual representation such as bech32 or hexadecimal.
 
 **Note:** The owner of the Bitcoin UTXO that generated the `OP_RETURN`, or the amount in the UTXO, do not matter. Bitcoin, in this case, is being utilized only as a decentralized timestamp server. The only thing that matters is the order of transaction outputs.
 
