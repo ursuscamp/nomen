@@ -11,7 +11,7 @@ impl FromStr for Name {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let r = Regex::new(r#"\A[0-9a-z\-]{3,256}\z"#)?;
+        let r = Regex::new(r#"\A[0-9a-z\-]{3,43}\z"#)?;
         if r.is_match(s) {
             return Ok(Name(s.into()));
         }
