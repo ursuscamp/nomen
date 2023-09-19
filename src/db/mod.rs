@@ -443,8 +443,6 @@ pub mod stats {
             "
             WITH events as (
                 SELECT count(*) as count FROM name_events
-                UNION ALL
-                SELECT count(*) as count FROM transfer_events
             )
             SELECT SUM(count) FROM events;
         ",
