@@ -8,6 +8,9 @@ Features:
   - New page to list blockchain claims for which there are no indexed record events.
   - Index statistic page.
 
+Bugs:
+  - Fixed a bug where a name was double-indexed because the same `OP_RETURN` was uploaded twice
+
 ## 0.1.1
 
 Features:
