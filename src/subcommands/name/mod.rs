@@ -1,6 +1,5 @@
 mod new;
 mod record;
-mod transfer;
 
 use std::{collections::HashMap, io::Write, path::PathBuf, str::FromStr};
 
@@ -26,9 +25,6 @@ pub async fn name(config: &Config, cmd: &NameSubcommand) -> anyhow::Result<()> {
     match cmd {
         NameSubcommand::New(new_data) => new::new(config, new_data).await?,
         NameSubcommand::Record(record_data) => record::record(config, record_data).await?,
-        NameSubcommand::Transfer(transfer_data) => {
-            transfer::transfer(config, transfer_data).await?
-        }
     }
 
     Ok(())

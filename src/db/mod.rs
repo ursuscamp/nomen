@@ -10,7 +10,7 @@ use crate::{
     util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 23] = [
+static MIGRATIONS: [&str; 27] = [
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
@@ -55,7 +55,7 @@ static MIGRATIONS: [&str; 23] = [
 
     // Partition over the names, and only return the final value (the latest owner)
     "CREATE VIEW owners_vw AS
-        SELECT DISTINCT name, last_value(pk) OVER (PARTITION BY name) AS pubkey 
+        SELECT DISTINCT name, last_value(pubkey) OVER (PARTITION BY name) AS pubkey 
         FROM ownership_chain_vw;",
 
     // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
@@ -123,8 +123,17 @@ static MIGRATIONS: [&str; 23] = [
         r.created_at as records_created_at
     FROM records_vw r
     JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid
-    WHERE b.row = 1;"
+    WHERE b.row = 1;",
     // END issue 9 changes
+
+    "DROP VIEW ownership_chain_vw;",
+
+    "DROP VIEW owners_vw;",
+
+    "CREATE VIEW owners_vw AS
+        SELECT name, pubkey FROM name_vw;",
+
+    "DROP TABLE transfer_events;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -343,41 +352,6 @@ pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
     .await?;
 
     Ok(created_at)
-}
-
-pub async fn last_transfer_time(conn: &SqlitePool) -> anyhow::Result<u64> {
-    let (t,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM transfer_events;")
-            .fetch_one(conn)
-            .await?;
-    Ok(t as u64)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn insert_transfer_event(
-    conn: &SqlitePool,
-    nsid: Nsid,
-    pubkey: XOnlyPublicKey,
-    created_at: i64,
-    event_id: EventId,
-    name: Name,
-    fingerprint: [u8; 5],
-    children: String,
-    raw_event: String,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
-        .bind(nsid.to_string())
-        .bind(pubkey.to_string())
-        .bind(created_at)
-        .bind(event_id.to_hex())
-        .bind(name.to_string())
-        .bind(hex::encode(fingerprint))
-        .bind(children)
-        .bind(raw_event)
-        .execute(conn)
-        .await?;
-
-    Ok(())
 }
 
 pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<bool> {
