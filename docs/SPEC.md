@@ -52,7 +52,7 @@ It is necessary to limit the characters used in names. While it might be temptin
 
 While it is desirable to have a wide range of characters and languages be usable, for the time being it is necessary to restrict the use of characters to the basic characters typically used in domain names today.
 
-Names must match the following regular expression `[0-0a-z\-]{3,43}` and must be ignored by indexers otherwise.
+Names must match the following regular expression `[0-9a-z\-]{3,43}` and must be ignored by indexers otherwise.
 
 ## Appendix B: Protocol expansion
 
@@ -89,3 +89,4 @@ Others may arise later by addition or general public acceptance. The above liste
 **2023-09-19**:
   - Given the issues cited [here](https://github.com/ursuscamp/nomen/issues/6), the design of transfers in `0x00` is not good and has been removed. As of the time of publication, no transfers have been issued by any users, so this is a not a breaking change.
   - A new version will be issued which will enable transfers, and an upgrade path will be available for version `0x00` names to `0x01` names. However, in order to link the `0x00` to `0x01` names on chain, the upgrade transaction will require the names to be put on chain in plain text, necessitating limiting them to a maximum of 43 bytes for now (80 byte OP_RETURN maximum - 5 bytes for Nomen metadata - 32 bytes for a public key). As of the time of publication, no names longer than 43 bytes have been issued, so this is a non-breaking change.
+

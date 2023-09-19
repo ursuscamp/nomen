@@ -16,7 +16,7 @@ Once you have used a method below to add the data to the transaction, import it 
 
 ## Using the Explorer
 
-1. Visit https://nomen.directory
+1. Visit https://nomenexplorer.com
 2. Click `New Name`.
 3. Paste the Base64 encoded PSBT.
 4. Enter the name you wish to reserve and the pubkey of the owner.
