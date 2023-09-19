@@ -14,7 +14,9 @@ Indexers (like a DNS name server) link on-chain claims to published Nostr events
 
 ### Blockchain
 
-In order to claim a name, publish an output to the bitcoin blockchain in this format: `OP_RETURN <VERSION><TRANSACTION TYPE><NAME FINGERPRINT><NAMESPACE ID>`. All names have an associated owner, which just a private/public keypair. Public keys are always 32-byte X-Only Public Keys used everywhere in Nostr and Bitcoin Schnorr signatures.
+In order to claim a name, publish an output to the bitcoin blockchain in this format: `OP_RETURN NOM <VERSION> <TRANSACTION TYPE> <NAME FINGERPRINT> <NAMESPACE ID>`. The spaces are for readability and not significant. Do not include spaces in the final `OP_RETURN`. All names have an associated owner, which just a private/public keypair. Public keys are always 32-byte X-Only Public Keys used everywhere in Nostr and Bitcoin Schnorr signatures.
+
+`NOM` is just the byte string "NOM", a tag indicator to let the indexer know this ia Nomen output.
 
 `VERSION` is reserved for future use, for incompatible changes to the protocol, or unlocking additional namespace. It is one byte and must currently be `0x00`.
 
@@ -22,7 +24,7 @@ In order to claim a name, publish an output to the bitcoin blockchain in this fo
 
 `NAME FINGERPRINT` is the first five bytes of the HASH-160 of the name. The purpose is to allow a name to be verified as unreserved, even if a Nostr event cannot be found to prove it.
 
-`NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. If the `TRANSACTION TYPE` is `0x01` (ownership change), then the `NAMESPACE ID` is the HASH-160 of `<NAME><NEW OWNER PUBKEY>`.
+`NAMESPACE ID` represents a HASH-160 (20-byte) hash of the ownership information for this name. If the `TRANSACTION TYPE` is `0x00` (new name) then the `NAMESPACE ID` is the HASH-160 of `<NAME><OWNER PUBKEY>`. Please be aware that the pubkey is a 32-byte byte string of the pubkey, not any textual representation such as bech32 or hexadecimal.
 
 **Note:** The owner of the Bitcoin UTXO that generated the `OP_RETURN`, or the amount in the UTXO, do not matter. Bitcoin, in this case, is being utilized only as a decentralized timestamp server. The only thing that matters is the order of transaction outputs.
 
@@ -30,12 +32,11 @@ In order to claim a name, publish an output to the bitcoin blockchain in this fo
 
 Nostr is the propogation layer of the protocol. The only required information on-chain is the information necessary to determination ownership of a name, and that is only in a shortened hash form.
 
-There are currently three types of Nostr events. These are all parameterized replaceable events (all events are idempotent and thus replaceable).
+There is one new kind of Nostr event. It is a parameterized replaceable event (all events are idempotent and thus replaceable).
 
 | Event kind | Event type    | Description                                                   |
 |------------|---------------|---------------------------------------------------------------|
 | 38300      | NAME          | Matches `0x00` tranaction type. Publishes records for a name. |
-| 38301      | TRANSFER NAME | Match to `0x01` transaction type                              |
 
 #### New Name
 
@@ -45,19 +46,13 @@ When the records need to be updated, the owner may just publish another name eve
 
 **Note:** When receiving new events, and indexer should recalculate the namespace ID and compare to the `d` tag to validate the event, then use the namespace ID to link to blockchain for correct ordering. Indexers should also treat any blockchain transactions with mis-matching name fingerprints as invalid.
 
-#### Transfer
-
-After publishing a `0x01` transfer transaction, publish a `38301` kind Nostr event. The `d` tag for the event should be the lower case hex representation of the `NAMESPACE ID` published to the blockchain. Additionally, there should be a `nom` tag with the `name` value as the parameter. `content` must be lowercase hex encoded value of the pubkey of the **_new_** owner. The published event must be signed by the current owner of the name, in order to properly establish chain of custody.
-
-**Note:** When receiving new events, and indexer should recalculate the namespace ID and compare to the `d` tag to validate the event, then use the namespace ID to link to blockchain for correct ordering. Unlike publishing new names, the namespace ID in this case is not constructed from the pubkey of the original owner, but the pubkey of the **_new_** owner.
-
 ## Appendix A: Name format
 
 It is necessary to limit the characters used in names. While it might be tempting to allow any valid UTF-8 string, there are good reasons not to do this. In the Unicode standards, there are sometimes different ways to the construct the same character, invisible characters, or "whitespace" characters that may not necessarily be rendered, etc. This could allow for malicious individuals to trick unsuspecting users into clicking/pasting incorrect names.
 
 While it is desirable to have a wide range of characters and languages be usable, for the time being it is necessary to restrict the use of characters to the basic characters typically used in domain names today.
 
-Names must match the following regular expression `[0-9a-z\-]{3,256}` and must be ignored by indexers otherwise.
+Names must match the following regular expression `[0-9a-z\-]{3,43}` and must be ignored by indexers otherwise.
 
 ## Appendix B: Protocol expansion
 
@@ -88,3 +83,10 @@ There are no restrictions on key/value pairs, but they are recommended by conven
 | `WEB`    | Full link for website (not necessarily the same as `DNS`) |
 
 Others may arise later by addition or general public acceptance. The above listed are not required, but if the owner wishes to include any of this data in their records, it is recommended to use the above keys.
+
+## Appendix ZZ: Changes and Updates
+
+**2023-09-19**:
+  - Given the issues cited [here](https://github.com/ursuscamp/nomen/issues/6), the design of transfers in `0x00` is not good and has been removed. As of the time of publication, no transfers have been issued by any users, so this is a not a breaking change.
+  - A new version will be issued which will enable transfers, and an upgrade path will be available for version `0x00` names to `0x01` names. However, in order to link the `0x00` to `0x01` names on chain, the upgrade transaction will require the names to be put on chain in plain text, necessitating limiting them to a maximum of 43 bytes for now (80 byte OP_RETURN maximum - 5 bytes for Nomen metadata - 32 bytes for a public key). As of the time of publication, no names longer than 43 bytes have been issued, so this is a non-breaking change.
+

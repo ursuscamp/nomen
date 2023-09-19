@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h3>Build Information</h3>
+  
+  <table>
+    <tbody>
+      <tr>
+        <td>Version</td>
+        <td>{{ version }}</td>
+      </tr>
+      <tr>
+        <td>Commit</td>
+        <td>{{ commit }}</td>
+      </tr>
+      <tr>
+        <td>Build Date</td>
+        <td>{{ build_date }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Index Information</h3>
+
+  <table>
+    <tbody>
+      <tr>
+        <td>Known Names</td>
+        <td>{{ known_names }}</td>
+      </tr>
+      <tr>
+        <td>Index Blockheight</td>
+        <td>{{ index_height }}</td>
+      </tr>
+      <tr>
+        <td>Nostr Events</td>
+        <td>{{ nostr_events }}</td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+{% endblock %}

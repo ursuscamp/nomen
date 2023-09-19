@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h2>Uncorroborated Claims</h2>
+
+  <p>These are Nomen blockchain claims that have no associated Nostr events. They may be original claims or duplicate claims.</p>
+
+  {% if !claims.is_empty() %}
+  <ul>
+    {% for claim in claims %}
+    <li><a href="/uncorroborated_claims/{{claim}}">{{claim}}</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p><b>No uncorroborated claims found.</b></p>
+  {% endif %}
+</main>
+{% endblock %}

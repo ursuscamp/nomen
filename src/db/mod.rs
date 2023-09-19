@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use bitcoin::BlockHash;
+use bitcoin::{BlockHash, Txid};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::{Cli, Config},
-    util::{Hash160, Name, NomenKind, Nsid},
+    util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 16] = [
+static MIGRATIONS: [&str; 27] = [
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
@@ -55,7 +55,7 @@ static MIGRATIONS: [&str; 16] = [
 
     // Partition over the names, and only return the final value (the latest owner)
     "CREATE VIEW owners_vw AS
-        SELECT DISTINCT name, last_value(pk) OVER (PARTITION BY name) AS pubkey 
+        SELECT DISTINCT name, last_value(pubkey) OVER (PARTITION BY name) AS pubkey 
         FROM ownership_chain_vw;",
 
     // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
@@ -82,6 +82,58 @@ static MIGRATIONS: [&str; 16] = [
         JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid;",
 
     "CREATE TABLE event_log (created_at, type, data);",
+
+    // This represents claims put on the blockchain that don't have any associated Nostr events.
+    "CREATE VIEW uncorroborated_claims_vw AS
+        SELECT b.* FROM ordered_blockchain_vw b
+        LEFT JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        WHERE b.kind = 'create' AND ne.nsid IS NULL;",
+
+    // The following changes came from https://github.com/ursuscamp/nomen/issues/9 in which a name was
+    // being indexed twice. It turns out that the same NSID was sent across multiple transactions. This
+    // was unexepected behavior by the indexer.
+    "DROP VIEW ordered_blockchain_vw;",
+
+    "CREATE VIEW ordered_blockchain_vw AS
+        SELECT b.*, row_number() OVER (PARTITION BY b.nsid) as row
+        FROM blockchain b
+        ORDER BY b.blockheight, b.txheight, b.vout;",
+
+    "DROP VIEW ranked_name_vw;",
+
+    "CREATE VIEW ranked_name_vw AS
+        SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
+        FROM ordered_blockchain_vw b
+        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        WHERE b.kind = 'create' and b.row = 1;",
+
+    "DROP VIEW detail_vw",
+        
+    "CREATE VIEW detail_vw AS
+    SELECT 
+        b.nsid,
+        b.blockhash,
+        b.blocktime,
+        b.txid,
+        b.vout,
+        b.blockheight,
+        r.name, 
+        COALESCE(r.records, '{}') as records,
+        r.pubkey,
+        r.created_at as records_created_at
+    FROM records_vw r
+    JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid
+    WHERE b.row = 1;",
+    // END issue 9 changes
+
+    "DROP VIEW ownership_chain_vw;",
+
+    "DROP VIEW owners_vw;",
+
+    "CREATE VIEW owners_vw AS
+        SELECT name, pubkey FROM name_vw;",
+
+    "DROP TABLE transfer_events;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -302,41 +354,6 @@ pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
     Ok(created_at)
 }
 
-pub async fn last_transfer_time(conn: &SqlitePool) -> anyhow::Result<u64> {
-    let (t,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM transfer_events;")
-            .fetch_one(conn)
-            .await?;
-    Ok(t as u64)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn insert_transfer_event(
-    conn: &SqlitePool,
-    nsid: Nsid,
-    pubkey: XOnlyPublicKey,
-    created_at: i64,
-    event_id: EventId,
-    name: Name,
-    fingerprint: [u8; 5],
-    children: String,
-    raw_event: String,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_transfer_event.sql"))
-        .bind(nsid.to_string())
-        .bind(pubkey.to_string())
-        .bind(created_at)
-        .bind(event_id.to_hex())
-        .bind(name.to_string())
-        .bind(hex::encode(fingerprint))
-        .bind(children)
-        .bind(raw_event)
-        .execute(conn)
-        .await?;
-
-    Ok(())
-}
-
 pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<bool> {
     let fingerprint = hex::encode(
         Hash160::default()
@@ -359,4 +376,79 @@ pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<
         .await?;
 
     Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
+}
+
+pub async fn uncorroborated_claims(conn: &SqlitePool) -> anyhow::Result<Vec<String>> {
+    Ok(
+        sqlx::query_as::<_, (String,)>("SELECT txid FROM uncorroborated_claims_vw;")
+            .fetch_all(conn)
+            .await?
+            .into_iter()
+            .map(|s| s.0)
+            .collect(),
+    )
+}
+
+#[derive(Debug, Clone, sqlx::FromRow, PartialEq, Eq)]
+pub struct UncorroboratedClaim {
+    pub fingerprint: String,
+    pub nsid: String,
+    pub blockhash: String,
+    pub txid: String,
+    pub blocktime: i64,
+    pub blockheight: i64,
+    pub txheight: i64,
+    pub vout: i64,
+    pub indexed_at: i64,
+}
+
+impl UncorroboratedClaim {
+    pub fn fmt_blocktime(&self) -> anyhow::Result<String> {
+        util::format_time(self.blocktime)
+    }
+
+    pub fn fmt_indexed_at(&self) -> anyhow::Result<String> {
+        util::format_time(self.indexed_at)
+    }
+}
+
+pub async fn uncorroborated_claim(
+    conn: &SqlitePool,
+    txid: &str,
+) -> anyhow::Result<UncorroboratedClaim> {
+    Ok(sqlx::query_as(
+        "SELECT fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at
+        FROM uncorroborated_claims_vw WHERE txid = ?;").bind(txid).fetch_one(conn).await?)
+}
+
+pub mod stats {
+    use sqlx::SqlitePool;
+
+    pub async fn known_names(conn: &SqlitePool) -> anyhow::Result<i64> {
+        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT count(*) FROM detail_vw;")
+            .fetch_one(conn)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn index_height(conn: &SqlitePool) -> anyhow::Result<i64> {
+        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT max(blockheight) FROM index_height;")
+            .fetch_one(conn)
+            .await?;
+        Ok(count)
+    }
+
+    pub async fn nostr_events(conn: &SqlitePool) -> anyhow::Result<i64> {
+        let (count,) = sqlx::query_as::<_, (i64,)>(
+            "
+            WITH events as (
+                SELECT count(*) as count FROM name_events
+            )
+            SELECT SUM(count) FROM events;
+        ",
+        )
+        .fetch_one(conn)
+        .await?;
+        Ok(count)
+    }
 }

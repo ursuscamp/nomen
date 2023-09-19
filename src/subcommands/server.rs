@@ -66,7 +66,13 @@ pub async fn start(
             .route("/newname", get(site::new_name_form))
             .route("/newname", post(site::new_name_submit))
             .route("/updaterecords", get(site::new_records_form))
-            .route("/updaterecords", post(site::new_records_submit));
+            .route("/updaterecords", post(site::new_records_submit))
+            .route("/stats", get(site::index_stats))
+            .route("/uncorroborated_claims", get(site::uncorroborated_claims))
+            .route(
+                "/uncorroborated_claims/:txid",
+                get(site::uncorroborated_claim),
+            );
     }
 
     if !server.without_api {
@@ -130,10 +136,10 @@ mod site {
         config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
         subcommands::{insert_outputs, name_event},
-        util::{check_name_availability, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
+        util::{self, check_name_availability, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
-    use super::{util, AppState, WebError};
+    use super::{AppState, WebError};
 
     #[derive(askama::Template)]
     #[template(path = "error.html")]
@@ -355,6 +361,64 @@ mod site {
             records: "KEY=value".into(),
         })
     }
+
+    #[derive(askama::Template)]
+    #[template(path = "stats.html")]
+    pub struct IndexerInfo {
+        version: &'static str,
+        commit: &'static str,
+        build_date: &'static str,
+        known_names: i64,
+        index_height: i64,
+        nostr_events: i64,
+    }
+
+    pub async fn index_stats(State(state): State<AppState>) -> Result<IndexerInfo, WebError> {
+        Ok(IndexerInfo {
+            version: env!("CARGO_PKG_VERSION"),
+            commit: env!("VERGEN_GIT_DESCRIBE"),
+            build_date: env!("VERGEN_BUILD_TIMESTAMP"),
+            known_names: db::stats::known_names(&state.pool).await?,
+            index_height: db::stats::index_height(&state.pool).await?,
+            nostr_events: db::stats::nostr_events(&state.pool).await?,
+        })
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "uncorroborated_claims.html")]
+    pub struct UncorroboratedClaims {
+        claims: Vec<String>,
+    }
+
+    pub async fn uncorroborated_claims(
+        State(state): State<AppState>,
+    ) -> Result<UncorroboratedClaims, WebError> {
+        Ok(UncorroboratedClaims {
+            claims: db::uncorroborated_claims(&state.pool).await?,
+        })
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "uncorroborated_claim.html")]
+    pub struct UncorroboratedClaim {
+        claim: db::UncorroboratedClaim,
+        blocktime: String,
+        indexed_at: String,
+    }
+
+    pub async fn uncorroborated_claim(
+        State(state): State<AppState>,
+        Path(nsid): Path<String>,
+    ) -> Result<UncorroboratedClaim, WebError> {
+        let claim = db::uncorroborated_claim(&state.pool, &nsid).await?;
+        let blocktime = claim.fmt_blocktime()?;
+        let indexed_at = claim.fmt_indexed_at()?;
+        Ok(UncorroboratedClaim {
+            claim,
+            blocktime,
+            indexed_at,
+        })
+    }
 }
 
 mod api {
@@ -387,15 +451,5 @@ mod api {
 
         name.map(Json)
             .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
-    }
-}
-
-mod util {
-    use time::{macros::format_description, OffsetDateTime};
-
-    pub fn format_time(timestamp: i64) -> anyhow::Result<String> {
-        let dt = OffsetDateTime::from_unix_timestamp(timestamp)?;
-        let format = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-        Ok(dt.format(format)?)
     }
 }

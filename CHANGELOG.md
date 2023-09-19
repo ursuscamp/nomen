@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+This release includes a database migration, so make sure to back up your index before upgrading.
+
+Features:
+  - Transfers have been removed, and names have been limited to 43 characters for vesion `0x00`. They will be enabled in the next version with a better designed.
+  - Primal.net is now used to npub links.
+  - New page to list blockchain claims for which there are no indexed record events.
+  - Index statistic page.
+
+Bugs:
+  - Fixed a bug where a name was double-indexed because the same `OP_RETURN` was uploaded twice
+
 ## 0.1.1
 
 Features:

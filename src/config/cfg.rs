@@ -8,9 +8,7 @@ use nostr_sdk::{
 };
 use sqlx::{sqlite, SqlitePool};
 
-use super::{
-    Cli, ConfigFile, NameNewSubcommand, NameTransferSubcommand, ServerSubcommand, Subcommand,
-};
+use super::{Cli, ConfigFile, NameNewSubcommand, ServerSubcommand, Subcommand};
 
 #[derive(Clone, Debug)]
 pub struct Config {

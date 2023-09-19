@@ -62,9 +62,10 @@ pub struct Cli {
     pub subcommand: Subcommand,
 }
 
-#[derive(clap::Subcommand, Debug, Clone)]
+#[derive(clap::Subcommand, Debug, Clone, Default)]
 pub enum Subcommand {
     #[command(skip)]
+    #[default]
     Noop,
 
     /// Extra utilities
@@ -80,12 +81,6 @@ pub enum Subcommand {
 
     /// Start the HTTP server
     Server(ServerSubcommand),
-}
-
-impl Default for Subcommand {
-    fn default() -> Self {
-        Subcommand::Noop
-    }
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]
@@ -117,7 +112,7 @@ pub enum UtilSubcommand {
         /// The public key of the owner
         pubkey: XOnlyPublicKey,
 
-        /// Transaction kind. Possible values: create, transfer
+        /// Transaction kind. Possible values: create
         kind: NomenKind,
     },
 }
@@ -156,9 +151,6 @@ pub enum NameSubcommand {
 
     /// Broadcast a new record for your name.
     Record(NameRecordSubcomand),
-
-    /// Transfer a domain to a new keypair.
-    Transfer(NameTransferSubcommand),
 }
 
 #[derive(clap::Args, Debug, Clone)]
@@ -203,41 +195,6 @@ pub struct NameRecordSubcomand {
     /// Will prompt if not provided.
     #[arg(short, long)]
     pub privkey: Option<NostrSk>,
-}
-
-#[derive(clap::Args, Debug, Clone)]
-pub struct NameTransferSubcommand {
-    /// The name to broadcast records
-    pub name: Name,
-
-    /// Public key of the new owner
-    pub pubkey: XOnlyPublicKey,
-
-    /// The transaction to sign. May be a path to a PSBT file or a Base64 encoded PSBT string.
-    pub psbt: String,
-
-    /// Specify your private key on the command line. May be useful for scripts. Beware of shell history!
-    /// Will prompt if not provided.
-    /// This is the private key of the current owner of the name.
-    #[arg(short, long)]
-    pub privkey: Option<NostrSk>,
-
-    /// JSON command output
-    #[arg(short, long)]
-    pub json: bool,
-
-    /// Broadcast the associated Nostr event
-    #[arg(short, long)]
-    pub broadcast: bool,
-
-    /// Verify against the index that the name is exists and is transferrable.
-    /// Be sure to run the indexer first, or this is not very useful.
-    #[arg(short, long)]
-    pub validate: bool,
-
-    /// File path to write a serialized PSBT file
-    #[arg(short, long)]
-    pub output: Option<PathBuf>,
 }
 
 #[derive(clap::Args, Debug, Clone)]
