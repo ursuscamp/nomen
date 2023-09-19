@@ -62,9 +62,10 @@ pub struct Cli {
     pub subcommand: Subcommand,
 }
 
-#[derive(clap::Subcommand, Debug, Clone)]
+#[derive(clap::Subcommand, Debug, Clone, Default)]
 pub enum Subcommand {
     #[command(skip)]
+    #[default]
     Noop,
 
     /// Extra utilities
@@ -80,12 +81,6 @@ pub enum Subcommand {
 
     /// Start the HTTP server
     Server(ServerSubcommand),
-}
-
-impl Default for Subcommand {
-    fn default() -> Self {
-        Subcommand::Noop
-    }
 }
 
 #[derive(clap::Subcommand, Debug, Clone)]

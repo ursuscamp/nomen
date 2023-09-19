@@ -10,7 +10,7 @@ use crate::{
     util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 17] = [
+static MIGRATIONS: [&str; 23] = [
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
@@ -88,6 +88,43 @@ static MIGRATIONS: [&str; 17] = [
         SELECT b.* FROM ordered_blockchain_vw b
         LEFT JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
         WHERE b.kind = 'create' AND ne.nsid IS NULL;",
+
+    // The following changes came from https://github.com/ursuscamp/nomen/issues/9 in which a name was
+    // being indexed twice. It turns out that the same NSID was sent across multiple transactions. This
+    // was unexepected behavior by the indexer.
+    "DROP VIEW ordered_blockchain_vw;",
+
+    "CREATE VIEW ordered_blockchain_vw AS
+        SELECT b.*, row_number() OVER (PARTITION BY b.nsid) as row
+        FROM blockchain b
+        ORDER BY b.blockheight, b.txheight, b.vout;",
+
+    "DROP VIEW ranked_name_vw;",
+
+    "CREATE VIEW ranked_name_vw AS
+        SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
+        FROM ordered_blockchain_vw b
+        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
+        WHERE b.kind = 'create' and b.row = 1;",
+
+    "DROP VIEW detail_vw",
+        
+    "CREATE VIEW detail_vw AS
+    SELECT 
+        b.nsid,
+        b.blockhash,
+        b.blocktime,
+        b.txid,
+        b.vout,
+        b.blockheight,
+        r.name, 
+        COALESCE(r.records, '{}') as records,
+        r.pubkey,
+        r.created_at as records_created_at
+    FROM records_vw r
+    JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid
+    WHERE b.row = 1;"
+    // END issue 9 changes
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
