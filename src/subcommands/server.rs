@@ -76,7 +76,9 @@ pub async fn start(
     }
 
     if !server.without_api {
-        app = app.route("/api/name", get(api::name));
+        app = app
+            .route("/api/name", get(api::name))
+            .route("/api/op_return", get(api::op_return));
     }
 
     let state = AppState {
@@ -430,6 +432,7 @@ mod api {
         extract::{Query, State},
         Json,
     };
+    use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
     use sqlx::SqlitePool;
 
@@ -451,5 +454,25 @@ mod api {
 
         name.map(Json)
             .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
+    }
+
+    #[derive(Deserialize)]
+    pub struct OpReturnQuery {
+        name: String,
+        pubkey: XOnlyPublicKey,
+    }
+
+    pub async fn op_return(
+        Query(query): Query<OpReturnQuery>,
+    ) -> Result<Json<HashMap<&'static str, String>>, WebError> {
+        // TODO: validate name length and format
+        let mut bytes: Vec<u8> = vec![];
+        bytes.extend(b"NOM\x01\x00");
+        bytes.extend(query.pubkey.serialize());
+        bytes.extend(query.name.as_bytes());
+        let mut h = HashMap::new();
+        h.insert("op_return", hex::encode(&bytes));
+
+        Ok(Json(h))
     }
 }
