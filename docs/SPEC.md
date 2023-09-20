@@ -20,7 +20,7 @@ In order to claim a name, publish an output to the bitcoin blockchain in this fo
 
 `VERSION` is reserved for future use, for incompatible changes to the protocol, or unlocking additional namespace. It is one byte and must currently be `0x00`.
 
-`TRANSACTION TYPE` represents the type of claim being made on chain. It is one byte. It may be `0x00` which represents a new name being claimed, or `0x01` which represents an ownership change of the name (owned by a new keypair).
+`TRANSACTION TYPE` represents the type of claim being made on chain. It is one byte. It may be `0x00` which represents a new name being claimed.
 
 `NAME FINGERPRINT` is the first five bytes of the HASH-160 of the name. The purpose is to allow a name to be verified as unreserved, even if a Nostr event cannot be found to prove it.
 
