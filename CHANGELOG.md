@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (Unreleased)
+
+Features:
+
+Bugs:
+
+Other:
+  - Set a minimum supported Rust version of 1.71. Will try to maintain this for a while.
+
 ## 0.2.0
 
 This release includes a database migration, so make sure to back up your index before upgrading.
