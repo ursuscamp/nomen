@@ -1,5 +1,6 @@
 INSERT INTO
   blockchain_index (
+    protocol,
     fingerprint,
     nsid,
     name,
@@ -13,4 +14,4 @@ INSERT INTO
     indexed_at
   )
 VALUES
-  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch());
+  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch());

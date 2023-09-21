@@ -13,7 +13,7 @@ use crate::{
 static MIGRATIONS: [&str; 6] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
-    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records, indexed_at);",
+    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
@@ -47,6 +47,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
 }
 
 pub struct BlockchainIndex {
+    pub protocol: i64,
     pub fingerprint: [u8; 5],
     pub nsid: Nsid,
     pub name: Option<String>,
@@ -63,6 +64,7 @@ pub async fn insert_blockchain_index(
     index: &BlockchainIndex,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_blockchain_index.sql"))
+        .bind(index.protocol)
         .bind(hex::encode(index.fingerprint))
         .bind(index.nsid.to_string())
         .bind(&index.name)

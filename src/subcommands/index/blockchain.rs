@@ -60,6 +60,7 @@ pub async fn raw_index(
                         if b.starts_with(b"NOM") {
                             if let Ok(create) = CreateV0::try_from(b) {
                                 let i = BlockchainIndex {
+                                    protocol: 0,
                                     fingerprint: create.fingerprint,
                                     nsid: create.nsid,
                                     name: None,
@@ -74,6 +75,7 @@ pub async fn raw_index(
                                 sender.blocking_send(((blockinfo.height, blockhash), Some(i)));
                             } else if let Ok(create) = CreateV1::try_from(b) {
                                 let i = BlockchainIndex {
+                                    protocol: 1,
                                     fingerprint: create.fingerprint(),
                                     nsid: create.nsid(),
                                     name: Some(create.name),

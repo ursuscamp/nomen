@@ -3,6 +3,7 @@
 - [ ] Index raw_blockchain
 - [ ] Scan raw_blockchain to parse properly indexable events
 - [ ] Implement upgrade from v0
+  - [ ] V1 Create should automatically update any older matching V0 create
 - [ ] Implement transfer from one to another
 - [ ] Change to use tracing and tracing::subscriber instead of log
 - [ ] Refactor commands
