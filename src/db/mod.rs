@@ -10,130 +10,13 @@ use crate::{
     util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 27] = [
+static MIGRATIONS: [&str; 6] = [
+    "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
-    "CREATE TABLE blockchain (id INTEGER PRIMARY KEY, fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at);",
+    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
-    "CREATE TABLE transfer_events (nsid, name, fingerprint, pubkey, created_at, event_id, content, indexed_at, raw_event);",
-    "CREATE UNIQUE INDEX transfer_events_unique_idx ON transfer_events(nsid)",
-
-    // We order by blockheight -> txheight (height of tx inside block) and then vout (output inside tx)
-    // to make sure we are always looking in exact blockchain order
-    "CREATE VIEW ordered_blockchain_vw AS
-        SELECT b.* FROM blockchain b
-        ORDER BY b.blockheight, b.txheight, b.vout",
-
-    // Someone could theoretically try to claim a name a second time, we want to rank each blockchain event
-    // in order, partitioned by name. So if Person A claims 'domain-name' first, then Person B also claims 'domain-name'
-    // second, then Person A will be ranked 1, and Person B will be ranked 2.
-    "CREATE VIEW ranked_name_vw AS
-        SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
-        FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
-        WHERE b.kind = 'create';",
-
-    // We select everyone that has rank 1. This is always going to be first claimed on blockchain.
-    "CREATE VIEW name_vw AS 
-        SELECT * FROM ranked_name_vw WHERE row = 1;",
-
-    // Starting with a valid name event, follow the graph recursively to each successive transfer_event (if such exists),
-    // connecting pubkey -> content (next pubkey) -> pubkey -> content (next pubkey), etc. The resulting query returns
-    // the successive owners of each name
-    "CREATE VIEW ownership_chain_vw AS
-        WITH RECURSIVE owners(name, pk) as (
-            SELECT name, pubkey FROM name_vw
-            UNION ALL
-            SELECT te.name, te.content
-                FROM transfer_events te
-                JOIN owners ON te.pubkey = owners.pk AND te.name = owners.name
-                JOIN blockchain b on te.nsid = b.nsid AND te.fingerprint = b.fingerprint
-                WHERE b.kind = 'transfer'
-        )
-        SELECT name, pk FROM owners;",
-
-    // Partition over the names, and only return the final value (the latest owner)
-    "CREATE VIEW owners_vw AS
-        SELECT DISTINCT name, last_value(pubkey) OVER (PARTITION BY name) AS pubkey 
-        FROM ownership_chain_vw;",
-
-    // This table is used to cache the owners_vw results, to avoid a full graph traversal every time.
-    "CREATE TABLE name_owners (name, pubkey);",
-
-    "CREATE VIEW records_vw AS
-        SELECT ne.* FROM name_owners no
-        JOIN name_events ne on no.name = ne.name AND no.pubkey = ne.pubkey
-        ORDER BY ne.created_at DESC;",
-
-    "CREATE VIEW detail_vw AS
-        SELECT 
-            b.nsid,
-            b.blockhash,
-            b.blocktime,
-            b.txid,
-            b.vout,
-            b.blockheight,
-            r.name, 
-            COALESCE(r.records, '{}') as records,
-            r.pubkey,
-            r.created_at as records_created_at
-        FROM records_vw r
-        JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid;",
-
-    "CREATE TABLE event_log (created_at, type, data);",
-
-    // This represents claims put on the blockchain that don't have any associated Nostr events.
-    "CREATE VIEW uncorroborated_claims_vw AS
-        SELECT b.* FROM ordered_blockchain_vw b
-        LEFT JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
-        WHERE b.kind = 'create' AND ne.nsid IS NULL;",
-
-    // The following changes came from https://github.com/ursuscamp/nomen/issues/9 in which a name was
-    // being indexed twice. It turns out that the same NSID was sent across multiple transactions. This
-    // was unexepected behavior by the indexer.
-    "DROP VIEW ordered_blockchain_vw;",
-
-    "CREATE VIEW ordered_blockchain_vw AS
-        SELECT b.*, row_number() OVER (PARTITION BY b.nsid) as row
-        FROM blockchain b
-        ORDER BY b.blockheight, b.txheight, b.vout;",
-
-    "DROP VIEW ranked_name_vw;",
-
-    "CREATE VIEW ranked_name_vw AS
-        SELECT ne.*, ROW_NUMBER() OVER (PARTITION BY ne.name) as row
-        FROM ordered_blockchain_vw b
-        JOIN name_events ne on b.fingerprint = ne.fingerprint AND b.nsid = ne.nsid
-        WHERE b.kind = 'create' and b.row = 1;",
-
-    "DROP VIEW detail_vw",
-        
-    "CREATE VIEW detail_vw AS
-    SELECT 
-        b.nsid,
-        b.blockhash,
-        b.blocktime,
-        b.txid,
-        b.vout,
-        b.blockheight,
-        r.name, 
-        COALESCE(r.records, '{}') as records,
-        r.pubkey,
-        r.created_at as records_created_at
-    FROM records_vw r
-    JOIN ordered_blockchain_vw b ON r.fingerprint = b.fingerprint AND r.nsid = b.nsid
-    WHERE b.row = 1;",
-    // END issue 9 changes
-
-    "DROP VIEW ownership_chain_vw;",
-
-    "DROP VIEW owners_vw;",
-
-    "CREATE VIEW owners_vw AS
-        SELECT name, pubkey FROM name_vw;",
-
-    "DROP TABLE transfer_events;",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
@@ -161,6 +44,38 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     }
 
     Ok(conn)
+}
+
+pub struct BlockchainIndex {
+    pub fingerprint: [u8; 5],
+    pub nsid: Nsid,
+    pub name: Option<String>,
+    pub pubkey: Option<XOnlyPublicKey>,
+    pub blockhash: BlockHash,
+    pub txid: Txid,
+    pub blocktime: usize,
+    pub blockheight: usize,
+    pub txheight: usize,
+    pub vout: usize,
+}
+pub async fn insert_blockchain_index(
+    conn: &SqlitePool,
+    index: &BlockchainIndex,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_blockchain_index.sql"))
+        .bind(hex::encode(index.fingerprint))
+        .bind(index.nsid.to_string())
+        .bind(&index.name)
+        .bind(index.pubkey.map(|k| k.to_string()))
+        .bind(&index.blockhash.to_string())
+        .bind(index.txid.to_string())
+        .bind(index.blocktime as i64)
+        .bind(index.blockheight as i64)
+        .bind(index.txheight as i64)
+        .bind(index.vout as i64)
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 // TODO: combine these arguments into a simpler set for <8

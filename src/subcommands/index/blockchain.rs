@@ -6,11 +6,14 @@ use sqlx::SqlitePool;
 
 use crate::{
     config::{Cli, Config},
-    db::{self, insert_index_height},
-    util::{NomenKind, NomenTx, Nsid},
+    db::{self, insert_index_height, BlockchainIndex},
+    util::{CreateV0, CreateV1, NomenKind, Nsid},
 };
 
-pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
+pub async fn raw_index(
+    config: &Config,
+    pool: &sqlx::Pool<sqlx::Sqlite>,
+) -> Result<(), anyhow::Error> {
     // Check if the index is on a stale chain, and rewind the index if necessary
     rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
 
@@ -20,7 +23,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         .max(config.starting_block_height());
     let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
-    log::info!("Starting blockchain index at height {index_height}");
+    log::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
     let min_confirmations = config.confirmations()?;
 
     let thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
@@ -55,29 +58,36 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 
                         // Pre-check if it starts with NOM, so we can filter out some unnecessary errors from the logs
                         if b.starts_with(b"NOM") {
-                            match NomenTx::try_from(b) {
-                                Ok(NomenTx {
-                                    fingerprint,
-                                    nsid,
-                                    kind,
-                                }) => {
-                                    sender.blocking_send((
-                                        (blockinfo.height, blockhash),
-                                        Some((
-                                            fingerprint,
-                                            nsid,
-                                            blockhash,
-                                            tx.txid(),
-                                            blockinfo.time,
-                                            blockinfo.height,
-                                            txheight,
-                                            vout,
-                                            kind,
-                                        )),
-                                    ));
-                                }
-
-                                Err(e) => log::error!("Index error: {e}"),
+                            if let Ok(create) = CreateV0::try_from(b) {
+                                let i = BlockchainIndex {
+                                    fingerprint: create.fingerprint,
+                                    nsid: create.nsid,
+                                    name: None,
+                                    pubkey: None,
+                                    blockhash,
+                                    txid: tx.txid(),
+                                    blocktime: blockinfo.time,
+                                    blockheight: blockinfo.height,
+                                    txheight,
+                                    vout,
+                                };
+                                sender.blocking_send(((blockinfo.height, blockhash), Some(i)));
+                            } else if let Ok(create) = CreateV1::try_from(b) {
+                                let i = BlockchainIndex {
+                                    fingerprint: create.fingerprint(),
+                                    nsid: create.nsid(),
+                                    name: Some(create.name),
+                                    pubkey: Some(create.pubkey),
+                                    blockhash,
+                                    txid: tx.txid(),
+                                    blocktime: blockinfo.time,
+                                    blockheight: blockinfo.height,
+                                    txheight,
+                                    vout,
+                                };
+                                sender.blocking_send(((blockinfo.height, blockhash), Some(i)));
+                            } else {
+                                log::error!("Index error");
                             }
                         } else {
                             sender.blocking_send(((blockinfo.height, blockhash), None));
@@ -104,18 +114,10 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         tokio::select! {
             msg = receiver.recv() => {
                 match msg {
-                    Some(((height, hash), Some((fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind)))) => {
+                    Some(((height, hash), Some(i))) => {
                         if let Err(e) = index_output(
                             pool,
-                            fingerprint,
-                            nsid,
-                            &blockhash,
-                            &txid,
-                            blocktime,
-                            blockheight,
-                            txheight,
-                            vout,
-                            kind,
+                            i
                         )
                         .await
                         {
@@ -141,36 +143,13 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn index_output(
-    conn: &SqlitePool,
-    fingerprint: [u8; 5],
-    nsid: Nsid,
-    blockhash: &BlockHash,
-    txid: &Txid,
-    blocktime: usize,
-    blockheight: usize,
-    txheight: usize,
-    vout: usize,
-    kind: NomenKind,
-) -> anyhow::Result<()> {
-    log::info!("NOM output found: {}", nsid);
-    if nsid.len() != 20 {
+async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Result<()> {
+    log::info!("NOM output found: {}", index.nsid);
+    if index.nsid.len() != 20 {
         return Err(anyhow::anyhow!("Unexpected NOM length"));
     }
 
-    db::insert_blockchain(
-        conn,
-        fingerprint,
-        nsid,
-        blockhash.to_string(),
-        txid.to_string(),
-        blocktime,
-        blockheight,
-        txheight,
-        vout,
-        kind,
-    )
-    .await?;
+    db::insert_blockchain_index(conn, &index).await?;
     Ok(())
 }
 
@@ -218,6 +197,10 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
     if let Some(stale_block) = stale_block {
         log::info!("Reindexing beginning at height {stale_block}");
         let mut tx = pool.begin().await?;
+        sqlx::query("DELETE FROM raw_blockchain WHERE blockheight >= ?;")
+            .bind(stale_block as i32)
+            .execute(&mut tx)
+            .await?;
         sqlx::query("DELETE FROM blockchain WHERE blockheight >= ?;")
             .bind(stale_block as i32)
             .execute(&mut tx)

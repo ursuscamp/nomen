@@ -11,9 +11,9 @@ mod owners;
 
 pub async fn index(config: &Config) -> anyhow::Result<()> {
     let pool = config.sqlite().await?;
-    blockchain::index(config, &pool).await?;
-    events::records(config, &pool).await?;
-    owners::reindex(&pool).await?;
+    blockchain::raw_index(config, &pool).await?;
+    // events::records(config, &pool).await?;
+    // owners::reindex(&pool).await?;
 
     db::save_event(&pool, "index", "").await?;
     Ok(())

@@ -21,7 +21,7 @@ release: mac-aarch64 linux-amd64 windows-amd64
 
 bitcoin-local:
 	mkdir -p .bitcoin
-	bitcoind -datadir=$(BITCOINDIR) -chain=regtest -fallbackfee=0.001 -txindex
+	bitcoind -datadir=$(BITCOINDIR) -chain=regtest -fallbackfee=0.001 -txindex -rpcuser=regtest -rpcpassword=regtest
 
 bitcoin-wallet:
 	$(REGTESTCLI) createwallet regtest
