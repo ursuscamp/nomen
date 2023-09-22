@@ -7,7 +7,7 @@ use sqlx::{FromRow, SqlitePool};
 
 use crate::{
     config::{Cli, Config},
-    util::{self, Hash160, Name, NomenKind, Nsid},
+    util::{self, Hash160, Name, NomenKind, Nsid, NsidBuilder},
 };
 
 static MIGRATIONS: [&str; 9] = [
@@ -304,6 +304,27 @@ pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<
         .await?;
 
     Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
+}
+
+pub async fn upgrade_v0_to_v1(
+    conn: &SqlitePool,
+    name: &str,
+    pubkey: XOnlyPublicKey,
+) -> anyhow::Result<()> {
+    let fingerprint = Hash160::default()
+        .chain_update(name.as_bytes())
+        .fingerprint();
+    let nsid = NsidBuilder::new(name, &pubkey).finalize();
+    sqlx::query(
+        "UPDATE blockchain_index SET name = ?, pubkey = ?, protocol = 1 WHERE fingerprint = ? AND nsid = ?;",
+    )
+    .bind(name)
+    .bind(hex::encode(pubkey.serialize()))
+    .bind(hex::encode(fingerprint))
+    .bind(hex::encode(nsid.as_ref()))
+    .execute(conn)
+    .await?;
+    Ok(())
 }
 
 pub async fn uncorroborated_claims(conn: &SqlitePool) -> anyhow::Result<Vec<String>> {

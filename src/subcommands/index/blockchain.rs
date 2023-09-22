@@ -144,14 +144,24 @@ pub async fn raw_index(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Result<()> {
+    let tx = conn.begin().await?;
     log::info!("NOM output found: {}", index.nsid);
     if index.nsid.len() != 20 {
         return Err(anyhow::anyhow!("Unexpected NOM length"));
     }
 
+    // If we can verify that the v1 create is a valid v0 name that already exists, we can upgrade the v0 to the v1 automatically.
+    if index.protocol == 1 {
+        if let Some(name) = &index.name {
+            if let Some(pubkey) = &index.pubkey {
+                db::upgrade_v0_to_v1(conn, name, *pubkey).await;
+            }
+        }
+    }
+
     db::insert_blockchain_index(conn, &index).await?;
+    tx.commit().await;
     Ok(())
 }
 
