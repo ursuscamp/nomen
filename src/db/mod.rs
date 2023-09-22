@@ -16,7 +16,7 @@ static MIGRATIONS: [&str; 9] = [
     "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
     "CREATE VIEW ordered_blockchain_vw AS
         SELECT * from blockchain_index
-        ORDER BY blockheight, txheight, vout;",
+        ORDER BY blockheight ASC, txheight ASC, vout ASC;",
     "CREATE VIEW ranked_blockchain_vw AS
         SELECT *, row_number() OVER (PARTITION BY fingerprint) as rank
         FROM ordered_blockchain_vw",
@@ -233,7 +233,7 @@ pub async fn name_records(
         .chain_update(name.as_bytes())
         .fingerprint();
     let content = sqlx::query_as::<_, (String,)>(
-        "SELECT coalesce(records, '{}') from top_names_vw where fingerprint = ? LIMIT 1;",
+        "SELECT coalesce(records, '{}') from valid_names_vw where fingerprint = ? LIMIT 1;",
     )
     .bind(hex::encode(fingerprint))
     .fetch_optional(conn)

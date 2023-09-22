@@ -78,7 +78,8 @@ pub async fn start(
     if !server.without_api {
         app = app
             .route("/api/name", get(api::name))
-            .route("/api/op_return", get(api::op_return));
+            .route("/api/op_return/v0", get(api::op_return_v0))
+            .route("/api/op_return/v1", get(api::op_return_v1));
     }
 
     let state = AppState {
@@ -431,10 +432,13 @@ mod api {
         Json,
     };
     use secp256k1::XOnlyPublicKey;
-    use serde::Deserialize;
+    use serde::{Deserialize, Serialize};
     use sqlx::SqlitePool;
 
-    use crate::db;
+    use crate::{
+        db,
+        util::{Hash160, NomenKind, NsidBuilder},
+    };
 
     use super::{AppState, WebError};
 
@@ -460,17 +464,37 @@ mod api {
         pubkey: XOnlyPublicKey,
     }
 
-    pub async fn op_return(
+    #[derive(Serialize, Default)]
+    pub struct OpReturnResponse {
+        op_return: Vec<String>,
+    }
+
+    pub async fn op_return_v0(
         Query(query): Query<OpReturnQuery>,
-    ) -> Result<Json<HashMap<&'static str, String>>, WebError> {
+    ) -> Result<Json<OpReturnResponse>, WebError> {
         // TODO: validate name length and format
-        let mut bytes: Vec<u8> = vec![];
-        bytes.extend(b"NOM\x01\x00");
-        bytes.extend(query.pubkey.serialize());
-        bytes.extend(query.name.as_bytes());
-        let mut h = HashMap::new();
-        h.insert("op_return", hex::encode(&bytes));
+        let fingerprint = Hash160::default()
+            .chain_update(query.name.as_bytes())
+            .fingerprint();
+        let nsid = NsidBuilder::new(&query.name, &query.pubkey).finalize();
+        let bytes = super::subcommands::name::op_return_v0(fingerprint, nsid, NomenKind::Create);
+        let h = OpReturnResponse {
+            op_return: vec![hex::encode(bytes)],
+        };
 
         Ok(Json(h))
+    }
+
+    pub async fn op_return_v1(
+        Query(query): Query<OpReturnQuery>,
+    ) -> Result<Json<OpReturnResponse>, WebError> {
+        // TODO: validate name length and format
+        let bytes =
+            super::subcommands::name::op_return_v1(query.pubkey, &query.name, NomenKind::Create);
+        let orr = OpReturnResponse {
+            op_return: vec![hex::encode(bytes)],
+        };
+
+        Ok(Json(orr))
     }
 }

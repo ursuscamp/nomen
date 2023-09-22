@@ -73,7 +73,7 @@ pub(crate) fn op_return(
         .chain_update(name.as_bytes())
         .fingerprint();
     let nsid = NsidBuilder::new(name, pubkey).finalize();
-    let data = super::op_return(fingerprint, nsid, kind);
+    let data = super::op_return_v0(fingerprint, nsid, kind);
 
     println!("{}", hex::encode(data));
 

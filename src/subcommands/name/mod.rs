@@ -51,7 +51,7 @@ pub(crate) fn insert_outputs(
     nsid: Nsid,
     kind: NomenKind,
 ) -> anyhow::Result<()> {
-    let op_return: PushBytesBuf = super::op_return(fingerprint, nsid, kind).try_into()?;
+    let op_return: PushBytesBuf = super::op_return_v0(fingerprint, nsid, kind).try_into()?;
     let op_return = ScriptBuf::new_op_return(&op_return);
     psbt.unsigned_tx.output.push(TxOut {
         value: 0,
@@ -74,12 +74,21 @@ pub(crate) async fn get_transaction(
     Ok(tokio::task::spawn_blocking(move || client.get_raw_transaction(&txid, None)).await??)
 }
 
-pub(crate) fn op_return(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) -> Vec<u8> {
+pub(crate) fn op_return_v0(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) -> Vec<u8> {
     let mut v = Vec::with_capacity(25);
     v.extend(b"NOM\x00");
     v.push(kind.into());
     v.extend(fingerprint);
     v.extend(nsid.as_ref());
+    v
+}
+
+pub(crate) fn op_return_v1(pubkey: XOnlyPublicKey, name: &str, kind: NomenKind) -> Vec<u8> {
+    let mut v = Vec::with_capacity(80);
+    v.extend(b"NOM\x01");
+    v.push(kind.into());
+    v.extend(pubkey.serialize());
+    v.extend(name.as_bytes());
     v
 }
 
