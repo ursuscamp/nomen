@@ -192,7 +192,6 @@ mod site {
         name: String,
         record_keys: Vec<String>,
         records: HashMap<String, String>,
-        records_created_at: String,
         blockhash: String,
         blocktime: String,
         txid: String,
@@ -209,13 +208,11 @@ mod site {
             let mut record_keys = records.keys().cloned().collect_vec();
             record_keys.sort();
             let blocktime = util::format_time(value.blocktime)?;
-            let records_created_at = util::format_time(value.records_created_at)?;
 
             Ok(NsidTemplate {
                 name: value.name,
                 record_keys,
                 records,
-                records_created_at,
                 blockhash: value.blockhash,
                 blocktime,
                 txid: value.txid,
@@ -315,12 +312,13 @@ mod site {
     ) -> Result<String, WebError> {
         let records = match &query.name {
             Some(name) => {
-                let (records,) =
-                    sqlx::query_as::<_, (String,)>("SELECT records FROM detail_vw WHERE name = ?;")
-                        .bind(name)
-                        .fetch_optional(&state.pool)
-                        .await?
-                        .unwrap_or_else(|| (String::from(r#"{"KEY":"value"}"#),));
+                let (records,) = sqlx::query_as::<_, (String,)>(
+                    "SELECT records FROM valid_names_vw WHERE name = ?;",
+                )
+                .bind(name)
+                .fetch_optional(&state.pool)
+                .await?
+                .unwrap_or_else(|| (String::from(r#"{"KEY":"value"}"#),));
                 let records: HashMap<String, String> = serde_json::from_str(&records)?;
                 records
                     .iter()

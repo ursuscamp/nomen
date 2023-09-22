@@ -10,10 +10,18 @@ use crate::{
     util::{self, Hash160, Name, NomenKind, Nsid},
 };
 
-static MIGRATIONS: [&str; 6] = [
+static MIGRATIONS: [&str; 9] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
-    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records, indexed_at);",
+    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
+    "CREATE VIEW ordered_blockchain_vw AS
+        SELECT * from blockchain_index
+        ORDER BY blockheight, txheight, vout;",
+    "CREATE VIEW ranked_blockchain_vw AS
+        SELECT *, row_number() OVER (PARTITION BY fingerprint) as rank
+        FROM ordered_blockchain_vw",
+    "CREATE VIEW valid_names_vw AS
+        SELECT * FROM ranked_blockchain_vw WHERE rank = 1;",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
@@ -172,12 +180,11 @@ pub struct NameDetails {
     pub name: String,
     pub records: String,
     pub pubkey: String,
-    pub records_created_at: i64,
 }
 
 pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
     let details =
-        sqlx::query_as::<_, NameDetails>("SELECT * FROM detail_vw WHERE nsid = ? or name = ?")
+        sqlx::query_as::<_, NameDetails>("SELECT * FROM valid_names_vw WHERE nsid = ? or name = ?")
             .bind(query)
             .bind(query)
             .fetch_one(conn)
@@ -222,11 +229,15 @@ pub async fn name_records(
     conn: &SqlitePool,
     name: String,
 ) -> anyhow::Result<Option<HashMap<String, String>>> {
-    let content =
-        sqlx::query_as::<_, (String,)>("SELECT records from detail_vw where name = ? LIMIT 1;")
-            .bind(name)
-            .fetch_optional(conn)
-            .await?;
+    let fingerprint = Hash160::default()
+        .chain_update(name.as_bytes())
+        .fingerprint();
+    let content = sqlx::query_as::<_, (String,)>(
+        "SELECT coalesce(records, '{}') from top_names_vw where fingerprint = ? LIMIT 1;",
+    )
+    .bind(hex::encode(fingerprint))
+    .fetch_optional(conn)
+    .await?;
 
     let records = content
         .map(|s| s.0)
@@ -241,12 +252,12 @@ pub async fn top_level_names(
 ) -> anyhow::Result<Vec<(String, String)>> {
     let sql = match query {
         Some(q) => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM detail_vw WHERE instr(name, ?) ORDER BY name;",
+            "SELECT nsid, name FROM valid_names_vw WHERE instr(name, ?) ORDER BY name;",
         )
         .bind(q.to_lowercase()),
-        None => {
-            sqlx::query_as::<_, (String, String)>("SELECT nsid, name FROM detail_vw ORDER BY name;")
-        }
+        None => sqlx::query_as::<_, (String, String)>(
+            "SELECT nsid, name FROM valid_names_vw ORDER BY name;",
+        ),
     };
 
     Ok(sql.fetch_all(conn).await?)
