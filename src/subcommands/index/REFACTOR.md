@@ -12,6 +12,8 @@
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
 - [ ] Add a checkpoint system to rewind a hundred blocks back
+- [ ] Update SPEC
+  - [ ] Mark correct date on spec changes section.
 
 # Things to test after refactor
 
