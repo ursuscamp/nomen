@@ -10,6 +10,10 @@ use crate::{
     util::{CreateV0, CreateV1, NomenKind, Nsid},
 };
 
+enum QueueMessage {
+    BlockchainIndex(BlockchainIndex),
+}
+
 pub async fn raw_index(
     config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
@@ -72,7 +76,10 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                sender.blocking_send(((blockinfo.height, blockhash), Some(i)));
+                                sender.blocking_send((
+                                    (blockinfo.height, blockhash),
+                                    Some(QueueMessage::BlockchainIndex(i)),
+                                ));
                             } else if let Ok(create) = CreateV1::try_from(b) {
                                 let i = BlockchainIndex {
                                     protocol: 1,
@@ -87,7 +94,10 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                sender.blocking_send(((blockinfo.height, blockhash), Some(i)));
+                                sender.blocking_send((
+                                    (blockinfo.height, blockhash),
+                                    Some(QueueMessage::BlockchainIndex(i)),
+                                ));
                             } else {
                                 log::error!("Index error");
                             }
@@ -117,7 +127,7 @@ pub async fn raw_index(
             msg = receiver.recv() => {
                 match msg {
                     Some(((height, hash), Some(i))) => {
-                        if let Err(e) = index_output(
+                        if let Err(e) = handle_message(
                             pool,
                             i
                         )
@@ -144,24 +154,42 @@ pub async fn raw_index(
     Ok(())
 }
 
-async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Result<()> {
-    let tx = conn.begin().await?;
-    log::info!("NOM output found: {}", index.nsid);
-    if index.nsid.len() != 20 {
-        return Err(anyhow::anyhow!("Unexpected NOM length"));
+async fn handle_message(conn: &SqlitePool, message: QueueMessage) -> anyhow::Result<()> {
+    match message {
+        QueueMessage::BlockchainIndex(index) => index_output(conn, index).await?,
     }
+
+    Ok(())
+}
+
+async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Result<()> {
+    log::info!(
+        "NOM output found: {}, name: {:?}, protocol: {}",
+        index.nsid,
+        index.name,
+        index.protocol
+    );
 
     // If we can verify that the v1 create is a valid v0 name that already exists, we can upgrade the v0 to the v1 automatically.
     if index.protocol == 1 {
         if let Some(name) = &index.name {
             if let Some(pubkey) = &index.pubkey {
-                db::upgrade_v0_to_v1(conn, name, *pubkey).await;
+                log::info!("Checking for upgrade");
+                match db::upgrade_v0_to_v1(conn, name, *pubkey).await? {
+                    db::UpgradeStatus::Upgraded => {
+                        log::info!("Name '{name}' upgraded from v0 to v1.");
+                    }
+                    db::UpgradeStatus::NotUpgraded => {
+                        log::info!("No upgrade found!");
+                        db::insert_blockchain_index(conn, &index).await?;
+                    }
+                }
             }
         }
+    } else {
+        db::insert_blockchain_index(conn, &index).await?;
     }
 
-    db::insert_blockchain_index(conn, &index).await?;
-    tx.commit().await;
     Ok(())
 }
 

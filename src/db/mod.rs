@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bitcoin::{BlockHash, Txid};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 
 use crate::{
     config::{Cli, Config},
@@ -68,7 +68,7 @@ pub struct BlockchainIndex {
     pub vout: usize,
 }
 pub async fn insert_blockchain_index(
-    conn: &SqlitePool,
+    conn: impl Executor<'_, Database = Sqlite>,
     index: &BlockchainIndex,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_blockchain_index.sql"))
@@ -306,25 +306,38 @@ pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<
     Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
 }
 
+pub enum UpgradeStatus {
+    Upgraded,
+    NotUpgraded,
+}
+
 pub async fn upgrade_v0_to_v1(
-    conn: &SqlitePool,
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
     name: &str,
     pubkey: XOnlyPublicKey,
-) -> anyhow::Result<()> {
-    let fingerprint = Hash160::default()
-        .chain_update(name.as_bytes())
-        .fingerprint();
-    let nsid = NsidBuilder::new(name, &pubkey).finalize();
-    sqlx::query(
-        "UPDATE blockchain_index SET name = ?, pubkey = ?, protocol = 1 WHERE fingerprint = ? AND nsid = ?;",
+) -> anyhow::Result<UpgradeStatus> {
+    let fingerprint = hex::encode(
+        Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint(),
+    );
+    let nsid = hex::encode(NsidBuilder::new(name, &pubkey).finalize().as_ref());
+
+    let updated = sqlx::query(
+        "UPDATE blockchain_index SET name = ?, pubkey = ?, protocol = 1 WHERE fingerprint = ? AND nsid = ? AND protocol = 0;",
     )
     .bind(name)
     .bind(hex::encode(pubkey.serialize()))
-    .bind(hex::encode(fingerprint))
-    .bind(hex::encode(nsid.as_ref()))
+    .bind(&fingerprint)
+    .bind(&nsid)
     .execute(conn)
     .await?;
-    Ok(())
+
+    if updated.rows_affected() > 0 {
+        return Ok(UpgradeStatus::Upgraded);
+    }
+
+    Ok(UpgradeStatus::NotUpgraded)
 }
 
 pub async fn uncorroborated_claims(conn: &SqlitePool) -> anyhow::Result<Vec<String>> {

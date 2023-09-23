@@ -11,6 +11,7 @@
 - [ ] Add API methods
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
+- [ ] Add a checkpoint system to rewind a hundred blocks back
 
 # Things to test after refactor
 
