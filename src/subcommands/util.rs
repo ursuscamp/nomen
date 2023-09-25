@@ -64,11 +64,7 @@ pub async fn sign_event(config: &Config, args: &SignEventCommand) -> anyhow::Res
     Ok(())
 }
 
-pub(crate) fn op_return(
-    name: &str,
-    pubkey: &XOnlyPublicKey,
-    kind: NomenKind,
-) -> anyhow::Result<()> {
+pub fn op_return(name: &str, pubkey: &XOnlyPublicKey, kind: NomenKind) -> anyhow::Result<()> {
     let fingerprint = Hash160::default()
         .chain_update(name.as_bytes())
         .fingerprint();

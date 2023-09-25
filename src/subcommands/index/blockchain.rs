@@ -7,7 +7,7 @@ use sqlx::SqlitePool;
 use crate::{
     config::{Cli, Config},
     db::{self, insert_index_height, BlockchainIndex},
-    util::{CreateV0, CreateV1, NomenKind, Nsid},
+    util::{CreateV0, CreateV1, NomenKind, Nsid, TransferV1},
 };
 
 enum QueueMessage {
@@ -56,6 +56,7 @@ pub async fn raw_index(
             let block = client.get_block(&blockhash)?;
 
             for (txheight, tx) in block.txdata.iter().enumerate() {
+                let mut transfer_cache: Option<BlockchainIndex> = None;
                 for (vout, output) in tx.output.iter().enumerate() {
                     if output.script_pubkey.is_op_return() {
                         let b = &output.script_pubkey.as_bytes()[2..];
@@ -98,6 +99,22 @@ pub async fn raw_index(
                                     (blockinfo.height, blockhash),
                                     Some(QueueMessage::BlockchainIndex(i)),
                                 ));
+                            } else if let Ok(transfer) = TransferV1::try_from(b) {
+                                log::info!("Caching transfer for {}", transfer.name);
+                                let i = BlockchainIndex {
+                                    protocol: 1,
+                                    fingerprint: transfer.fingerprint(),
+                                    nsid: transfer.nsid(),
+                                    name: Some(transfer.name),
+                                    pubkey: Some(transfer.pubkey),
+                                    blockhash,
+                                    txid: tx.txid(),
+                                    blocktime: blockinfo.time,
+                                    blockheight: blockinfo.height,
+                                    txheight,
+                                    vout,
+                                };
+                                transfer_cache = Some(i);
                             } else {
                                 log::error!("Index error");
                             }

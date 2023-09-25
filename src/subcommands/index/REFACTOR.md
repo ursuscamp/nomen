@@ -12,7 +12,9 @@
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
 - [ ] Add a checkpoint system to rewind a hundred blocks back
+  - [ ] Perhaps using `last_update_blockheight`?
 - [ ] Update SPEC
+  - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
 
 # Things to test after refactor

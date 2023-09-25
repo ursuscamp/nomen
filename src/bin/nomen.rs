@@ -1,14 +1,10 @@
 #![allow(unused)]
 
-mod config;
-mod db;
-mod subcommands;
-mod util;
-
 use clap::Parser;
-use config::Config;
+use nomen::config::Config;
 
-use crate::config::{Cli, ConfigFile};
+use nomen::config::{Cli, ConfigFile};
+use nomen::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

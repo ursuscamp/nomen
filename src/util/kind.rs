@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use anyhow::{anyhow, bail};
+use nostr_sdk::{EventBuilder, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
 
 use super::{Hash160, Nsid, NsidBuilder};
@@ -8,12 +9,14 @@ use super::{Hash160, Nsid, NsidBuilder};
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NomenKind {
     Create,
+    Transfer,
 }
 
 impl From<NomenKind> for u8 {
     fn from(value: NomenKind) -> Self {
         match value {
             NomenKind::Create => 0x00,
+            NomenKind::Transfer => 0x01,
         }
     }
 }
@@ -22,6 +25,7 @@ impl Display for NomenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             NomenKind::Create => "create",
+            NomenKind::Transfer => "transfer",
         };
         write!(f, "{s}")
     }
@@ -124,6 +128,106 @@ impl TryFrom<&[u8]> for CreateV1 {
 
         let kind = match value.first() {
             Some(0x00) => CreateV1::parse_create(&value[1..])?,
+            _ => bail!("Unexpected blockchain tx type"),
+        };
+
+        Ok(kind)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TransferV1 {
+    pub pubkey: XOnlyPublicKey,
+    pub name: String,
+}
+impl TransferV1 {
+    pub fn create(pubkey: XOnlyPublicKey, name: &str) -> TransferV1 {
+        TransferV1 {
+            pubkey,
+            name: name.to_owned(),
+        }
+    }
+
+    pub fn parse_create(value: &[u8]) -> anyhow::Result<TransferV1> {
+        // TODO: verify name validity
+        Ok(TransferV1 {
+            pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
+            name: String::from_utf8(value[32..].to_vec())?,
+        })
+    }
+
+    pub fn fingerprint(&self) -> [u8; 5] {
+        Hash160::default()
+            .chain_update(self.name.as_bytes())
+            .fingerprint()
+    }
+
+    pub fn nsid(&self) -> Nsid {
+        NsidBuilder::new(&self.name, &self.pubkey).finalize()
+    }
+}
+
+impl TryFrom<&[u8]> for TransferV1 {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if !value.starts_with(b"NOM\x01") {
+            bail!("Not an Nomen V1 Transfer transaction")
+        }
+        let value = &value[4..];
+
+        let kind = match value.first() {
+            Some(0x01) => TransferV1::parse_create(&value[1..])?,
+            _ => bail!("Unexpected blockchain tx type"),
+        };
+
+        Ok(kind)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignatureV1 {
+    pub pubkey: XOnlyPublicKey,
+    pub name: String,
+}
+impl SignatureV1 {
+    pub fn create(pubkey: XOnlyPublicKey, name: &str) -> SignatureV1 {
+        SignatureV1 {
+            pubkey,
+            name: name.to_owned(),
+        }
+    }
+
+    pub fn parse_create(value: &[u8]) -> anyhow::Result<SignatureV1> {
+        // TODO: verify name validity
+        Ok(SignatureV1 {
+            pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
+            name: String::from_utf8(value[32..].to_vec())?,
+        })
+    }
+
+    pub fn fingerprint(&self) -> [u8; 5] {
+        Hash160::default()
+            .chain_update(self.name.as_bytes())
+            .fingerprint()
+    }
+
+    pub fn nsid(&self) -> Nsid {
+        NsidBuilder::new(&self.name, &self.pubkey).finalize()
+    }
+}
+
+impl TryFrom<&[u8]> for SignatureV1 {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if !value.starts_with(b"NOM\x01") {
+            bail!("Not an Nomen V1 Signature transaction")
+        }
+        let value = &value[4..];
+
+        let kind = match value.first() {
+            Some(0x02) => SignatureV1::parse_create(&value[1..])?,
             _ => bail!("Unexpected blockchain tx type"),
         };
 
