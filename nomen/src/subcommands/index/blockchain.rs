@@ -12,6 +12,7 @@ use crate::{
 
 enum QueueMessage {
     BlockchainIndex(BlockchainIndex),
+    TransferCache(BlockchainIndex),
 }
 
 pub async fn raw_index(
@@ -114,7 +115,10 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                transfer_cache = Some(i);
+                                sender.blocking_send((
+                                    (blockinfo.height, blockhash),
+                                    Some(QueueMessage::TransferCache(i)),
+                                ));
                             } else {
                                 log::error!("Index error");
                             }
@@ -174,6 +178,7 @@ pub async fn raw_index(
 async fn handle_message(conn: &SqlitePool, message: QueueMessage) -> anyhow::Result<()> {
     match message {
         QueueMessage::BlockchainIndex(index) => index_output(conn, index).await?,
+        QueueMessage::TransferCache(index) => cache_transer(conn, index).await?,
     }
 
     Ok(())
@@ -207,6 +212,14 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
         db::insert_blockchain_index(conn, &index).await?;
     }
 
+    Ok(())
+}
+
+async fn cache_transer(
+    conn: &sqlx::Pool<sqlx::Sqlite>,
+    index: BlockchainIndex,
+) -> anyhow::Result<()> {
+    db::insert_transfer_cache(conn, &index).await?;
     Ok(())
 }
 

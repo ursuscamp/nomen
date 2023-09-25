@@ -9,7 +9,7 @@ pub struct TransferBuilder<'a> {
 
 impl<'a> TransferBuilder<'a> {
     pub fn transfer_op_return(&self) -> Vec<u8> {
-        b"NOM\x01\x00"
+        b"NOM\x01\x01"
             .iter()
             .chain(self.new.serialize().iter())
             .chain(self.name.as_bytes().iter())

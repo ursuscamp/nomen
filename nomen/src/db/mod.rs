@@ -10,7 +10,7 @@ use crate::{
     util::{self, Hash160, Name, NomenKind, Nsid, NsidBuilder},
 };
 
-static MIGRATIONS: [&str; 9] = [
+static MIGRATIONS: [&str; 10] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
@@ -22,6 +22,7 @@ static MIGRATIONS: [&str; 9] = [
         FROM ordered_blockchain_vw",
     "CREATE VIEW valid_names_vw AS
         SELECT * FROM ranked_blockchain_vw WHERE rank = 1;",
+    "CREATE TABLE transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
@@ -72,6 +73,27 @@ pub async fn insert_blockchain_index(
     index: &BlockchainIndex,
 ) -> anyhow::Result<()> {
     sqlx::query(include_str!("./queries/insert_blockchain_index.sql"))
+        .bind(index.protocol)
+        .bind(hex::encode(index.fingerprint))
+        .bind(index.nsid.to_string())
+        .bind(&index.name)
+        .bind(index.pubkey.map(|k| k.to_string()))
+        .bind(&index.blockhash.to_string())
+        .bind(index.txid.to_string())
+        .bind(index.blocktime as i64)
+        .bind(index.blockheight as i64)
+        .bind(index.txheight as i64)
+        .bind(index.vout as i64)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn insert_transfer_cache(
+    conn: impl Executor<'_, Database = Sqlite>,
+    index: &BlockchainIndex,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_transfer_cache.sql"))
         .bind(index.protocol)
         .bind(hex::encode(index.fingerprint))
         .bind(index.nsid.to_string())
