@@ -83,7 +83,7 @@ pub(crate) fn op_return_v0(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) ->
     v
 }
 
-pub(crate) fn op_return_v1(pubkey: XOnlyPublicKey, name: &str, kind: NomenKind) -> Vec<u8> {
+pub fn op_return_v1(pubkey: XOnlyPublicKey, name: &str, kind: NomenKind) -> Vec<u8> {
     let mut v = Vec::with_capacity(80);
     v.extend(b"NOM\x01");
     v.push(kind.into());

@@ -1,9 +1,6 @@
+use nomen_core::util::NomenKind;
 use nostr_sdk::{EventId, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
-
-use crate::subcommands::op_return_v1;
-
-use super::NomenKind;
 
 pub struct TransferBuilder<'a> {
     pub new: &'a XOnlyPublicKey,
@@ -12,7 +9,12 @@ pub struct TransferBuilder<'a> {
 
 impl<'a> TransferBuilder<'a> {
     pub fn transfer_op_return(&self) -> Vec<u8> {
-        op_return_v1(*self.new, self.name, NomenKind::Transfer)
+        b"NOM\x01\x00"
+            .iter()
+            .chain(self.new.serialize().iter())
+            .chain(self.name.as_bytes().iter())
+            .copied()
+            .collect()
     }
 
     pub fn signature_op_return(&self, keys: nostr_sdk::Keys) -> anyhow::Result<Vec<u8>> {

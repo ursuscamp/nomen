@@ -138,8 +138,8 @@ mod site {
     use crate::{
         config::{Cli, TxInfo},
         db::{self, name_available, NameDetails},
-        subcommands::{insert_outputs, name_event},
-        util::{self, check_name_availability, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
+        subcommands::{insert_outputs, name_event, util::check_name_availability},
+        util::{self, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
     use super::{AppState, WebError};

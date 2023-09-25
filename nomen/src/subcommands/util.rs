@@ -7,7 +7,8 @@ use yansi::Paint;
 
 use crate::{
     config::{Config, ConfigFile, SignEventCommand},
-    util::{check_name_availability, Hash160, NomenKind, NsidBuilder},
+    db,
+    util::{Hash160, NomenKind, NsidBuilder},
 };
 
 use super::get_keys;
@@ -73,5 +74,18 @@ pub fn op_return(name: &str, pubkey: &XOnlyPublicKey, kind: NomenKind) -> anyhow
 
     println!("{}", hex::encode(data));
 
+    Ok(())
+}
+
+pub fn tag_print(tag: &str, message: &str) {
+    println!("{}: {}", Paint::green(tag), message);
+}
+
+pub async fn check_name_availability(config: &Config, name: &str) -> anyhow::Result<()> {
+    let conn = config.sqlite().await?;
+    let available = db::name_available(&conn, name).await?;
+    if !available {
+        bail!("Name {name} already exists");
+    }
     Ok(())
 }

@@ -1,8 +1,12 @@
 #![allow(unused)]
 
+mod transfer;
+
 use clap::Parser;
 use nostr_sdk::{Keys, ToBech32, UnsignedEvent};
 use secp256k1::{Secp256k1, SecretKey, XOnlyPublicKey};
+
+use crate::transfer::TransferBuilder;
 
 pub fn main() -> anyhow::Result<()> {
     let ops = Ops::parse();
@@ -42,7 +46,7 @@ fn cmd_keys(pubkey: bool, nostr: bool) -> anyhow::Result<()> {
 }
 
 fn cmd_transfer(old: SecretKey, new: XOnlyPublicKey, name: String) -> anyhow::Result<()> {
-    let tb = nomen::util::TransferBuilder {
+    let tb = TransferBuilder {
         new: &new,
         name: &name,
     };

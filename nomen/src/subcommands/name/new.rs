@@ -15,8 +15,11 @@ use secp256k1::{SecretKey, XOnlyPublicKey};
 use crate::{
     config::{Cli, Config, NameNewSubcommand},
     db::{self},
-    subcommands::name::get_keys,
-    util::{check_name_availability, tag_print, Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
+    subcommands::{
+        name::get_keys,
+        util::{check_name_availability, tag_print},
+    },
+    util::{Hash160, NameKind, NomenKind, Nsid, NsidBuilder},
 };
 
 #[derive(serde::Serialize)]

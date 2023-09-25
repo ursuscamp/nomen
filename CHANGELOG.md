@@ -8,6 +8,7 @@ Bugs:
 
 Other:
   - Set a minimum supported Rust version of 1.71. Will try to maintain this for a while.
+  - Refactored into a Cargo multi-crate workspace. `nomen_core` contains all types, `nomen` contains the indexer/http server and `nomen-cli` contains command-line utilities.
 
 ## 0.2.0
 

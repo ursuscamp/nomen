@@ -1,10 +1,13 @@
 #![allow(unused)]
 
-use clap::Parser;
-use nomen::config::Config;
+mod config;
+mod db;
+mod subcommands;
 
-use nomen::config::{Cli, ConfigFile};
-use nomen::*;
+use clap::Parser;
+
+use config::{Cli, Config, ConfigFile};
+use nomen_core::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
                 subcommands::util::sign_event(&config, event).await?
             }
             config::UtilSubcommand::Lookup { name } => {
-                subcommands::util::lookup(&config, name).await?
+                subcommands::util::lookup(&config, name.as_str()).await?
             }
             config::UtilSubcommand::OpReturn { name, pubkey, kind } => {
                 subcommands::util::op_return(name, pubkey, *kind)?
