@@ -16,6 +16,8 @@
 - [ ] Update SPEC
   - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
+- [ ] Fully clippy check
+- [ ] Remove unnecessary/unused code
 
 # Things to test after refactor
 
@@ -26,3 +28,4 @@
 - [ ] Test v1 transfer
 - [ ] Test v0 -> v1 upgrade -> v1 transfer
 - [ ] Test duplicate names
+- [ ] Test invalid transfer signature

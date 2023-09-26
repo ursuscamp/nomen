@@ -163,6 +163,34 @@ pub async fn insert_index_height(
     Ok(())
 }
 
+pub async fn update_index_for_transfer(
+    conn: &sqlx::Pool<sqlx::Sqlite>,
+    nsid: Nsid,
+    new_owner: XOnlyPublicKey,
+    old_owner: XOnlyPublicKey,
+    name: String,
+) -> Result<(), anyhow::Error> {
+    sqlx::query("UPDATE blockchain_index SET nsid = ?, pubkey = ? WHERE name = ? AND pubkey = ?;")
+        .bind(hex::encode(nsid.as_ref()))
+        .bind(hex::encode(new_owner.serialize()))
+        .bind(&name)
+        .bind(hex::encode(old_owner.serialize()))
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn delete_from_transfer_cache(
+    conn: &sqlx::Pool<sqlx::Sqlite>,
+    id: i64,
+) -> Result<(), anyhow::Error> {
+    sqlx::query("DELETE FROM transfer_cache WHERE id = ?;")
+        .bind(id)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
 pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
     let (t,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from name_events;")
         .fetch_one(conn)

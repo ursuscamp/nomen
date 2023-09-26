@@ -31,6 +31,7 @@ bitcoin = { version = "0.30.1", features = ["base64", "rand", "serde"] }
 elegant-departure = { version = "0.2.1", features = ["tokio"] }
 itertools = "0.11.0"
 bitcoincore-rpc = "0.17.0"
+futures = "0.3.28"
 
 
 [build-dependencies]

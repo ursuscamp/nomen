@@ -2,6 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use bitcoin::{BlockHash, Txid};
 use bitcoincore_rpc::{Client, RpcApi};
+use futures::TryStreamExt;
+use nomen_core::util::{NsidBuilder, SignatureV1, TransferBuilder};
+use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 use sqlx::SqlitePool;
 
 use crate::{
@@ -13,6 +16,7 @@ use crate::{
 enum QueueMessage {
     BlockchainIndex(BlockchainIndex),
     TransferCache(BlockchainIndex),
+    TransferSignature(Signature),
 }
 
 pub async fn raw_index(
@@ -119,6 +123,12 @@ pub async fn raw_index(
                                     (blockinfo.height, blockhash),
                                     Some(QueueMessage::TransferCache(i)),
                                 ));
+                            } else if let Ok(signature) = SignatureV1::try_from(b) {
+                                log::info!("Signature found");
+                                sender.blocking_send((
+                                    (blockinfo.height, blockhash),
+                                    Some(QueueMessage::TransferSignature(signature.signature)),
+                                ));
                             } else {
                                 log::error!("Index error");
                             }
@@ -179,6 +189,51 @@ async fn handle_message(conn: &SqlitePool, message: QueueMessage) -> anyhow::Res
     match message {
         QueueMessage::BlockchainIndex(index) => index_output(conn, index).await?,
         QueueMessage::TransferCache(index) => cache_transer(conn, index).await?,
+        QueueMessage::TransferSignature(signature) => check_signature(conn, signature).await?,
+    }
+
+    Ok(())
+}
+
+async fn check_signature(
+    conn: &sqlx::Pool<sqlx::Sqlite>,
+    signature: Signature,
+) -> anyhow::Result<()> {
+    let mut data = sqlx::query_as::<_, (String, String, String, i64)>(
+        "SELECT tc.name, tc.pubkey AS new_owner, n.pubkey, tc.id AS old_owner
+        FROM transfer_cache tc
+        JOIN valid_names_vw n ON tc.fingerprint = n.fingerprint AND tc.name = n.name",
+    )
+    .fetch(conn);
+
+    while let Some(row) = data.try_next().await? {
+        let name = row.0;
+        let new_owner = {
+            let h = hex::decode(row.1.as_bytes())?;
+            XOnlyPublicKey::from_slice(&h)?
+        };
+        let old_owner = {
+            let h = hex::decode(row.2.as_bytes())?;
+            XOnlyPublicKey::from_slice(&h)?
+        };
+        let tb = TransferBuilder {
+            new: &new_owner,
+            name: name.as_str(),
+        };
+        let unsigned_event = tb.unsigned_event(&old_owner);
+        if let Ok(event) = unsigned_event.add_signature(signature) {
+            log::info!(
+                "Valid signature found for {name}, updating owner to {}!",
+                hex::encode(new_owner.serialize())
+            );
+            let nsid = NsidBuilder::new(name.as_str(), &new_owner).finalize();
+            db::update_index_for_transfer(conn, nsid, new_owner, old_owner, name).await?;
+
+            log::info!("Deleting record from transfer_cache");
+            db::delete_from_transfer_cache(conn, row.3).await?;
+
+            break;
+        }
     }
 
     Ok(())

@@ -6,6 +6,7 @@ mod name;
 mod nostr;
 mod nsid;
 mod nsid_builder;
+mod transfer;
 
 use anyhow::bail;
 pub use extractor::*;
@@ -17,6 +18,7 @@ pub use nostr::*;
 pub use nsid::*;
 pub use nsid_builder::*;
 use time::{macros::format_description, OffsetDateTime};
+pub use transfer::*;
 
 pub enum NameKind {
     Name = 38300,

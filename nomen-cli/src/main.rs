@@ -1,12 +1,9 @@
 #![allow(unused)]
 
-mod transfer;
-
 use clap::Parser;
+use nomen_core::util::TransferBuilder;
 use nostr_sdk::{Keys, ToBech32, UnsignedEvent};
 use secp256k1::{Secp256k1, SecretKey, XOnlyPublicKey};
-
-use crate::transfer::TransferBuilder;
 
 pub fn main() -> anyhow::Result<()> {
     let ops = Ops::parse();
@@ -76,8 +73,13 @@ enum Commands {
 
     /// Generate properly formatted OP_RETURNs for a name transfer.
     Transfer {
+        /// Hex-encoded secret key for the current (previous) owner
         old: SecretKey,
+
+        /// Hex-encodced public key for the new owner
         new: XOnlyPublicKey,
+
+        /// Name to transfer
         name: String,
     },
 }

@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use anyhow::{anyhow, bail};
 use nostr_sdk::{EventBuilder, UnsignedEvent};
-use secp256k1::XOnlyPublicKey;
+use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
 use super::{Hash160, Nsid, NsidBuilder};
 
@@ -187,33 +187,19 @@ impl TryFrom<&[u8]> for TransferV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignatureV1 {
-    pub pubkey: XOnlyPublicKey,
-    pub name: String,
+    pub signature: Signature,
 }
 impl SignatureV1 {
-    pub fn create(pubkey: XOnlyPublicKey, name: &str) -> SignatureV1 {
+    pub fn create(signature: &Signature) -> SignatureV1 {
         SignatureV1 {
-            pubkey,
-            name: name.to_owned(),
+            signature: *signature,
         }
     }
 
     pub fn parse_create(value: &[u8]) -> anyhow::Result<SignatureV1> {
-        // TODO: verify name validity
         Ok(SignatureV1 {
-            pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
-            name: String::from_utf8(value[32..].to_vec())?,
+            signature: Signature::from_slice(value)?,
         })
-    }
-
-    pub fn fingerprint(&self) -> [u8; 5] {
-        Hash160::default()
-            .chain_update(self.name.as_bytes())
-            .fingerprint()
-    }
-
-    pub fn nsid(&self) -> Nsid {
-        NsidBuilder::new(&self.name, &self.pubkey).finalize()
     }
 }
 
