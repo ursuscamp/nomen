@@ -11,10 +11,11 @@ use crate::{
     util::{self, Hash160, Nsid, NsidBuilder},
 };
 
-static MIGRATIONS: [&str; 10] = [
+static MIGRATIONS: [&str; 11] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
-    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
+    "CREATE TABLE raw_blockchain (id INTEGER PRIMARY KEY, blockhash, txid, blocktime, blockheight, txheight, vout, data, indexed_at);",
+    "CREATE TABLE blockchain_index (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
     "CREATE VIEW ordered_blockchain_vw AS
         SELECT * from blockchain_index
         ORDER BY blockheight ASC, txheight ASC, vout ASC;",
@@ -23,7 +24,7 @@ static MIGRATIONS: [&str; 10] = [
         FROM ordered_blockchain_vw",
     "CREATE VIEW valid_names_vw AS
         SELECT * FROM ranked_blockchain_vw WHERE rank = 1;",
-    "CREATE TABLE transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, records DEFAULT '{}', indexed_at);",
+    "CREATE TABLE transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
@@ -54,6 +55,33 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     }
 
     Ok(conn)
+}
+
+pub struct RawBlockchain {
+    pub blockhash: BlockHash,
+    pub txid: Txid,
+    pub blocktime: usize,
+    pub blockheight: usize,
+    pub txheight: usize,
+    pub vout: usize,
+    pub data: Vec<u8>,
+}
+
+pub async fn insert_raw_blockchain(
+    conn: impl Executor<'_, Database = Sqlite>,
+    raw: &RawBlockchain,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_raw_blockchain.sql"))
+        .bind(raw.blockhash.to_string())
+        .bind(raw.txid.to_string())
+        .bind(raw.blocktime as i64)
+        .bind(raw.blockheight as i64)
+        .bind(raw.txheight as i64)
+        .bind(raw.vout as i64)
+        .bind(hex::encode(&raw.data))
+        .execute(conn)
+        .await?;
+    Ok(())
 }
 
 pub struct BlockchainIndex {

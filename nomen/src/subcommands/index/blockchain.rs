@@ -6,11 +6,12 @@ use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
-    db::{self, insert_index_height, BlockchainIndex},
+    db::{self, insert_index_height, BlockchainIndex, RawBlockchain},
     util::{CreateV0, CreateV1, TransferV1},
 };
 
 enum QueueMessage {
+    RawBlockchain(RawBlockchain),
     BlockchainIndex(BlockchainIndex),
     TransferCache(BlockchainIndex),
     TransferSignature(Signature),
@@ -61,6 +62,22 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 
                         // Pre-check if it starts with NOM, so we can filter out some unnecessary errors from the logs
                         if b.starts_with(b"NOM") {
+                            let raw_blockchain = RawBlockchain {
+                                blockhash,
+                                txid: tx.txid(),
+                                blocktime: blockinfo.time,
+                                blockheight: blockinfo.height,
+                                txheight,
+                                vout,
+                                data: b.to_vec(),
+                            };
+                            sender
+                                .blocking_send((
+                                    (blockinfo.height, blockhash),
+                                    Some(QueueMessage::RawBlockchain(raw_blockchain)),
+                                ))
+                                .ok();
+
                             if let Ok(create) = CreateV0::try_from(b) {
                                 let i = BlockchainIndex {
                                     protocol: 0,
@@ -192,6 +209,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
 
 async fn handle_message(conn: &SqlitePool, message: QueueMessage) -> anyhow::Result<()> {
     match message {
+        QueueMessage::RawBlockchain(raw) => db::insert_raw_blockchain(conn, &raw).await?,
         QueueMessage::BlockchainIndex(index) => index_output(conn, index).await?,
         QueueMessage::TransferCache(index) => cache_transer(conn, index).await?,
         QueueMessage::TransferSignature(signature) => check_signature(conn, signature).await?,
