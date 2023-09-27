@@ -3,12 +3,7 @@ use std::time::Duration;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{
-    config::{Cli, Config},
-    db,
-    subcommands::index::events::EventData,
-    util::NameKind,
-};
+use crate::{config::Config, db, subcommands::index::events::EventData, util::NameKind};
 
 pub async fn records(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     log::info!("Beginning indexing record events.");

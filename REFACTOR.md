@@ -1,13 +1,13 @@
 # Refactoring steps
 
-- [x] Index raw_blockchain
-- [x] Scan raw_blockchain to parse properly indexable events
+- [ ] Index raw_blockchain
+- [ ] Scan raw_blockchain to parse properly indexable events
 - [x] Implement upgrade from v0
   - [x] V1 Create should automatically update any older matching V0 create
-- [ ] Implement transfer from one to another
+- [x] Implement transfer from one to another
 - [ ] Change to use tracing and tracing::subscriber instead of log
-- [ ] Refactor commands
-  - [ ] Move CLI into seperate binary?
+- [x] Refactor commands
+  - [x] Move CLI into seperate binary?
 - [ ] Add API methods
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
@@ -18,6 +18,8 @@
   - [ ] Mark correct date on spec changes section.
 - [ ] Fully clippy check
 - [ ] Remove unnecessary/unused code
+- [ ] Remove anyhow from nomen_core
+- [ ] API docs
 
 # Things to test after refactor
 

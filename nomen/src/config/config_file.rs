@@ -6,19 +6,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ServerConfig {
     pub bind: Option<String>,
-    pub without_explorer: Option<bool>,
-    pub without_api: Option<bool>,
-    pub without_indexer: Option<bool>,
+    pub explorer: Option<bool>,
+    pub api: Option<bool>,
+    pub indexer: Option<bool>,
     pub indexer_delay: Option<u64>,
     pub confirmations: Option<usize>,
 }
 impl ServerConfig {
-    fn init() -> ServerConfig {
+    fn example() -> ServerConfig {
         ServerConfig {
             bind: Some("0.0.0.0:8080".into()),
-            without_explorer: Some(false),
-            without_api: Some(false),
-            without_indexer: Some(false),
+            explorer: Some(true),
+            api: Some(true),
+            indexer: Some(true),
             indexer_delay: Some(30),
             confirmations: Some(3),
         }
@@ -35,13 +35,11 @@ pub struct RpcConfig {
     pub network: Option<Network>,
 }
 impl RpcConfig {
-    fn init() -> RpcConfig {
+    fn example() -> RpcConfig {
         RpcConfig {
-            cookie: Some(
-                "path to bitcoin cookie file (higher priority than username/password)".into(),
-            ),
-            user: Some("username (lower priority than cookie file)".into()),
-            password: Some("password".into()),
+            cookie: Some("path/to/cookie/file".into()),
+            user: Some("rpc username".into()),
+            password: Some("rpc password".into()),
             host: Some("localhost".into()),
             port: Some(8441),
             network: Some(Network::Bitcoin),
@@ -54,7 +52,7 @@ pub struct NostrConfig {
     pub relays: Option<Vec<String>>,
 }
 impl NostrConfig {
-    fn init() -> NostrConfig {
+    fn example() -> NostrConfig {
         NostrConfig {
             relays: Some(vec!["wss://relay.damus.io".into()]),
         }
@@ -62,7 +60,6 @@ impl NostrConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-#[serde(default)]
 pub struct ConfigFile {
     pub data: Option<PathBuf>,
     pub nostr: NostrConfig,
@@ -71,12 +68,12 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-    pub fn init() -> ConfigFile {
+    pub fn example() -> ConfigFile {
         ConfigFile {
             data: Some("nomen.db".into()),
-            nostr: NostrConfig::init(),
-            server: ServerConfig::init(),
-            rpc: RpcConfig::init(),
+            nostr: NostrConfig::example(),
+            server: ServerConfig::example(),
+            rpc: RpcConfig::example(),
         }
     }
 }

@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use bitcoin::{BlockHash, Txid};
+use nomen_core::util::Name;
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 
 use crate::{
-    config::{Cli, Config},
-    util::{self, Hash160, Name, NomenKind, Nsid, NsidBuilder},
+    config::Config,
+    util::{self, Hash160, Nsid, NsidBuilder},
 };
 
 static MIGRATIONS: [&str; 10] = [
@@ -110,36 +111,6 @@ pub async fn insert_transfer_cache(
     Ok(())
 }
 
-// TODO: combine these arguments into a simpler set for <8
-#[allow(clippy::too_many_arguments)]
-pub async fn insert_blockchain(
-    conn: &SqlitePool,
-    fingerprint: [u8; 5],
-    nsid: Nsid,
-    blockhash: String,
-    txid: String,
-    blocktime: usize,
-    blockheight: usize,
-    txheight: usize,
-    vout: usize,
-    kind: NomenKind,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_namespace.sql"))
-        .bind(hex::encode(fingerprint))
-        .bind(nsid.to_string())
-        .bind(blockhash)
-        .bind(txid)
-        .bind(blocktime as i64)
-        .bind(blockheight as i64)
-        .bind(txheight as i64)
-        .bind(vout as i64)
-        .bind(kind.to_string())
-        .execute(conn)
-        .await?;
-
-    Ok(())
-}
-
 pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
     let (h,) =
         sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM index_height;")
@@ -188,35 +159,6 @@ pub async fn delete_from_transfer_cache(
         .bind(id)
         .execute(conn)
         .await?;
-    Ok(())
-}
-
-pub async fn last_create_event_time(conn: &SqlitePool) -> anyhow::Result<u64> {
-    let (t,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) from name_events;")
-        .fetch_one(conn)
-        .await?;
-    Ok(t as u64)
-}
-
-pub async fn insert_create_event(
-    conn: &SqlitePool,
-    nsid: Nsid,
-    pubkey: XOnlyPublicKey,
-    created_at: i64,
-    event_id: EventId,
-    name: String,
-    children: String,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_name_event.sql"))
-        .bind(nsid.to_string())
-        .bind(pubkey.to_string())
-        .bind(created_at)
-        .bind(event_id.to_hex())
-        .bind(name)
-        .bind(children)
-        .execute(conn)
-        .await?;
-
     Ok(())
 }
 
@@ -345,15 +287,6 @@ pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<boo
     .fetch_one(conn)
     .await?;
     Ok(count == 0)
-}
-
-pub async fn name_owner(conn: &SqlitePool, name: &str) -> anyhow::Result<Option<XOnlyPublicKey>> {
-    let pubkey = sqlx::query_as::<_, (String,)>("SELECT pubkey FROM name_owners WHERE name = ?;")
-        .bind(name)
-        .fetch_optional(conn)
-        .await?;
-
-    Ok(pubkey.and_then(|(pk,)| pk.parse::<XOnlyPublicKey>().ok()))
 }
 
 pub enum UpgradeStatus {

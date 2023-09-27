@@ -1,6 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use bitcoin::{BlockHash, Txid};
 use bitcoincore_rpc::{Client, RpcApi};
 use futures::TryStreamExt;
 use nomen_core::util::{NsidBuilder, SignatureV1, TransferBuilder};
@@ -8,9 +5,9 @@ use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 use sqlx::SqlitePool;
 
 use crate::{
-    config::{Cli, Config},
+    config::Config,
     db::{self, insert_index_height, BlockchainIndex},
-    util::{CreateV0, CreateV1, NomenKind, Nsid, TransferV1},
+    util::{CreateV0, CreateV1, TransferV1},
 };
 
 enum QueueMessage {
@@ -19,10 +16,7 @@ enum QueueMessage {
     TransferSignature(Signature),
 }
 
-pub async fn raw_index(
-    config: &Config,
-    pool: &sqlx::Pool<sqlx::Sqlite>,
-) -> Result<(), anyhow::Error> {
+pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
     // Check if the index is on a stale chain, and rewind the index if necessary
     rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
 
@@ -35,7 +29,7 @@ pub async fn raw_index(
     log::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
     let min_confirmations = config.confirmations()?;
 
-    let thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+    let _thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut blockhash = client.get_block_hash(index_height as u64)?;
         let mut blockinfo = client.get_block_header_info(&blockhash)?;
 
@@ -61,7 +55,6 @@ pub async fn raw_index(
             let block = client.get_block(&blockhash)?;
 
             for (txheight, tx) in block.txdata.iter().enumerate() {
-                let mut transfer_cache: Option<BlockchainIndex> = None;
                 for (vout, output) in tx.output.iter().enumerate() {
                     if output.script_pubkey.is_op_return() {
                         let b = &output.script_pubkey.as_bytes()[2..];
@@ -82,10 +75,12 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                sender.blocking_send((
-                                    (blockinfo.height, blockhash),
-                                    Some(QueueMessage::BlockchainIndex(i)),
-                                ));
+                                sender
+                                    .blocking_send((
+                                        (blockinfo.height, blockhash),
+                                        Some(QueueMessage::BlockchainIndex(i)),
+                                    ))
+                                    .ok();
                             } else if let Ok(create) = CreateV1::try_from(b) {
                                 let i = BlockchainIndex {
                                     protocol: 1,
@@ -100,10 +95,12 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                sender.blocking_send((
-                                    (blockinfo.height, blockhash),
-                                    Some(QueueMessage::BlockchainIndex(i)),
-                                ));
+                                sender
+                                    .blocking_send((
+                                        (blockinfo.height, blockhash),
+                                        Some(QueueMessage::BlockchainIndex(i)),
+                                    ))
+                                    .ok();
                             } else if let Ok(transfer) = TransferV1::try_from(b) {
                                 log::info!("Caching transfer for {}", transfer.name);
                                 let i = BlockchainIndex {
@@ -119,24 +116,32 @@ pub async fn raw_index(
                                     txheight,
                                     vout,
                                 };
-                                sender.blocking_send((
-                                    (blockinfo.height, blockhash),
-                                    Some(QueueMessage::TransferCache(i)),
-                                ));
+                                sender
+                                    .blocking_send((
+                                        (blockinfo.height, blockhash),
+                                        Some(QueueMessage::TransferCache(i)),
+                                    ))
+                                    .ok();
                             } else if let Ok(signature) = SignatureV1::try_from(b) {
                                 log::info!("Signature found");
-                                sender.blocking_send((
-                                    (blockinfo.height, blockhash),
-                                    Some(QueueMessage::TransferSignature(signature.signature)),
-                                ));
+                                sender
+                                    .blocking_send((
+                                        (blockinfo.height, blockhash),
+                                        Some(QueueMessage::TransferSignature(signature.signature)),
+                                    ))
+                                    .ok();
                             } else {
                                 log::error!("Index error");
                             }
                         } else {
-                            sender.blocking_send(((blockinfo.height, blockhash), None));
+                            sender
+                                .blocking_send(((blockinfo.height, blockhash), None))
+                                .ok();
                         }
                     } else {
-                        sender.blocking_send(((blockinfo.height, blockhash), None));
+                        sender
+                            .blocking_send(((blockinfo.height, blockhash), None))
+                            .ok();
                     }
                 }
             }
@@ -221,7 +226,7 @@ async fn check_signature(
             name: name.as_str(),
         };
         let unsigned_event = tb.unsigned_event(&old_owner);
-        if let Ok(event) = unsigned_event.add_signature(signature) {
+        if unsigned_event.add_signature(signature).is_ok() {
             log::info!(
                 "Valid signature found for {name}, updating owner to {}!",
                 hex::encode(new_owner.serialize())
@@ -291,7 +296,7 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
         return Ok(());
     }
 
-    let (blockheight, blockhash) = result.unwrap();
+    let (_, blockhash) = result.unwrap();
 
     // Loop backwards from recently indexed block, continuing to the previous block, until we find the most recent ancestor which is not stale
     let stale_block =

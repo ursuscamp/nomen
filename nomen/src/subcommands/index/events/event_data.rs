@@ -45,6 +45,7 @@ impl EventData {
         })
     }
 
+    #[allow(unused)]
     pub fn validate(&self) -> anyhow::Result<()> {
         if self.nsid != self.calculated_nsid {
             bail!("Invalid nsid")

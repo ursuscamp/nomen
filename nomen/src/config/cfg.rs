@@ -1,14 +1,13 @@
 use std::path::PathBuf;
 
-use anyhow::anyhow;
-use bitcoin::{FeeRate, Network};
+use bitcoin::Network;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
     Options,
 };
 use sqlx::{sqlite, SqlitePool};
 
-use super::{Cli, ConfigFile, NameNewSubcommand, ServerSubcommand, Subcommand};
+use super::{Cli, ConfigFile};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -88,95 +87,69 @@ impl Config {
     }
 
     fn rpc_cookie(&self) -> Option<PathBuf> {
-        self.cli
-            .cookie
-            .as_ref()
-            .or(self.file.rpc.cookie.as_ref())
-            .cloned()
+        self.file.rpc.cookie.clone()
     }
 
     fn rpc_user(&self) -> Option<String> {
-        self.cli
-            .rpcuser
-            .as_ref()
-            .or(self.file.rpc.user.as_ref())
-            .cloned()
+        self.file.rpc.user.clone()
     }
 
     fn rpc_password(&self) -> Option<String> {
-        self.cli
-            .rpcpass
-            .as_ref()
-            .or(self.file.rpc.password.as_ref())
-            .cloned()
+        self.file.rpc.password.clone()
     }
 
     fn rpc_port(&self) -> u16 {
-        self.cli
-            .rpcport
-            .or(self.file.rpc.port)
-            .expect("RPC port required")
+        self.file.rpc.port.expect("RPC port required")
     }
 
     fn rpc_host(&self) -> String {
-        self.cli
-            .rpchost
-            .as_ref()
-            .or(self.file.rpc.host.as_ref())
-            .cloned()
+        self.file
+            .rpc
+            .host
+            .clone()
             .unwrap_or_else(|| "127.0.0.1".to_string())
     }
 
     fn data(&self) -> PathBuf {
-        self.cli
-            .data
-            .as_ref()
-            .or(self.file.data.as_ref())
-            .cloned()
-            .unwrap_or_else(|| "nomen.db".into())
+        self.file.data.clone().unwrap_or_else(|| "nomen.db".into())
     }
 
     pub fn relays(&self) -> Vec<String> {
-        self.cli
-            .relays
-            .as_ref()
-            .or(self.file.nostr.relays.as_ref())
-            .cloned()
-            .unwrap_or_else(|| {
-                vec![
-                    "wss://relay.damus.io".into(),
-                    "wss://relay.snort.social".into(),
-                    "wss://nos.lol".into(),
-                    "wss://nostr.orangepill.dev".into(),
-                ]
-            })
+        self.file.nostr.relays.clone().unwrap_or_else(|| {
+            vec![
+                "wss://relay.damus.io".into(),
+                "wss://relay.snort.social".into(),
+                "wss://nos.lol".into(),
+                "wss://nostr.orangepill.dev".into(),
+            ]
+        })
     }
 
     pub fn network(&self) -> Network {
-        self.cli
-            .network
-            .or(self.file.rpc.network)
-            .unwrap_or(Network::Bitcoin)
+        self.file.rpc.network.unwrap_or(Network::Bitcoin)
     }
 
     pub fn server_bind(&self) -> Option<String> {
-        match &self.cli.subcommand {
-            Subcommand::Server(ServerSubcommand { bind, .. }) => bind.clone(),
-            _ => None,
-        }
-        .or_else(|| self.file.server.bind.clone())
+        self.file.server.bind.clone()
     }
 
     pub fn server_indexer_delay(&self) -> u64 {
-        match &self.cli.subcommand {
-            Subcommand::Server(ServerSubcommand { indexer_delay, .. }) => *indexer_delay,
-            _ => None,
-        }
-        .or(self.file.server.indexer_delay)
-        .unwrap_or(30)
+        self.file.server.indexer_delay.unwrap_or(30)
     }
 
     pub fn confirmations(&self) -> anyhow::Result<usize> {
         Ok(self.file.server.confirmations.unwrap_or(3))
+    }
+
+    pub fn indexer(&self) -> bool {
+        self.file.server.indexer.unwrap_or(true)
+    }
+
+    pub fn explorer(&self) -> bool {
+        self.file.server.explorer.unwrap_or(true)
+    }
+
+    pub fn api(&self) -> bool {
+        self.file.server.api.unwrap_or(true)
     }
 }

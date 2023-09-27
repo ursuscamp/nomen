@@ -1,85 +1,20 @@
-use std::{io::Write, path::PathBuf};
+use std::collections::HashMap;
 
 use anyhow::bail;
-use nostr_sdk::UnsignedEvent;
-use secp256k1::{Secp256k1, XOnlyPublicKey};
-use yansi::Paint;
+use bitcoin::{
+    psbt::{Output, Psbt},
+    script::PushBytesBuf,
+    ScriptBuf, TxOut,
+};
+use nomen_core::util::{NameKind, Nsid};
+use nostr_sdk::{EventBuilder, Tag, TagKind, UnsignedEvent};
+use secp256k1::XOnlyPublicKey;
 
 use crate::{
-    config::{Config, ConfigFile, SignEventCommand},
+    config::Config,
     db,
-    util::{Hash160, NomenKind, NsidBuilder},
+    util::{NomenKind, NsidBuilder},
 };
-
-use super::get_keys;
-
-pub fn generate_keypair() {
-    let secp = Secp256k1::new();
-    let (secret_key, public_key) = secp.generate_keypair(&mut rand::thread_rng());
-    let (public_key, _) = public_key.x_only_public_key();
-
-    let secret_key = hex::encode(secret_key.secret_bytes());
-    let public_key = hex::encode(public_key.serialize());
-
-    println!("{}{}", Paint::red("Secret Key: "), secret_key);
-    println!("{}{}", Paint::green("Public Key: "), public_key);
-}
-
-pub async fn lookup(config: &Config, name: &str) -> anyhow::Result<()> {
-    let name = name.to_lowercase();
-    let (name, msg) = match check_name_availability(config, &name).await {
-        Ok(_) => (Paint::yellow(&name), Paint::green("available")),
-        Err(_) => (Paint::yellow(&name), Paint::red("unavailable")),
-    };
-
-    println!("Name {name} is {msg}.");
-    Ok(())
-}
-
-pub fn init_config(path: &Option<PathBuf>) -> anyhow::Result<()> {
-    let file = path.clone().unwrap_or_else(|| "nomen.toml".into());
-    if file.exists() {
-        bail!("Config file already exists.");
-    }
-
-    let mut file = std::fs::File::create(&file)?;
-    let config_file = ConfigFile::init();
-
-    let strout = toml::to_string_pretty(&config_file)?;
-    file.write_all(strout.as_bytes())?;
-    Ok(())
-}
-
-pub async fn sign_event(config: &Config, args: &SignEventCommand) -> anyhow::Result<()> {
-    let keys = get_keys(&args.privkey)?;
-    let event: UnsignedEvent = serde_json::from_str(&args.event)?;
-    let event = event.sign(&keys)?;
-
-    if args.broadcast {
-        let (_k, nostr) = config.nostr_random_client().await?;
-        let event_id = nostr.send_event(event).await?;
-        println!("Broadcast event {event_id}");
-    } else {
-        println!("{}", serde_json::to_string(&event)?);
-    }
-    Ok(())
-}
-
-pub fn op_return(name: &str, pubkey: &XOnlyPublicKey, kind: NomenKind) -> anyhow::Result<()> {
-    let fingerprint = Hash160::default()
-        .chain_update(name.as_bytes())
-        .fingerprint();
-    let nsid = NsidBuilder::new(name, pubkey).finalize();
-    let data = super::op_return_v0(fingerprint, nsid, kind);
-
-    println!("{}", hex::encode(data));
-
-    Ok(())
-}
-
-pub fn tag_print(tag: &str, message: &str) {
-    println!("{}: {}", Paint::green(tag), message);
-}
 
 pub async fn check_name_availability(config: &Config, name: &str) -> anyhow::Result<()> {
     let conn = config.sqlite().await?;
@@ -88,4 +23,61 @@ pub async fn check_name_availability(config: &Config, name: &str) -> anyhow::Res
         bail!("Name {name} already exists");
     }
     Ok(())
+}
+pub(crate) fn insert_outputs(
+    psbt: &mut Psbt,
+    fingerprint: [u8; 5],
+    nsid: Nsid,
+    kind: NomenKind,
+) -> anyhow::Result<()> {
+    let op_return: PushBytesBuf = op_return_v0(fingerprint, nsid, kind).try_into()?;
+    let op_return = ScriptBuf::new_op_return(&op_return);
+    psbt.unsigned_tx.output.push(TxOut {
+        value: 0,
+        script_pubkey: op_return.clone(),
+    });
+    psbt.outputs.push(Output {
+        redeem_script: Some(op_return),
+        ..Default::default()
+    });
+
+    Ok(())
+}
+
+pub fn op_return_v0(fingerprint: [u8; 5], nsid: Nsid, kind: NomenKind) -> Vec<u8> {
+    let mut v = Vec::with_capacity(25);
+    v.extend(b"NOM\x00");
+    v.push(kind.into());
+    v.extend(fingerprint);
+    v.extend(nsid.as_ref());
+    v
+}
+
+pub fn op_return_v1(pubkey: XOnlyPublicKey, name: &str, kind: NomenKind) -> Vec<u8> {
+    let mut v = Vec::with_capacity(80);
+    v.extend(b"NOM\x01");
+    v.push(kind.into());
+    v.extend(pubkey.serialize());
+    v.extend(name.as_bytes());
+    v
+}
+
+pub fn name_event(
+    pubkey: XOnlyPublicKey,
+    records: &HashMap<String, String>,
+    name: &str,
+) -> anyhow::Result<UnsignedEvent> {
+    let records = serde_json::to_string(&records)?;
+    let nsid = NsidBuilder::new(name, &pubkey).finalize();
+    let event = EventBuilder::new(
+        NameKind::Name.into(),
+        records,
+        &[
+            Tag::Identifier(nsid.to_string()),
+            Tag::Generic(TagKind::Custom("nom".to_owned()), vec![name.to_owned()]),
+        ],
+    )
+    .to_unsigned_event(pubkey);
+
+    Ok(event)
 }

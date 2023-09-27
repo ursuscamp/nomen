@@ -9,10 +9,7 @@ use axum::{
 use sqlx::SqlitePool;
 use tokio::time::{interval, MissedTickBehavior};
 
-use crate::{
-    config::{Cli, Config, ServerSubcommand},
-    subcommands,
-};
+use crate::{config::Config, subcommands};
 
 use self::site::ErrorTemplate;
 
@@ -48,17 +45,13 @@ pub struct AppState {
     pool: SqlitePool,
 }
 
-pub async fn start(
-    config: &Config,
-    conn: &SqlitePool,
-    server: &ServerSubcommand,
-) -> anyhow::Result<()> {
-    if !server.without_indexer {
-        let _indexer = tokio::spawn(indexer(config.clone(), server.clone()));
+pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
+    if config.indexer() {
+        let _indexer = tokio::spawn(indexer(config.clone()));
     }
     let mut app = Router::new();
 
-    if !server.without_explorer {
+    if config.explorer() {
         app = app
             .route("/", get(site::index))
             .route("/explorer", get(site::explorer))
@@ -75,7 +68,7 @@ pub async fn start(
             );
     }
 
-    if !server.without_api {
+    if config.api() {
         app = app
             .route("/api/name", get(api::name))
             .route("/api/op_return/v0", get(api::op_return_v0))
@@ -100,11 +93,11 @@ pub async fn start(
         .await?;
 
     log::info!("Server shutdown complete.");
-    elegant_departure::shutdown();
+    elegant_departure::shutdown().await;
     Ok(())
 }
 
-async fn indexer(config: Config, server: ServerSubcommand) -> anyhow::Result<()> {
+async fn indexer(config: Config) -> anyhow::Result<()> {
     let mut interval = interval(Duration::from_secs(config.server_indexer_delay()));
     interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
@@ -115,30 +108,24 @@ async fn indexer(config: Config, server: ServerSubcommand) -> anyhow::Result<()>
         }
         interval.tick().await;
     }
-    Ok(())
 }
 
 mod site {
     use std::collections::HashMap;
 
-    use anyhow::{anyhow, bail};
     use axum::{
-        extract::{rejection::FailedToDeserializeForm, Path, Query, State},
-        http::StatusCode,
+        extract::{Path, Query, State},
         Form,
     };
     use axum_extra::extract::WithRejection;
-    use bitcoin::{address::NetworkUnchecked, psbt::Psbt, Address, Transaction, Txid};
-    use bitcoincore_rpc::RawTx;
+    use bitcoin::psbt::Psbt;
     use itertools::Itertools;
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
-    use sqlx::SqlitePool;
 
     use crate::{
-        config::{Cli, TxInfo},
-        db::{self, name_available, NameDetails},
-        subcommands::{insert_outputs, name_event, util::check_name_availability},
+        db::{self, NameDetails},
+        subcommands::util::{check_name_availability, insert_outputs, name_event},
         util::{self, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
@@ -259,7 +246,7 @@ mod site {
 
     pub async fn new_name_submit(
         State(state): State<AppState>,
-        WithRejection(Form(mut form), _): WithRejection<Form<NewNameForm>, WebError>,
+        WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
     ) -> Result<NewNameTemplate, WebError> {
         let name: Name = form.name.parse()?;
         check_name_availability(&state.config, form.name.as_ref()).await?;
@@ -343,7 +330,6 @@ mod site {
         State(state): State<AppState>,
         Form(form): Form<NewRecordsForm>,
     ) -> Result<NewRecordsTemplate, WebError> {
-        let name: Name = form.name.parse()?;
         let records = form
             .records
             .lines()
@@ -433,10 +419,10 @@ mod api {
     };
     use secp256k1::XOnlyPublicKey;
     use serde::{Deserialize, Serialize};
-    use sqlx::SqlitePool;
 
     use crate::{
         db,
+        subcommands::util,
         util::{Hash160, NomenKind, NsidBuilder},
     };
 
@@ -477,7 +463,7 @@ mod api {
             .chain_update(query.name.as_bytes())
             .fingerprint();
         let nsid = NsidBuilder::new(&query.name, &query.pubkey).finalize();
-        let bytes = super::subcommands::name::op_return_v0(fingerprint, nsid, NomenKind::Create);
+        let bytes = util::op_return_v0(fingerprint, nsid, NomenKind::Create);
         let h = OpReturnResponse {
             op_return: vec![hex::encode(bytes)],
         };
@@ -489,8 +475,7 @@ mod api {
         Query(query): Query<OpReturnQuery>,
     ) -> Result<Json<OpReturnResponse>, WebError> {
         // TODO: validate name length and format
-        let bytes =
-            super::subcommands::name::op_return_v1(query.pubkey, &query.name, NomenKind::Create);
+        let bytes = util::op_return_v1(query.pubkey, &query.name, NomenKind::Create);
         let orr = OpReturnResponse {
             op_return: vec![hex::encode(bytes)],
         };

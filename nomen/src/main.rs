@@ -1,12 +1,11 @@
-#![allow(unused)]
-
 mod config;
 mod db;
 mod subcommands;
 
+use anyhow::bail;
 use clap::Parser;
 
-use config::{Cli, Config, ConfigFile};
+use config::Config;
 use nomen_core::*;
 
 #[tokio::main]
@@ -17,39 +16,24 @@ async fn main() -> anyhow::Result<()> {
     let pool = db::initialize(&config).await?;
 
     match &config.cli.subcommand {
-        config::Subcommand::Noop => {}
-        config::Subcommand::Util(util) => match util {
-            config::UtilSubcommand::GenerateKeypair => subcommands::util::generate_keypair(),
-            config::UtilSubcommand::Init { file } => subcommands::util::init_config(file)?,
-            config::UtilSubcommand::SignEvent(event) => {
-                subcommands::util::sign_event(&config, event).await?
-            }
-            config::UtilSubcommand::Lookup { name } => {
-                subcommands::util::lookup(&config, name.as_str()).await?
-            }
-            config::UtilSubcommand::OpReturn { name, pubkey, kind } => {
-                subcommands::util::op_return(name, pubkey, *kind)?
-            }
-        },
-        config::Subcommand::Name(name) => subcommands::name(&config, name).await?,
+        config::Subcommand::Init => subcommands::init()?,
         config::Subcommand::Index => subcommands::index(&config).await?,
-        config::Subcommand::Server(server) => subcommands::start(&config, &pool, server).await?,
+        config::Subcommand::Server => subcommands::start(&config, &pool).await?,
     }
 
     Ok(())
 }
 
 fn parse_config() -> anyhow::Result<Config> {
-    let mut cli = config::Cli::parse();
-    let config_name = cli.config.clone().unwrap_or_else(|| "nomen.toml".into());
+    let cli = config::Cli::parse();
 
-    let file = if config_name.is_file() {
-        let config_str = std::fs::read_to_string(config_name)?;
+    let file = if cli.config.is_file() {
+        let config_str = std::fs::read_to_string(&cli.config)?;
 
         toml::from_str(&config_str)?
     } else {
-        log::info!("Config file not found. Skipping.");
-        ConfigFile::default()
+        log::error!("Config file not found.");
+        bail!("Missing config file.")
     };
 
     let config = Config::new(cli, file);

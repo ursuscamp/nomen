@@ -38,7 +38,7 @@ If a claim is made to a name after the first initial claim, it is invalid.
 
 ### Transferring a name
 
-Transferring a name requires publishing a Bitcoin transaction with two `OP_RETURN` outputs.
+Transferring a name requires publishing two Bitcoin transactions with an `OP_RETURN` output in each.
 
 The first output should take this form: `OP_RETURN NOM 0x01 0x01 <NEW PUBLIC KEY> <NAME>`. It is similar to a create, but the key is the public key of the new owner.
 
@@ -60,7 +60,7 @@ This event should be serialized and signed like any Nostr event, and the 32-byte
 
 This event **should not** be broadcast. The format of a Nostr event for the signature was chosen so that these `OP_RETURN` outputs could be generated in browsers and signed by a user's [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md)-compliant Nostr browser extension.
 
-The signature output should **immediately follow** the transfer output. If the signature output does not immediately follow the transfer output, it is invalid.
+When encountering a transfer output, an indexer should cache the transfer. When encountering a signature output, the indexer should scan the transfer cache for matching transfers. If the signature matches any transfers, that transfer becomes valid.
 
 ### Legacy protocol v0 names
 
