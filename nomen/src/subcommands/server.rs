@@ -86,13 +86,13 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
         .expect("Server bind unconfigured")
         .parse()?;
 
-    log::info!("Starting server on {addr}");
+    tracing::info!("Starting server on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
         .await?;
 
-    log::info!("Server shutdown complete.");
+    tracing::info!("Server shutdown complete.");
     elegant_departure::shutdown().await;
     Ok(())
 }
@@ -104,7 +104,7 @@ async fn indexer(config: Config) -> anyhow::Result<()> {
     loop {
         match subcommands::index(&config).await {
             Ok(_) => {}
-            Err(err) => log::error!("Indexing error: {}", err),
+            Err(err) => tracing::error!("Indexing error: {}", err),
         }
         interval.tick().await;
     }

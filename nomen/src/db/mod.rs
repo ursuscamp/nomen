@@ -49,7 +49,7 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     for (idx, migration) in MIGRATIONS[version as usize..].iter().enumerate() {
         let version = idx as i64 + version;
         let mut tx = conn.begin().await?;
-        log::debug!("Migrations schema version {version}");
+        tracing::debug!("Migrations schema version {version}");
         sqlx::query(migration).execute(&mut tx).await?;
         sqlx::query("INSERT INTO schema (version) VALUES (?);")
             .bind(version)

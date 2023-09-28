@@ -32,7 +32,7 @@ pub async fn raw_index(
         .max(config.starting_block_height());
     let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
-    log::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
+    tracing::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
     let min_confirmations = config.confirmations()?;
 
     let _thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
@@ -42,12 +42,12 @@ pub async fn raw_index(
         loop {
             // If the channel is closed, let's stop
             if sender.is_closed() {
-                log::info!("Stopping index operation.");
+                tracing::info!("Stopping index operation.");
                 break;
             }
 
             if (blockinfo.confirmations as usize) < min_confirmations {
-                log::info!(
+                tracing::info!(
                     "Minimum confirmations not met at block height {}.",
                     blockinfo.height
                 );
@@ -55,7 +55,7 @@ pub async fn raw_index(
             }
 
             if blockinfo.height % 10 == 0 {
-                log::info!("Index block height {}", blockinfo.height);
+                tracing::info!("Index block height {}", blockinfo.height);
             }
 
             let block = client.get_block(&blockhash)?;
@@ -118,7 +118,7 @@ pub async fn raw_index(
                         if let Err(e) = db::insert_raw_blockchain(pool, &raw_blockchain)
                         .await
                         {
-                            log::error!("Index error: {e}");
+                            tracing::error!("Index error: {e}");
                         }
                         insert_index_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
                     }
@@ -137,7 +137,7 @@ pub async fn raw_index(
 
     full_index(config, pool).await?;
 
-    log::info!("Blockchain index complete.");
+    tracing::info!("Blockchain index complete.");
     Ok(())
 }
 
@@ -178,7 +178,7 @@ pub async fn full_index(
             };
             index_output(pool, i).await?;
         } else if let Ok(transfer) = TransferV1::try_from(row.data.as_ref()) {
-            log::info!("Caching transfer for {}", transfer.name);
+            tracing::info!("Caching transfer for {}", transfer.name);
             let i = BlockchainIndex {
                 protocol: 1,
                 fingerprint: transfer.fingerprint(),
@@ -194,10 +194,10 @@ pub async fn full_index(
             };
             cache_transfer(pool, i).await?;
         } else if let Ok(signature) = SignatureV1::try_from(row.data.as_ref()) {
-            log::info!("Signature found");
+            tracing::info!("Signature found");
             check_signature(pool, signature.signature).await?;
         } else {
-            log::error!("Index error");
+            tracing::error!("Index error");
         }
     }
     Ok(())
@@ -230,14 +230,14 @@ async fn check_signature(
         };
         let unsigned_event = tb.unsigned_event(&old_owner);
         if unsigned_event.add_signature(signature).is_ok() {
-            log::info!(
+            tracing::info!(
                 "Valid signature found for {name}, updating owner to {}!",
                 hex::encode(new_owner.serialize())
             );
             let nsid = NsidBuilder::new(name.as_str(), &new_owner).finalize();
             db::update_index_for_transfer(conn, nsid, new_owner, old_owner, name).await?;
 
-            log::info!("Deleting record from transfer_cache");
+            tracing::info!("Deleting record from transfer_cache");
             db::delete_from_transfer_cache(conn, row.3).await?;
 
             break;
@@ -248,7 +248,7 @@ async fn check_signature(
 }
 
 async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Result<()> {
-    log::info!(
+    tracing::info!(
         "NOM output found: {}, name: {:?}, protocol: {}",
         index.nsid,
         index.name,
@@ -259,13 +259,13 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
     if index.protocol == 1 {
         if let Some(name) = &index.name {
             if let Some(pubkey) = &index.pubkey {
-                log::info!("Checking for upgrade");
+                tracing::info!("Checking for upgrade");
                 match db::upgrade_v0_to_v1(conn, name, *pubkey).await? {
                     db::UpgradeStatus::Upgraded => {
-                        log::info!("Name '{name}' upgraded from v0 to v1.");
+                        tracing::info!("Name '{name}' upgraded from v0 to v1.");
                     }
                     db::UpgradeStatus::NotUpgraded => {
-                        log::info!("No upgrade found!");
+                        tracing::info!("No upgrade found!");
                         db::insert_blockchain_index(conn, &index).await?;
                     }
                 }
@@ -312,7 +312,7 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
                 if blockinfo.confirmations >= 0 {
                     next_block = None;
                 } else {
-                    log::info!(
+                    tracing::info!(
                         "Stale block {} detected at height {}",
                         blockinfo.hash,
                         blockinfo.height
@@ -328,7 +328,7 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
 
     // Delete entries from blockchain table
     if let Some(stale_block) = stale_block {
-        log::info!("Reindexing beginning at height {stale_block}");
+        tracing::info!("Reindexing beginning at height {stale_block}");
         let mut tx = pool.begin().await?;
         sqlx::query("DELETE FROM raw_blockchain WHERE blockheight >= ?;")
             .bind(stale_block as i32)

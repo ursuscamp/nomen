@@ -6,21 +6,21 @@ use sqlx::SqlitePool;
 use crate::{config::Config, db, subcommands::index::events::EventData, util::NameKind};
 
 pub async fn records(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
-    log::info!("Beginning indexing record events.");
+    tracing::info!("Beginning indexing record events.");
     let events = latest_events(config, pool).await?;
     for event in events {
         match EventData::from_event(&event) {
             Ok(ed) => save_event(pool, ed).await?,
-            Err(err) => log::debug!("Invalid event: {err}"),
+            Err(err) => tracing::debug!("Invalid event: {err}"),
         }
     }
 
-    log::info!("Records events indexing complete.");
+    tracing::info!("Records events indexing complete.");
     Ok(())
 }
 
 async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
-    log::info!("Saving valid event {}", ed.event_id);
+    tracing::info!("Saving valid event {}", ed.event_id);
     let EventData {
         event_id,
         fingerprint,

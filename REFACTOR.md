@@ -5,7 +5,7 @@
 - [x] Implement upgrade from v0
   - [x] V1 Create should automatically update any older matching V0 create
 - [x] Implement transfer from one to another
-- [ ] Change to use tracing and tracing::subscriber instead of log
+- [x] Change to use tracing and tracing::subscriber instead of log
 - [x] Refactor commands
   - [x] Move CLI into seperate binary?
 - [ ] Add API methods

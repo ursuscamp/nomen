@@ -10,7 +10,7 @@ use nomen_core::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
     let config = parse_config()?;
 
     let pool = db::initialize(&config).await?;
@@ -32,13 +32,13 @@ fn parse_config() -> anyhow::Result<Config> {
 
         toml::from_str(&config_str)?
     } else {
-        log::error!("Config file not found.");
+        tracing::error!("Config file not found.");
         bail!("Missing config file.")
     };
 
     let config = Config::new(cli, file);
 
-    log::debug!("Config loaded: {config:?}");
+    tracing::debug!("Config loaded: {config:?}");
 
     Ok(config)
 }
