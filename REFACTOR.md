@@ -1,7 +1,7 @@
 # Refactoring steps
 
-- [ ] Index raw_blockchain
-- [ ] Scan raw_blockchain to parse properly indexable events
+- [x] Index raw_blockchain
+- [x] Scan raw_blockchain to parse properly indexable events
 - [x] Implement upgrade from v0
   - [x] V1 Create should automatically update any older matching V0 create
 - [x] Implement transfer from one to another
@@ -12,7 +12,9 @@
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
 - [ ] Add a checkpoint system to rewind a hundred blocks back
-  - [ ] Perhaps using `last_update_blockheight`?
+  - [ ] Delete from stale blocks from `index_height`, `raw_blockchain`
+  - [ ] Delete entire `blockchain_index`
+  - [ ] Re-run blockchain index from latest
 - [ ] Update SPEC
   - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
