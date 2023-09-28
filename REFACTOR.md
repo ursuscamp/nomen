@@ -18,7 +18,7 @@
 - [ ] Update SPEC
   - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
-- [ ] Fully clippy check
+- [x] Fully clippy check
 - [ ] Remove unnecessary/unused code
 - [ ] Remove anyhow from nomen_core
 - [ ] API docs

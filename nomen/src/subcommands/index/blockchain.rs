@@ -29,12 +29,63 @@ pub async fn raw_index(
     let index_height = db::next_index_height(pool)
         .await?
         .max(config.starting_block_height());
-    let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+    let (sender, receiver) = tokio::sync::mpsc::channel(1);
 
     tracing::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
     let min_confirmations = config.confirmations();
 
-    let _thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
+    // Spawn a thread to query the Bitcoin node for new block data. Messages are sent to the queue.
+    let _thread = spawn_index_thread(client, index_height, sender, min_confirmations);
+
+    // Process the messages from the queue. This will push new NOM OP_RETURNs into the raw_blockchain table.
+    process_messages(receiver, pool).await?;
+
+    // Update the blockchain index by looping through raw_blockchain table and pocessing the saved outputs.
+    update_blockchain_index(config, pool).await?;
+
+    tracing::info!("Blockchain index complete.");
+    Ok(())
+}
+
+async fn process_messages(
+    mut receiver: tokio::sync::mpsc::Receiver<QueueMessage>,
+    pool: &sqlx::Pool<sqlx::Sqlite>,
+) -> anyhow::Result<()> {
+    let guard = elegant_departure::get_shutdown_guard();
+    'select: loop {
+        tokio::select! {
+            msg = receiver.recv() => {
+                match msg {
+                    Some(QueueMessage::RawBlockchain(raw_blockchain)) => {
+                        if let Err(e) = db::insert_raw_blockchain(pool, &raw_blockchain)
+                        .await
+                        {
+                            tracing::error!("Index error: {e}");
+                        }
+                        insert_index_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
+                    }
+                    Some(QueueMessage::Index {blockheight, blockhash}) => {
+                        insert_index_height(pool, blockheight, &blockhash).await?;
+                    },
+                    None => break 'select,
+                }
+            }
+            _ = guard.wait() => {
+                receiver.close();
+                break 'select;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn spawn_index_thread(
+    client: Client,
+    index_height: usize,
+    sender: tokio::sync::mpsc::Sender<QueueMessage>,
+    min_confirmations: usize,
+) -> tokio::task::JoinHandle<Result<(), anyhow::Error>> {
+    tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut blockhash = client.get_block_hash(index_height as u64)?;
         let mut blockinfo = client.get_block_header_info(&blockhash)?;
 
@@ -106,41 +157,10 @@ pub async fn raw_index(
         }
 
         Ok(())
-    });
-
-    let guard = elegant_departure::get_shutdown_guard();
-    'select: loop {
-        tokio::select! {
-            msg = receiver.recv() => {
-                match msg {
-                    Some(QueueMessage::RawBlockchain(raw_blockchain)) => {
-                        if let Err(e) = db::insert_raw_blockchain(pool, &raw_blockchain)
-                        .await
-                        {
-                            tracing::error!("Index error: {e}");
-                        }
-                        insert_index_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
-                    }
-                    Some(QueueMessage::Index {blockheight, blockhash}) => {
-                        insert_index_height(pool, blockheight, &blockhash).await?;
-                    },
-                    None => break 'select,
-                }
-            }
-            _ = guard.wait() => {
-                receiver.close();
-                break 'select;
-            }
-        }
-    }
-
-    full_index(config, pool).await?;
-
-    tracing::info!("Blockchain index complete.");
-    Ok(())
+    })
 }
 
-pub async fn full_index(
+pub async fn update_blockchain_index(
     _config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(), anyhow::Error> {
