@@ -1,17 +1,17 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use bitcoin::{BlockHash, Txid};
 use nomen_core::util::Name;
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
-use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
+use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
 
 use crate::{
     config::Config,
     util::{self, Hash160, Nsid, NsidBuilder},
 };
 
-static MIGRATIONS: [&str; 11] = [
+static MIGRATIONS: [&str; 12] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE raw_blockchain (id INTEGER PRIMARY KEY, blockhash, txid, blocktime, blockheight, txheight, vout, data, indexed_at);",
@@ -24,6 +24,10 @@ static MIGRATIONS: [&str; 11] = [
         FROM ordered_blockchain_vw",
     "CREATE VIEW valid_names_vw AS
         SELECT * FROM ranked_blockchain_vw WHERE rank = 1;",
+    "CREATE VIEW valid_names_records_vw AS
+        SELECT vn.*, COALESCE(ne.records, '{}') as records
+        FROM valid_names_vw vn
+        LEFT JOIN name_events ne ON vn.nsid = ne.nsid;",
     "CREATE TABLE transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
@@ -65,6 +69,23 @@ pub struct RawBlockchain {
     pub txheight: usize,
     pub vout: usize,
     pub data: Vec<u8>,
+}
+
+impl FromRow<'_, SqliteRow> for RawBlockchain {
+    fn from_row(row: &'_ SqliteRow) -> Result<Self, sqlx::Error> {
+        Ok(RawBlockchain {
+            blockhash: BlockHash::from_str(row.try_get("blockhash")?)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
+            txid: Txid::from_str(row.try_get("txid")?)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
+            blocktime: row.try_get::<i64, _>("blocktime")? as usize,
+            blockheight: row.try_get::<i64, _>("blockheight")? as usize,
+            txheight: row.try_get::<i64, _>("txheight")? as usize,
+            vout: row.try_get::<i64, _>("vout")? as usize,
+            data: hex::decode(row.try_get::<String, _>("data")?)
+                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
+        })
+    }
 }
 
 pub async fn insert_raw_blockchain(
@@ -203,12 +224,13 @@ pub struct NameDetails {
 }
 
 pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
-    let details =
-        sqlx::query_as::<_, NameDetails>("SELECT * FROM valid_names_vw WHERE nsid = ? or name = ?")
-            .bind(query)
-            .bind(query)
-            .fetch_one(conn)
-            .await?;
+    let details = sqlx::query_as::<_, NameDetails>(
+        "SELECT * from valid_names_records_vw vn WHERE vn.nsid = ? or vn.name = ?",
+    )
+    .bind(query)
+    .bind(query)
+    .fetch_one(conn)
+    .await?;
     Ok(details)
 }
 
@@ -253,7 +275,10 @@ pub async fn name_records(
         .chain_update(name.as_bytes())
         .fingerprint();
     let content = sqlx::query_as::<_, (String,)>(
-        "SELECT coalesce(records, '{}') from valid_names_vw where fingerprint = ? LIMIT 1;",
+        "SELECT coalesce(ne.records, '{}')
+        FROM valid_names_vw vn
+        JOIN name_events ne ON vn.nsid = ne.nsid
+        WHERE vn.fingerprint = ? LIMIT 1;",
     )
     .bind(hex::encode(fingerprint))
     .fetch_optional(conn)

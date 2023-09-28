@@ -1,3 +1,4 @@
+use bitcoin::BlockHash;
 use bitcoincore_rpc::{Client, RpcApi};
 use futures::TryStreamExt;
 use nomen_core::util::{NsidBuilder, SignatureV1, TransferBuilder};
@@ -12,12 +13,16 @@ use crate::{
 
 enum QueueMessage {
     RawBlockchain(RawBlockchain),
-    BlockchainIndex(BlockchainIndex),
-    TransferCache(BlockchainIndex),
-    TransferSignature(Signature),
+    Index {
+        blockheight: i64,
+        blockhash: BlockHash,
+    },
 }
 
-pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
+pub async fn raw_index(
+    config: &Config,
+    pool: &sqlx::Pool<sqlx::Sqlite>,
+) -> Result<(), anyhow::Error> {
     // Check if the index is on a stale chain, and rewind the index if necessary
     rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
 
@@ -72,92 +77,22 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
                                 data: b.to_vec(),
                             };
                             sender
-                                .blocking_send((
-                                    (blockinfo.height, blockhash),
-                                    Some(QueueMessage::RawBlockchain(raw_blockchain)),
-                                ))
+                                .blocking_send(QueueMessage::RawBlockchain(raw_blockchain))
                                 .ok();
-
-                            if let Ok(create) = CreateV0::try_from(b) {
-                                let i = BlockchainIndex {
-                                    protocol: 0,
-                                    fingerprint: create.fingerprint,
-                                    nsid: create.nsid,
-                                    name: None,
-                                    pubkey: None,
-                                    blockhash,
-                                    txid: tx.txid(),
-                                    blocktime: blockinfo.time,
-                                    blockheight: blockinfo.height,
-                                    txheight,
-                                    vout,
-                                };
-                                sender
-                                    .blocking_send((
-                                        (blockinfo.height, blockhash),
-                                        Some(QueueMessage::BlockchainIndex(i)),
-                                    ))
-                                    .ok();
-                            } else if let Ok(create) = CreateV1::try_from(b) {
-                                let i = BlockchainIndex {
-                                    protocol: 1,
-                                    fingerprint: create.fingerprint(),
-                                    nsid: create.nsid(),
-                                    name: Some(create.name),
-                                    pubkey: Some(create.pubkey),
-                                    blockhash,
-                                    txid: tx.txid(),
-                                    blocktime: blockinfo.time,
-                                    blockheight: blockinfo.height,
-                                    txheight,
-                                    vout,
-                                };
-                                sender
-                                    .blocking_send((
-                                        (blockinfo.height, blockhash),
-                                        Some(QueueMessage::BlockchainIndex(i)),
-                                    ))
-                                    .ok();
-                            } else if let Ok(transfer) = TransferV1::try_from(b) {
-                                log::info!("Caching transfer for {}", transfer.name);
-                                let i = BlockchainIndex {
-                                    protocol: 1,
-                                    fingerprint: transfer.fingerprint(),
-                                    nsid: transfer.nsid(),
-                                    name: Some(transfer.name),
-                                    pubkey: Some(transfer.pubkey),
-                                    blockhash,
-                                    txid: tx.txid(),
-                                    blocktime: blockinfo.time,
-                                    blockheight: blockinfo.height,
-                                    txheight,
-                                    vout,
-                                };
-                                sender
-                                    .blocking_send((
-                                        (blockinfo.height, blockhash),
-                                        Some(QueueMessage::TransferCache(i)),
-                                    ))
-                                    .ok();
-                            } else if let Ok(signature) = SignatureV1::try_from(b) {
-                                log::info!("Signature found");
-                                sender
-                                    .blocking_send((
-                                        (blockinfo.height, blockhash),
-                                        Some(QueueMessage::TransferSignature(signature.signature)),
-                                    ))
-                                    .ok();
-                            } else {
-                                log::error!("Index error");
-                            }
                         } else {
                             sender
-                                .blocking_send(((blockinfo.height, blockhash), None))
+                                .blocking_send(QueueMessage::Index {
+                                    blockheight: blockinfo.height as i64,
+                                    blockhash,
+                                })
                                 .ok();
                         }
                     } else {
                         sender
-                            .blocking_send(((blockinfo.height, blockhash), None))
+                            .blocking_send(QueueMessage::Index {
+                                blockheight: blockinfo.height as i64,
+                                blockhash,
+                            })
                             .ok();
                     }
                 }
@@ -179,19 +114,16 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         tokio::select! {
             msg = receiver.recv() => {
                 match msg {
-                    Some(((height, hash), Some(i))) => {
-                        if let Err(e) = handle_message(
-                            pool,
-                            i
-                        )
+                    Some(QueueMessage::RawBlockchain(raw_blockchain)) => {
+                        if let Err(e) = db::insert_raw_blockchain(pool, &raw_blockchain)
                         .await
                         {
                             log::error!("Index error: {e}");
                         }
-                        insert_index_height(pool, height as i64, &hash).await?;
+                        insert_index_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
                     }
-                    Some(((height, hash), None)) => {
-                        insert_index_height(pool, height as i64, &hash).await?;
+                    Some(QueueMessage::Index {blockheight, blockhash}) => {
+                        insert_index_height(pool, blockheight, &blockhash).await?;
                     },
                     None => break 'select,
                 }
@@ -203,18 +135,71 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
         }
     }
 
+    full_index(config, pool).await?;
+
     log::info!("Blockchain index complete.");
     Ok(())
 }
 
-async fn handle_message(conn: &SqlitePool, message: QueueMessage) -> anyhow::Result<()> {
-    match message {
-        QueueMessage::RawBlockchain(raw) => db::insert_raw_blockchain(conn, &raw).await?,
-        QueueMessage::BlockchainIndex(index) => index_output(conn, index).await?,
-        QueueMessage::TransferCache(index) => cache_transer(conn, index).await?,
-        QueueMessage::TransferSignature(signature) => check_signature(conn, signature).await?,
+pub async fn full_index(
+    _config: &Config,
+    pool: &sqlx::Pool<sqlx::Sqlite>,
+) -> Result<(), anyhow::Error> {
+    let mut rows = sqlx::query_as::<_, RawBlockchain>("select * from raw_blockchain rb where rb.blockheight >= (select coalesce(max(blockheight), 0) from blockchain_index);").fetch(pool);
+    while let Some(row) = rows.try_next().await? {
+        if let Ok(create) = CreateV0::try_from(row.data.as_ref()) {
+            let i = BlockchainIndex {
+                protocol: 0,
+                fingerprint: create.fingerprint,
+                nsid: create.nsid,
+                name: None,
+                pubkey: None,
+                blockhash: row.blockhash,
+                txid: row.txid,
+                blocktime: row.blocktime,
+                blockheight: row.blockheight,
+                txheight: row.txheight,
+                vout: row.vout,
+            };
+            index_output(pool, i).await?;
+        } else if let Ok(create) = CreateV1::try_from(row.data.as_ref()) {
+            let i = BlockchainIndex {
+                protocol: 1,
+                fingerprint: create.fingerprint(),
+                nsid: create.nsid(),
+                name: Some(create.name),
+                pubkey: Some(create.pubkey),
+                blockhash: row.blockhash,
+                txid: row.txid,
+                blocktime: row.blocktime,
+                blockheight: row.blockheight,
+                txheight: row.txheight,
+                vout: row.vout,
+            };
+            index_output(pool, i).await?;
+        } else if let Ok(transfer) = TransferV1::try_from(row.data.as_ref()) {
+            log::info!("Caching transfer for {}", transfer.name);
+            let i = BlockchainIndex {
+                protocol: 1,
+                fingerprint: transfer.fingerprint(),
+                nsid: transfer.nsid(),
+                name: Some(transfer.name),
+                pubkey: Some(transfer.pubkey),
+                blockhash: row.blockhash,
+                txid: row.txid,
+                blocktime: row.blocktime,
+                blockheight: row.blockheight,
+                txheight: row.txheight,
+                vout: row.vout,
+            };
+            cache_transfer(pool, i).await?;
+        } else if let Ok(signature) = SignatureV1::try_from(row.data.as_ref()) {
+            log::info!("Signature found");
+            check_signature(pool, signature.signature).await?;
+        } else {
+            log::error!("Index error");
+        }
     }
-
     Ok(())
 }
 
@@ -293,7 +278,7 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
     Ok(())
 }
 
-async fn cache_transer(
+async fn cache_transfer(
     conn: &sqlx::Pool<sqlx::Sqlite>,
     index: BlockchainIndex,
 ) -> anyhow::Result<()> {
