@@ -80,8 +80,8 @@ impl Config {
 
     pub fn starting_block_height(&self) -> usize {
         match self.network() {
-            Network::Bitcoin => 790500,
-            Network::Signet => 143500,
+            Network::Bitcoin => 790_500,
+            Network::Signet => 143_500,
             _ => 0,
         }
     }
@@ -137,8 +137,8 @@ impl Config {
         self.file.server.indexer_delay.unwrap_or(30)
     }
 
-    pub fn confirmations(&self) -> anyhow::Result<usize> {
-        Ok(self.file.server.confirmations.unwrap_or(3))
+    pub fn confirmations(&self) -> usize {
+        self.file.server.confirmations.unwrap_or(3)
     }
 
     pub fn indexer(&self) -> bool {

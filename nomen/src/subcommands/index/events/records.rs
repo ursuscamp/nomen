@@ -1,9 +1,10 @@
 use std::time::Duration;
 
+use nomen_core::util::NameKind;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 
-use crate::{config::Config, db, subcommands::index::events::EventData, util::NameKind};
+use crate::{config::Config, db, subcommands::index::events::EventData};
 
 pub async fn records(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     tracing::info!("Beginning indexing record events.");

@@ -6,15 +6,11 @@ use bitcoin::{
     script::PushBytesBuf,
     ScriptBuf, TxOut,
 };
-use nomen_core::util::{NameKind, Nsid};
+use nomen_core::util::{NameKind, NomenKind, Nsid, NsidBuilder};
 use nostr_sdk::{EventBuilder, Tag, TagKind, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
 
-use crate::{
-    config::Config,
-    db,
-    util::{NomenKind, NsidBuilder},
-};
+use crate::{config::Config, db};
 
 pub async fn check_name_availability(config: &Config, name: &str) -> anyhow::Result<()> {
     let conn = config.sqlite().await?;

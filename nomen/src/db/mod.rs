@@ -1,15 +1,12 @@
 use std::{collections::HashMap, str::FromStr};
 
 use bitcoin::{BlockHash, Txid};
-use nomen_core::util::Name;
+use nomen_core::util::{self, Hash160, Name, Nsid, NsidBuilder};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
 
-use crate::{
-    config::Config,
-    util::{self, Hash160, Nsid, NsidBuilder},
-};
+use crate::config::Config;
 
 static MIGRATIONS: [&str; 12] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
@@ -165,6 +162,7 @@ pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
         sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM index_height;")
             .fetch_one(conn)
             .await?;
+
     Ok(h as usize)
 }
 

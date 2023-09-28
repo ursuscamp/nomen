@@ -1,3 +1,12 @@
+#![warn(
+    clippy::suspicious,
+    clippy::complexity,
+    clippy::perf,
+    clippy::style,
+    clippy::pedantic
+)]
+#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+
 mod config;
 mod db;
 mod subcommands;
@@ -6,7 +15,6 @@ use anyhow::bail;
 use clap::Parser;
 
 use config::Config;
-use nomen_core::*;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

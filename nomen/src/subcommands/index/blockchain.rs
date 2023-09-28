@@ -1,14 +1,13 @@
 use bitcoin::BlockHash;
 use bitcoincore_rpc::{Client, RpcApi};
 use futures::TryStreamExt;
-use nomen_core::util::{NsidBuilder, SignatureV1, TransferBuilder};
+use nomen_core::util::{CreateV0, CreateV1, NsidBuilder, SignatureV1, TransferBuilder, TransferV1};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
     db::{self, insert_index_height, BlockchainIndex, RawBlockchain},
-    util::{CreateV0, CreateV1, TransferV1},
 };
 
 enum QueueMessage {
@@ -33,7 +32,7 @@ pub async fn raw_index(
     let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
 
     tracing::info!("Scanning new blocks for indexable NOM outputs at height {index_height}");
-    let min_confirmations = config.confirmations()?;
+    let min_confirmations = config.confirmations();
 
     let _thread = tokio::task::spawn_blocking(move || -> anyhow::Result<_> {
         let mut blockhash = client.get_block_hash(index_height as u64)?;
@@ -331,15 +330,15 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
         tracing::info!("Reindexing beginning at height {stale_block}");
         let mut tx = pool.begin().await?;
         sqlx::query("DELETE FROM raw_blockchain WHERE blockheight >= ?;")
-            .bind(stale_block as i32)
+            .bind(stale_block as i64)
             .execute(&mut tx)
             .await?;
         sqlx::query("DELETE FROM blockchain WHERE blockheight >= ?;")
-            .bind(stale_block as i32)
+            .bind(stale_block as i64)
             .execute(&mut tx)
             .await?;
         sqlx::query("DELETE FROM index_height WHERE blockheight >= ?;")
-            .bind(stale_block as i32)
+            .bind(stale_block as i64)
             .execute(&mut tx)
             .await?;
         tx.commit().await?;

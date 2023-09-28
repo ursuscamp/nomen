@@ -120,13 +120,13 @@ mod site {
     use axum_extra::extract::WithRejection;
     use bitcoin::psbt::Psbt;
     use itertools::Itertools;
+    use nomen_core::util::{self, Hash160, KeyVal, Name, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
 
     use crate::{
         db::{self, NameDetails},
         subcommands::util::{check_name_availability, insert_outputs, name_event},
-        util::{self, Hash160, KeyVal, Name, NomenKind, NsidBuilder},
     };
 
     use super::{AppState, WebError};
@@ -141,6 +141,7 @@ mod site {
     #[template(path = "index.html")]
     pub struct IndexTemplate {}
 
+    #[allow(clippy::unused_async)]
     pub async fn index() -> IndexTemplate {
         IndexTemplate {}
     }
@@ -237,9 +238,10 @@ mod site {
         pubkey: XOnlyPublicKey,
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn new_name_form(State(state): State<AppState>) -> Result<NewNameTemplate, WebError> {
         Ok(NewNameTemplate {
-            confirmations: state.config.confirmations()?,
+            confirmations: state.config.confirmations(),
             ..Default::default()
         })
     }
@@ -260,7 +262,7 @@ mod site {
             psbt: psbt.to_string(),
             name: form.name,
             pubkey: form.pubkey.to_string(),
-            confirmations: state.config.confirmations()?,
+            confirmations: state.config.confirmations(),
         })
     }
 
@@ -288,7 +290,7 @@ mod site {
         Ok(NewRecordsTemplate {
             name: query.name.unwrap_or_default(),
             pubkey: query.pubkey.map(|s| s.to_string()).unwrap_or_default(),
-            unsigned_event: Default::default(),
+            unsigned_event: String::default(),
             relays: state.config.relays(),
             records,
         })
@@ -326,6 +328,7 @@ mod site {
         pubkey: XOnlyPublicKey,
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn new_records_submit(
         State(state): State<AppState>,
         Form(form): Form<NewRecordsForm>,
@@ -333,7 +336,7 @@ mod site {
         let records = form
             .records
             .lines()
-            .map(|line| line.parse::<KeyVal>())
+            .map(str::parse)
             .collect::<Result<Vec<KeyVal>, _>>()?
             .iter()
             .map(|kv| kv.clone().pair())
@@ -417,14 +420,11 @@ mod api {
         extract::{Query, State},
         Json,
     };
+    use nomen_core::util::{Hash160, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::{Deserialize, Serialize};
 
-    use crate::{
-        db,
-        subcommands::util,
-        util::{Hash160, NomenKind, NsidBuilder},
-    };
+    use crate::{db, subcommands::util};
 
     use super::{AppState, WebError};
 
@@ -455,6 +455,7 @@ mod api {
         op_return: Vec<String>,
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn op_return_v0(
         Query(query): Query<OpReturnQuery>,
     ) -> Result<Json<OpReturnResponse>, WebError> {
@@ -471,6 +472,7 @@ mod api {
         Ok(Json(h))
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn op_return_v1(
         Query(query): Query<OpReturnQuery>,
     ) -> Result<Json<OpReturnResponse>, WebError> {
