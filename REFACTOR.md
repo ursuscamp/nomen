@@ -11,10 +11,10 @@
 - [ ] Add API methods
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
-- [ ] Add a checkpoint system to rewind a hundred blocks back
-  - [ ] Delete from stale blocks from `index_height`, `raw_blockchain`
-  - [ ] Delete entire `blockchain_index`
-  - [ ] Re-run blockchain index from latest
+- [x] Add a checkpoint system to rewind a hundred blocks back
+  - [x] Delete entire `blockchain_index`
+  - [x] Delete from stale blocks from `index_height`, `raw_blockchain`
+  - [x] Re-run blockchain index from latest
 - [ ] Update SPEC
   - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
