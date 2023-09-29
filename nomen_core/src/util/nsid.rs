@@ -15,13 +15,13 @@ pub struct Nsid([u8; 20]);
 
 impl Nsid {
     #[allow(dead_code)]
-    pub fn from_slice(bytes: &[u8]) -> anyhow::Result<Nsid> {
+    pub fn from_slice(bytes: &[u8]) -> Result<Nsid, super::UtilError> {
         Ok(Nsid(bytes.try_into()?))
     }
 }
 
 impl TryFrom<&[u8]> for Nsid {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Nsid::from_slice(value)
@@ -29,7 +29,7 @@ impl TryFrom<&[u8]> for Nsid {
 }
 
 impl TryFrom<Event> for Nsid {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(event: Event) -> Result<Self, Self::Error> {
         let nk: NameKind = event.kind.try_into()?;
@@ -42,7 +42,7 @@ impl TryFrom<Event> for Nsid {
 }
 
 impl FromStr for Nsid {
-    type Err = anyhow::Error;
+    type Err = super::UtilError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut out = [0u8; 20];

@@ -20,7 +20,7 @@
   - [ ] Mark correct date on spec changes section.
 - [x] Fully clippy check
 - [ ] Remove unnecessary/unused code
-- [ ] Remove anyhow from nomen_core
+- [x] Remove anyhow from nomen_core
 - [ ] API docs
 
 # Things to test after refactor

@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::bail;
 use derive_more::{AsRef, Display, Into};
 use regex::Regex;
 
@@ -8,7 +7,7 @@ use regex::Regex;
 pub struct Name(String);
 
 impl FromStr for Name {
-    type Err = anyhow::Error;
+    type Err = super::UtilError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let r = Regex::new(r#"\A[0-9a-z\-]{3,43}\z"#)?;
@@ -16,7 +15,7 @@ impl FromStr for Name {
             return Ok(Name(s.into()));
         }
 
-        bail!("Invalid name format")
+        Err(super::UtilError::NameValidation)
     }
 }
 
@@ -24,17 +23,19 @@ impl FromStr for Name {
 mod tests {
     use std::{any, collections::HashMap};
 
+    use crate::util::UtilError;
+
     use super::*;
 
     #[test]
     fn test_valid() {
-        let s: anyhow::Result<Name> = "smith".parse();
+        let s: Result<Name, UtilError> = "smith".parse();
         assert_eq!(s.unwrap(), Name("smith".to_string()))
     }
 
     #[test]
     fn test_invalid() {
-        let s: anyhow::Result<Name> = "Smith".parse();
+        let s: Result<Name, UtilError> = "Smith".parse();
         assert!(s.is_err())
     }
 }

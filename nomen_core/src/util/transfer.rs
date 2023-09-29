@@ -33,7 +33,7 @@ impl<'a> TransferBuilder<'a> {
         }
     }
 
-    pub fn signature_op_return(&self, keys: nostr_sdk::Keys) -> anyhow::Result<Vec<u8>> {
+    pub fn signature_op_return(&self, keys: nostr_sdk::Keys) -> Result<Vec<u8>, super::UtilError> {
         let unsigned_event = self.unsigned_event(&keys.public_key());
         let event = unsigned_event.sign(&keys)?;
         let v: Vec<u8> = b"NOM\x01\x02"

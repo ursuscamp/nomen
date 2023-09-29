@@ -1,6 +1,5 @@
 use std::{fmt::Display, str::FromStr};
 
-use anyhow::{anyhow, bail};
 use nostr_sdk::{EventBuilder, UnsignedEvent};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
@@ -32,12 +31,13 @@ impl Display for NomenKind {
 }
 
 impl FromStr for NomenKind {
-    type Err = anyhow::Error;
+    type Err = super::UtilError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "create" => Ok(NomenKind::Create),
-            _ => Err(anyhow!("Unrecognized Nomen transaction type")),
+            "transfer" => Ok(NomenKind::Transfer),
+            _ => Err(super::UtilError::NomenKind(s.to_string())),
         }
     }
 }
@@ -53,7 +53,7 @@ impl CreateV0 {
         CreateV0 { fingerprint, nsid }
     }
 
-    fn parse_create(value: &[u8]) -> anyhow::Result<CreateV0> {
+    fn parse_create(value: &[u8]) -> Result<CreateV0, super::UtilError> {
         Ok(CreateV0::create(
             value[..5].try_into()?,
             value[5..].try_into()?,
@@ -62,26 +62,24 @@ impl CreateV0 {
 }
 
 impl TryFrom<&[u8]> for CreateV0 {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         // TODO: refactor be closer to CreateV1 try_from
         if !value.starts_with(b"NOM") {
-            bail!("Not an Nomen transaction")
+            return Err(super::UtilError::NotNomenError);
         }
         let value = &value[3..];
 
         if !value.starts_with(&[0x00]) {
-            bail!("Unsupported Nomen version")
+            return Err(super::UtilError::UnsupportedNomenVersion);
         }
         let value = &value[1..];
 
-        let kind = match value.first() {
-            Some(0x00) => CreateV0::parse_create(&value[1..])?,
-            _ => bail!("Unexpected blockchain tx type"),
-        };
-
-        Ok(kind)
+        match value.first() {
+            Some(0x00) => Ok(CreateV0::parse_create(&value[1..])?),
+            _ => Err(super::UtilError::UnexpectedNomenTxType),
+        }
     }
 }
 
@@ -98,7 +96,7 @@ impl CreateV1 {
         }
     }
 
-    pub fn parse_create(value: &[u8]) -> anyhow::Result<CreateV1> {
+    pub fn parse_create(value: &[u8]) -> Result<CreateV1, super::UtilError> {
         // TODO: verify name validity
         Ok(CreateV1 {
             pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
@@ -118,20 +116,18 @@ impl CreateV1 {
 }
 
 impl TryFrom<&[u8]> for CreateV1 {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if !value.starts_with(b"NOM\x01") {
-            bail!("Not an Nomen V1 Create transaction")
+            return Err(super::UtilError::UnexpectedNomenTxType);
         }
         let value = &value[4..];
 
-        let kind = match value.first() {
-            Some(0x00) => CreateV1::parse_create(&value[1..])?,
-            _ => bail!("Unexpected blockchain tx type"),
-        };
-
-        Ok(kind)
+        match value.first() {
+            Some(0x00) => Ok(CreateV1::parse_create(&value[1..])?),
+            _ => Err(super::UtilError::UnexpectedNomenTxType),
+        }
     }
 }
 
@@ -148,7 +144,7 @@ impl TransferV1 {
         }
     }
 
-    pub fn parse_create(value: &[u8]) -> anyhow::Result<TransferV1> {
+    pub fn parse_create(value: &[u8]) -> Result<TransferV1, super::UtilError> {
         // TODO: verify name validity
         Ok(TransferV1 {
             pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
@@ -168,20 +164,18 @@ impl TransferV1 {
 }
 
 impl TryFrom<&[u8]> for TransferV1 {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if !value.starts_with(b"NOM\x01") {
-            bail!("Not an Nomen V1 Transfer transaction")
+            return Err(super::UtilError::UnexpectedNomenTxType);
         }
         let value = &value[4..];
 
-        let kind = match value.first() {
-            Some(0x01) => TransferV1::parse_create(&value[1..])?,
-            _ => bail!("Unexpected blockchain tx type"),
-        };
-
-        Ok(kind)
+        match value.first() {
+            Some(0x01) => Ok(TransferV1::parse_create(&value[1..])?),
+            _ => Err(super::UtilError::UnexpectedNomenTxType),
+        }
     }
 }
 
@@ -196,7 +190,7 @@ impl SignatureV1 {
         }
     }
 
-    pub fn parse_create(value: &[u8]) -> anyhow::Result<SignatureV1> {
+    pub fn parse_create(value: &[u8]) -> Result<SignatureV1, super::UtilError> {
         Ok(SignatureV1 {
             signature: Signature::from_slice(value)?,
         })
@@ -204,20 +198,18 @@ impl SignatureV1 {
 }
 
 impl TryFrom<&[u8]> for SignatureV1 {
-    type Error = anyhow::Error;
+    type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         if !value.starts_with(b"NOM\x01") {
-            bail!("Not an Nomen V1 Signature transaction")
+            return Err(super::UtilError::UnexpectedNomenTxType);
         }
         let value = &value[4..];
 
-        let kind = match value.first() {
-            Some(0x02) => SignatureV1::parse_create(&value[1..])?,
-            _ => bail!("Unexpected blockchain tx type"),
-        };
-
-        Ok(kind)
+        match value.first() {
+            Some(0x02) => Ok(SignatureV1::parse_create(&value[1..])?),
+            _ => Err(super::UtilError::UnexpectedNomenTxType),
+        }
     }
 }
 

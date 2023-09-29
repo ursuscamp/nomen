@@ -1,24 +1,31 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Context};
 use itertools::Itertools;
 use nostr_sdk::Event;
 use secp256k1::XOnlyPublicKey;
 
 use super::Nsid;
 
+#[derive(thiserror::Error, Debug)]
+#[error("event extractor")]
+pub struct ExtractorError;
+
 pub trait EventExtractor {
-    fn extract_children(&self, name: &str) -> anyhow::Result<Vec<(String, XOnlyPublicKey)>>;
-    fn extract_records(&self) -> anyhow::Result<HashMap<String, String>>;
-    fn extract_name(&self) -> anyhow::Result<String>;
-    fn extract_nsid(&self) -> anyhow::Result<Nsid>;
-    fn extract_prev_nsid(&self) -> anyhow::Result<Option<Nsid>>;
+    fn extract_children(&self, name: &str)
+        -> Result<Vec<(String, XOnlyPublicKey)>, ExtractorError>;
+    fn extract_records(&self) -> Result<HashMap<String, String>, ExtractorError>;
+    fn extract_name(&self) -> Result<String, ExtractorError>;
+    fn extract_nsid(&self) -> Result<Nsid, ExtractorError>;
+    fn extract_prev_nsid(&self) -> Result<Option<Nsid>, ExtractorError>;
 }
 
 impl EventExtractor for Event {
-    fn extract_children(&self, name: &str) -> anyhow::Result<Vec<(String, XOnlyPublicKey)>> {
+    fn extract_children(
+        &self,
+        name: &str,
+    ) -> Result<Vec<(String, XOnlyPublicKey)>, ExtractorError> {
         let s: Vec<(String, XOnlyPublicKey)> =
-            serde_json::from_str(&self.content).context("Invalid event content")?;
+            serde_json::from_str(&self.content).or(Err(ExtractorError))?;
         let children = s
             .into_iter()
             .map(|(n, pk)| (format!("{n}.{name}"), pk))
@@ -26,13 +33,12 @@ impl EventExtractor for Event {
         Ok(children)
     }
 
-    fn extract_records(&self) -> anyhow::Result<HashMap<String, String>> {
-        Ok(serde_json::from_str(&self.content)?)
+    fn extract_records(&self) -> Result<HashMap<String, String>, ExtractorError> {
+        serde_json::from_str(&self.content).or(Err(ExtractorError))
     }
 
-    fn extract_name(&self) -> anyhow::Result<String> {
-        let name = self
-            .tags
+    fn extract_name(&self) -> Result<String, ExtractorError> {
+        self.tags
             .iter()
             .filter_map(|t| match t {
                 nostr_sdk::Tag::Generic(tk, values) => match tk {
@@ -44,25 +50,24 @@ impl EventExtractor for Event {
                 _ => None,
             })
             .next()
-            .ok_or_else(|| anyhow!("Missing or invalid 'nom' tag"))?;
-        Ok(name)
+            .ok_or(ExtractorError)
     }
 
-    fn extract_nsid(&self) -> anyhow::Result<Nsid> {
-        let nsid = self
-            .tags
+    fn extract_nsid(&self) -> Result<Nsid, ExtractorError> {
+        self.tags
             .iter()
             .filter_map(|t| match t {
                 nostr_sdk::Tag::Identifier(id) => Some(id.clone()),
                 _ => None,
             })
             .next()
-            .ok_or_else(|| anyhow!("Missing 'd' tag"))?;
-        nsid.parse()
+            .ok_or(ExtractorError)?
+            .parse()
+            .or(Err(ExtractorError))
     }
 
-    fn extract_prev_nsid(&self) -> anyhow::Result<Option<Nsid>> {
-        let nn = self
+    fn extract_prev_nsid(&self) -> Result<Option<Nsid>, ExtractorError> {
+        let nsid = self
             .tags
             .iter()
             .find_map(|t| match t {
@@ -75,6 +80,6 @@ impl EventExtractor for Event {
                 _ => None,
             })
             .and_then(|s| s.parse::<Nsid>().ok());
-        Ok(nn)
+        Ok(nsid)
     }
 }

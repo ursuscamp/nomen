@@ -11,7 +11,7 @@ use secp256k1::{SecretKey, XOnlyPublicKey};
 pub struct NostrSk(SecretKey);
 
 impl FromStr for NostrSk {
-    type Err = anyhow::Error;
+    type Err = super::UtilError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let keys = Keys::from_sk_str(s)?;
@@ -24,7 +24,7 @@ impl FromStr for NostrSk {
 pub struct NostrPk(XOnlyPublicKey);
 
 impl FromStr for NostrPk {
-    type Err = anyhow::Error;
+    type Err = super::UtilError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let keys = Keys::from_pk_str(s)?;

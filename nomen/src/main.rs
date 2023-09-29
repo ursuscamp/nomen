@@ -10,6 +10,7 @@
 mod config;
 mod db;
 mod subcommands;
+mod util;
 
 use anyhow::bail;
 use clap::Parser;

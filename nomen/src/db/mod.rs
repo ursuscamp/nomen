@@ -1,12 +1,12 @@
 use std::{collections::HashMap, str::FromStr};
 
 use bitcoin::{BlockHash, Txid};
-use nomen_core::util::{self, Hash160, Name, Nsid, NsidBuilder};
+use nomen_core::util::{Hash160, Name, Nsid, NsidBuilder};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
 
-use crate::config::Config;
+use crate::{config::Config, util::format_time};
 
 static MIGRATIONS: [&str; 12] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
@@ -400,11 +400,11 @@ pub struct UncorroboratedClaim {
 
 impl UncorroboratedClaim {
     pub fn fmt_blocktime(&self) -> anyhow::Result<String> {
-        util::format_time(self.blocktime)
+        format_time(self.blocktime)
     }
 
     pub fn fmt_indexed_at(&self) -> anyhow::Result<String> {
-        util::format_time(self.indexed_at)
+        format_time(self.indexed_at)
     }
 }
 

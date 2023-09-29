@@ -120,13 +120,14 @@ mod site {
     use axum_extra::extract::WithRejection;
     use bitcoin::psbt::Psbt;
     use itertools::Itertools;
-    use nomen_core::util::{self, Hash160, KeyVal, Name, NomenKind, NsidBuilder};
+    use nomen_core::util::{Hash160, KeyVal, Name, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
 
     use crate::{
         db::{self, NameDetails},
         subcommands::util::{check_name_availability, insert_outputs, name_event},
+        util::format_time,
     };
 
     use super::{AppState, WebError};
@@ -165,7 +166,7 @@ mod site {
     ) -> Result<ExplorerTemplate, WebError> {
         let conn = state.pool;
         let last_index_time = db::last_index_time(&conn).await?;
-        let last_index_time = util::format_time(last_index_time)?;
+        let last_index_time = format_time(last_index_time)?;
         let q = query.q.map(|s| s.trim().to_string());
 
         Ok(ExplorerTemplate {
@@ -196,7 +197,7 @@ mod site {
             let records: HashMap<String, String> = serde_json::from_str(&value.records)?;
             let mut record_keys = records.keys().cloned().collect_vec();
             record_keys.sort();
-            let blocktime = util::format_time(value.blocktime)?;
+            let blocktime = format_time(value.blocktime)?;
 
             Ok(NsidTemplate {
                 name: value.name,
