@@ -8,27 +8,27 @@ use nostr_sdk::{
 use secp256k1::{SecretKey, XOnlyPublicKey};
 
 #[derive(Debug, Clone, PartialEq, Eq, From, Into, AsRef)]
-pub struct NostrSk(SecretKey);
+pub struct Nsec(SecretKey);
 
-impl FromStr for NostrSk {
-    type Err = super::UtilError;
+impl FromStr for Nsec {
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let keys = Keys::from_sk_str(s)?;
         let sk = keys.secret_key()?;
-        Ok(NostrSk(sk))
+        Ok(Nsec(sk))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, From, Into, AsRef)]
-pub struct NostrPk(XOnlyPublicKey);
+pub struct Npub(XOnlyPublicKey);
 
-impl FromStr for NostrPk {
-    type Err = super::UtilError;
+impl FromStr for Npub {
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let keys = Keys::from_pk_str(s)?;
         let pk = keys.public_key();
-        Ok(NostrPk(pk))
+        Ok(Npub(pk))
     }
 }

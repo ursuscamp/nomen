@@ -1251,6 +1251,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "derive_more",
  "hex",
  "nomen_core",
  "nostr-sdk",

@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use anyhow::anyhow;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KeyVal(String, String);
 
@@ -10,12 +12,10 @@ impl KeyVal {
 }
 
 impl FromStr for KeyVal {
-    type Err = super::UtilError;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (key, val) = s
-            .split_once('=')
-            .ok_or_else(|| super::UtilError::InvalidKeyVal(s.to_string()))?;
+        let (key, val) = s.split_once('=').ok_or_else(|| anyhow!("Invalid key"))?;
         Ok(KeyVal(key.to_string().to_uppercase(), val.to_string()))
     }
 }

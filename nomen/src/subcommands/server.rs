@@ -120,14 +120,14 @@ mod site {
     use axum_extra::extract::WithRejection;
     use bitcoin::psbt::Psbt;
     use itertools::Itertools;
-    use nomen_core::util::{Hash160, KeyVal, Name, NomenKind, NsidBuilder};
+    use nomen_core::util::{Hash160, Name, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
 
     use crate::{
         db::{self, NameDetails},
         subcommands::util::{check_name_availability, insert_outputs, name_event},
-        util::format_time,
+        util::{format_time, KeyVal},
     };
 
     use super::{AppState, WebError};
