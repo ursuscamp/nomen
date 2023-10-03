@@ -1,3 +1,4 @@
+mod create;
 mod extractor;
 mod hash160;
 mod kind;
@@ -6,6 +7,7 @@ mod nsid;
 mod nsid_builder;
 mod transfer;
 
+pub use create::*;
 pub use extractor::*;
 pub use hash160::*;
 pub use kind::*;

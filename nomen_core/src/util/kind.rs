@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use nostr_sdk::{EventBuilder, UnsignedEvent};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
-use super::{Hash160, Nsid, NsidBuilder};
+use super::{CreateBuilder, Hash160, Nsid, NsidBuilder, TransferBuilder};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NomenKind {
@@ -49,15 +49,24 @@ pub struct CreateV0 {
 }
 
 impl CreateV0 {
-    fn create(fingerprint: [u8; 5], nsid: Nsid) -> CreateV0 {
+    pub fn create(fingerprint: [u8; 5], nsid: Nsid) -> CreateV0 {
         CreateV0 { fingerprint, nsid }
     }
 
-    fn parse_create(value: &[u8]) -> Result<CreateV0, super::UtilError> {
+    pub fn parse_create(value: &[u8]) -> Result<CreateV0, super::UtilError> {
         Ok(CreateV0::create(
             value[..5].try_into()?,
             value[5..].try_into()?,
         ))
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        b"NOM\x00\x00"
+            .iter()
+            .chain(self.fingerprint.iter())
+            .chain(self.nsid.iter())
+            .copied()
+            .collect()
     }
 }
 
@@ -96,14 +105,6 @@ impl CreateV1 {
         }
     }
 
-    pub fn parse_create(value: &[u8]) -> Result<CreateV1, super::UtilError> {
-        // TODO: verify name validity
-        Ok(CreateV1 {
-            pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
-            name: String::from_utf8(value[32..].to_vec())?,
-        })
-    }
-
     pub fn fingerprint(&self) -> [u8; 5] {
         Hash160::default()
             .chain_update(self.name.as_bytes())
@@ -112,6 +113,23 @@ impl CreateV1 {
 
     pub fn nsid(&self) -> Nsid {
         NsidBuilder::new(&self.name, &self.pubkey).finalize()
+    }
+
+    pub fn parse_create(value: &[u8]) -> Result<CreateV1, super::UtilError> {
+        // TODO: verify name validity
+        Ok(CreateV1 {
+            pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
+            name: String::from_utf8(value[32..].to_vec())?,
+        })
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        b"NOM\x01\x00"
+            .iter()
+            .chain(self.pubkey.serialize().iter())
+            .chain(self.name.as_bytes().iter())
+            .copied()
+            .collect()
     }
 }
 
@@ -161,6 +179,15 @@ impl TransferV1 {
     pub fn nsid(&self) -> Nsid {
         NsidBuilder::new(&self.name, &self.pubkey).finalize()
     }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        b"NOM\x01\x01"
+            .iter()
+            .chain(self.pubkey.serialize().iter())
+            .chain(self.name.as_bytes().iter())
+            .copied()
+            .collect()
+    }
 }
 
 impl TryFrom<&[u8]> for TransferV1 {
@@ -194,6 +221,14 @@ impl SignatureV1 {
         Ok(SignatureV1 {
             signature: Signature::from_slice(value)?,
         })
+    }
+
+    pub fn seriealize(&self) -> Vec<u8> {
+        b"NOM\x01\x02"
+            .iter()
+            .chain(self.signature.as_ref().iter())
+            .copied()
+            .collect()
     }
 }
 

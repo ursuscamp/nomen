@@ -10,7 +10,9 @@ use nostr_sdk::Event;
 
 use super::{EventExtractor, NameKind, NsidBuilder};
 
-#[derive(Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq)]
+#[derive(
+    Clone, Copy, Deref, DerefMut, AsRef, AsMut, From, Eq, PartialEq, serde_with::DeserializeFromStr,
+)]
 pub struct Nsid([u8; 20]);
 
 impl Nsid {

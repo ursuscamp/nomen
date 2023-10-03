@@ -2,19 +2,20 @@ use crate::util::NomenKind;
 use nostr_sdk::{EventId, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
 
+use super::{SignatureV1, TransferV1};
+
 pub struct TransferBuilder<'a> {
-    pub new: &'a XOnlyPublicKey,
+    pub new_pubkey: &'a XOnlyPublicKey,
     pub name: &'a str,
 }
 
 impl<'a> TransferBuilder<'a> {
     pub fn transfer_op_return(&self) -> Vec<u8> {
-        b"NOM\x01\x01"
-            .iter()
-            .chain(self.new.serialize().iter())
-            .chain(self.name.as_bytes().iter())
-            .copied()
-            .collect()
+        TransferV1 {
+            pubkey: *self.new_pubkey,
+            name: self.name.to_string(),
+        }
+        .serialize()
     }
 
     pub fn unsigned_event(&self, prev_owner: &XOnlyPublicKey) -> nostr_sdk::UnsignedEvent {
@@ -36,12 +37,9 @@ impl<'a> TransferBuilder<'a> {
     pub fn signature_op_return(&self, keys: nostr_sdk::Keys) -> Result<Vec<u8>, super::UtilError> {
         let unsigned_event = self.unsigned_event(&keys.public_key());
         let event = unsigned_event.sign(&keys)?;
-        let v: Vec<u8> = b"NOM\x01\x02"
-            .to_vec()
-            .iter()
-            .chain(event.sig.as_ref().iter())
-            .copied()
-            .collect();
-        Ok(v)
+        Ok(SignatureV1 {
+            signature: event.sig,
+        }
+        .seriealize())
     }
 }

@@ -47,7 +47,7 @@ fn cmd_keys(pubkey: bool, nostr: bool) -> anyhow::Result<()> {
 
 fn cmd_transfer(old: Nsec, new: Npub, name: String) -> anyhow::Result<()> {
     let tb = TransferBuilder {
-        new: new.as_ref(),
+        new_pubkey: new.as_ref(),
         name: &name,
     };
     let keys = nostr_sdk::Keys::new(*old.as_ref());

@@ -8,6 +8,7 @@
 - [x] Change to use tracing and tracing::subscriber instead of log
 - [x] Refactor commands
   - [x] Move CLI into seperate binary?
+  - [ ] Full set of CLI commands
 - [ ] Add API methods
   - [ ] Generating PSBT
   - [ ] Filling in PSBT
@@ -19,9 +20,11 @@
   - [x] Update SPEC text
   - [ ] Mark correct date on spec changes section.
 - [x] Fully clippy check
-- [ ] Remove unnecessary/unused code
 - [x] Remove anyhow from nomen_core
 - [ ] API docs
+- [ ] CORS headers for API
+- [ ] Resolve code TODOs
+- [ ] Remove unnecessary/unused code
 
 # Things to test after refactor
 

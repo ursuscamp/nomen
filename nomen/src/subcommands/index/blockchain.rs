@@ -244,7 +244,7 @@ async fn check_signature(
             XOnlyPublicKey::from_slice(&h)?
         };
         let tb = TransferBuilder {
-            new: &new_owner,
+            new_pubkey: &new_owner,
             name: name.as_str(),
         };
         let unsigned_event = tb.unsigned_event(&old_owner);
