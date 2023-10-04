@@ -164,7 +164,7 @@ pub async fn update_blockchain_index(
     _config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(), anyhow::Error> {
-    let mut rows = sqlx::query_as::<_, RawBlockchain>("select * from raw_blockchain rb where rb.blockheight >= (select coalesce(max(blockheight), 0) from blockchain_index);").fetch(pool);
+    let mut rows = sqlx::query_as::<_, RawBlockchain>("select * from raw_blockchain rb where rb.blockheight > (select coalesce(max(blockheight), 0) from blockchain_index);").fetch(pool);
     while let Some(row) = rows.try_next().await? {
         if let Ok(create) = CreateV0::try_from(row.data.as_ref()) {
             let i = BlockchainIndex {

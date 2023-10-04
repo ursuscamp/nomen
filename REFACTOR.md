@@ -25,6 +25,8 @@
 - [ ] CORS headers for API
 - [ ] Resolve code TODOs
 - [ ] Remove unnecessary/unused code
+- [ ] Version indicator on name page
+- [ ] Add upgrade information
 
 # Things to test after refactor
 
@@ -40,4 +42,6 @@
 
 # Bugs
 
-- [ ] Continuously re-indexing from 112
+- [x] Continuously re-indexing from 112
+- [ ] Uncorroborated claims page not working
+- [ ] Feedback when event is broadcast
