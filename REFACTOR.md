@@ -31,8 +31,13 @@
 - [ ] Test that block unwinding still works
 - [ ] Test v0 create
 - [ ] Test v0 -> v1 upgrade
-- [ ] Test v1 create
+- [x] Test v1 create
 - [ ] Test v1 transfer
 - [ ] Test v0 -> v1 upgrade -> v1 transfer
 - [ ] Test duplicate names
 - [ ] Test invalid transfer signature
+- [x] Test name record
+
+# Bugs
+
+- [ ] Continuously re-indexing from 112

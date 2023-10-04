@@ -325,21 +325,6 @@ pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
     Ok(created_at)
 }
 
-pub async fn name_available(conn: &SqlitePool, name: &str) -> anyhow::Result<bool> {
-    let fingerprint = hex::encode(
-        Hash160::default()
-            .chain_update(name.as_bytes())
-            .fingerprint(),
-    );
-    let (count,) = sqlx::query_as::<_, (i64,)>(
-        "SELECT COUNT(*) FROM blockchain where fingerprint = ? AND kind = 'create';",
-    )
-    .bind(&fingerprint)
-    .fetch_one(conn)
-    .await?;
-    Ok(count == 0)
-}
-
 pub enum UpgradeStatus {
     Upgraded,
     NotUpgraded,
@@ -421,7 +406,7 @@ pub mod stats {
     use sqlx::SqlitePool;
 
     pub async fn known_names(conn: &SqlitePool) -> anyhow::Result<i64> {
-        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT count(*) FROM detail_vw;")
+        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT count(*) FROM valid_names_vw;")
             .fetch_one(conn)
             .await?;
         Ok(count)

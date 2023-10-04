@@ -120,13 +120,12 @@ mod site {
     use axum_extra::extract::WithRejection;
     use bitcoin::psbt::Psbt;
     use itertools::Itertools;
-    use nomen_core::{Hash160, Name, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
 
     use crate::{
         db::{self, NameDetails},
-        subcommands::util::{check_name_availability, insert_outputs, name_event},
+        subcommands::util::{insert_outputs, name_event},
         util::{format_time, KeyVal},
     };
 
@@ -247,18 +246,17 @@ mod site {
         })
     }
 
+    #[allow(clippy::unused_async)]
     pub async fn new_name_submit(
         State(state): State<AppState>,
         WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
     ) -> Result<NewNameTemplate, WebError> {
-        let name: Name = form.name.parse()?;
-        check_name_availability(&state.config, form.name.as_ref()).await?;
-        let fingerprint = Hash160::default()
-            .chain_update(name.as_ref().as_bytes())
-            .fingerprint();
-        let nsid = NsidBuilder::new(form.name.as_ref(), &form.pubkey).finalize();
+        // TODO: use a proper Name here.
+        // let name: Name = form.name.parse()?;
+        // TODO: check name availability here
+        // check_name_availability(&state.config, form.name.as_ref()).await?;
         let mut psbt: Psbt = form.psbt.parse()?;
-        insert_outputs(&mut psbt, fingerprint, nsid, NomenKind::Create)?;
+        insert_outputs(&mut psbt, &form.pubkey, &form.name)?;
         Ok(NewNameTemplate {
             psbt: psbt.to_string(),
             name: form.name,
@@ -421,11 +419,11 @@ mod api {
         extract::{Query, State},
         Json,
     };
-    use nomen_core::{Hash160, NomenKind, NsidBuilder};
+    use nomen_core::CreateBuilder;
     use secp256k1::XOnlyPublicKey;
     use serde::{Deserialize, Serialize};
 
-    use crate::{db, subcommands::util};
+    use crate::db;
 
     use super::{AppState, WebError};
 
@@ -461,11 +459,7 @@ mod api {
         Query(query): Query<OpReturnQuery>,
     ) -> Result<Json<OpReturnResponse>, WebError> {
         // TODO: validate name length and format
-        let fingerprint = Hash160::default()
-            .chain_update(query.name.as_bytes())
-            .fingerprint();
-        let nsid = NsidBuilder::new(&query.name, &query.pubkey).finalize();
-        let bytes = util::op_return_v0(fingerprint, nsid, NomenKind::Create);
+        let bytes = CreateBuilder::new(&query.pubkey, &query.name).v0_op_return();
         let h = OpReturnResponse {
             op_return: vec![hex::encode(bytes)],
         };
@@ -478,7 +472,7 @@ mod api {
         Query(query): Query<OpReturnQuery>,
     ) -> Result<Json<OpReturnResponse>, WebError> {
         // TODO: validate name length and format
-        let bytes = util::op_return_v1(query.pubkey, &query.name, NomenKind::Create);
+        let bytes = CreateBuilder::new(&query.pubkey, &query.name).v1_op_return();
         let orr = OpReturnResponse {
             op_return: vec![hex::encode(bytes)],
         };
