@@ -2,7 +2,7 @@
 
 use bitcoin::{BlockHash, Txid};
 use bitcoin_hashes::Hash;
-use nomen_core::{self, util::Nsid};
+use nomen_core::{self, Nsid};
 use secp256k1::{schnorr::Signature, SecretKey, XOnlyPublicKey};
 
 #[derive(serde::Deserialize, Debug)]

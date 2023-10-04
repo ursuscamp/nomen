@@ -1,4 +1,4 @@
-use crate::util::NomenKind;
+use crate::NomenKind;
 use nostr_sdk::{EventId, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
 

@@ -3,7 +3,7 @@
 mod nostr;
 
 use clap::Parser;
-use nomen_core::util::TransferBuilder;
+use nomen_core::TransferBuilder;
 use nostr::{Npub, Nsec};
 use nostr_sdk::{Keys, ToBech32, UnsignedEvent};
 use secp256k1::{Secp256k1, SecretKey, XOnlyPublicKey};

@@ -23,7 +23,7 @@ impl FromStr for Name {
 mod tests {
     use std::{any, collections::HashMap};
 
-    use crate::util::UtilError;
+    use crate::UtilError;
 
     use super::*;
 

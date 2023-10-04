@@ -1,5 +1,5 @@
 use common::test_vectors;
-use nomen_core::util::{CreateBuilder, Hash160, Name, NsidBuilder, SignatureV1, TransferV1};
+use nomen_core::{CreateBuilder, Hash160, Name, NsidBuilder, SignatureV1, TransferV1};
 
 mod common;
 

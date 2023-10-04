@@ -1,7 +1,7 @@
 use bitcoin::BlockHash;
 use bitcoincore_rpc::{Client, RpcApi};
 use futures::TryStreamExt;
-use nomen_core::util::{CreateV0, CreateV1, NsidBuilder, SignatureV1, TransferBuilder, TransferV1};
+use nomen_core::{CreateV0, CreateV1, NsidBuilder, SignatureV1, TransferBuilder, TransferV1};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 use sqlx::SqlitePool;
 

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use nomen_core::util::NameKind;
+use nomen_core::NameKind;
 use nostr_sdk::{Event, Filter};
 use sqlx::SqlitePool;
 

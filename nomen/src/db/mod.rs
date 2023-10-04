@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use bitcoin::{BlockHash, Txid};
-use nomen_core::util::{Hash160, Name, Nsid, NsidBuilder};
+use nomen_core::{Hash160, Name, Nsid, NsidBuilder};
 use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};

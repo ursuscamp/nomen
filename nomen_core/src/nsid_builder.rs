@@ -1,6 +1,6 @@
 use bitcoin::secp256k1::XOnlyPublicKey;
 
-use crate::util::Hash160;
+use crate::Hash160;
 
 use super::Nsid;
 

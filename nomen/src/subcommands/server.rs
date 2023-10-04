@@ -120,7 +120,7 @@ mod site {
     use axum_extra::extract::WithRejection;
     use bitcoin::psbt::Psbt;
     use itertools::Itertools;
-    use nomen_core::util::{Hash160, Name, NomenKind, NsidBuilder};
+    use nomen_core::{Hash160, Name, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::Deserialize;
 
@@ -421,7 +421,7 @@ mod api {
         extract::{Query, State},
         Json,
     };
-    use nomen_core::util::{Hash160, NomenKind, NsidBuilder};
+    use nomen_core::{Hash160, NomenKind, NsidBuilder};
     use secp256k1::XOnlyPublicKey;
     use serde::{Deserialize, Serialize};
 

@@ -6,7 +6,7 @@ use bitcoin::{
     script::PushBytesBuf,
     ScriptBuf, TxOut,
 };
-use nomen_core::util::{NameKind, NomenKind, Nsid, NsidBuilder};
+use nomen_core::{NameKind, NomenKind, Nsid, NsidBuilder};
 use nostr_sdk::{EventBuilder, Tag, TagKind, UnsignedEvent};
 use secp256k1::XOnlyPublicKey;
 
