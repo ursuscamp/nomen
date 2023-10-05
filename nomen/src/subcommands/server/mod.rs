@@ -1,3 +1,5 @@
+mod api;
+
 use std::time::Duration;
 
 use askama_axum::IntoResponse;
@@ -14,12 +16,6 @@ use crate::{config::Config, subcommands};
 use self::site::ErrorTemplate;
 
 pub struct WebError(anyhow::Error, Option<StatusCode>);
-
-impl WebError {
-    pub fn not_found(err: anyhow::Error) -> WebError {
-        WebError(err, Some(StatusCode::NOT_FOUND))
-    }
-}
 
 impl IntoResponse for WebError {
     fn into_response(self) -> askama_axum::Response {
@@ -71,8 +67,7 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
     if config.api() {
         app = app
             .route("/api/name", get(api::name))
-            .route("/api/op_return/v0", get(api::op_return_v0))
-            .route("/api/op_return/v1", get(api::op_return_v1));
+            .route("/api/op_return", get(api::op_return_v1));
     }
 
     let state = AppState {
@@ -407,76 +402,5 @@ mod site {
             blocktime,
             indexed_at,
         })
-    }
-}
-
-mod api {
-    use std::collections::HashMap;
-
-    use anyhow::anyhow;
-
-    use axum::{
-        extract::{Query, State},
-        Json,
-    };
-    use nomen_core::CreateBuilder;
-    use secp256k1::XOnlyPublicKey;
-    use serde::{Deserialize, Serialize};
-
-    use crate::db;
-
-    use super::{AppState, WebError};
-
-    #[derive(Deserialize)]
-    pub struct NameQuery {
-        name: String,
-    }
-
-    pub async fn name(
-        Query(name): Query<NameQuery>,
-        State(state): State<AppState>,
-    ) -> Result<Json<HashMap<String, String>>, WebError> {
-        let conn = state.pool;
-        let name = db::name_records(&conn, name.name).await?;
-
-        name.map(Json)
-            .ok_or_else(|| WebError::not_found(anyhow!("Not found")))
-    }
-
-    #[derive(Deserialize)]
-    pub struct OpReturnQuery {
-        name: String,
-        pubkey: XOnlyPublicKey,
-    }
-
-    #[derive(Serialize, Default)]
-    pub struct OpReturnResponse {
-        op_return: Vec<String>,
-    }
-
-    #[allow(clippy::unused_async)]
-    pub async fn op_return_v0(
-        Query(query): Query<OpReturnQuery>,
-    ) -> Result<Json<OpReturnResponse>, WebError> {
-        // TODO: validate name length and format
-        let bytes = CreateBuilder::new(&query.pubkey, &query.name).v0_op_return();
-        let h = OpReturnResponse {
-            op_return: vec![hex::encode(bytes)],
-        };
-
-        Ok(Json(h))
-    }
-
-    #[allow(clippy::unused_async)]
-    pub async fn op_return_v1(
-        Query(query): Query<OpReturnQuery>,
-    ) -> Result<Json<OpReturnResponse>, WebError> {
-        // TODO: validate name length and format
-        let bytes = CreateBuilder::new(&query.pubkey, &query.name).v1_op_return();
-        let orr = OpReturnResponse {
-            op_return: vec![hex::encode(bytes)],
-        };
-
-        Ok(Json(orr))
     }
 }

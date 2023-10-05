@@ -27,6 +27,7 @@
 - [ ] Remove unnecessary/unused code
 - [ ] Version indicator on name page
 - [ ] Add upgrade information
+- [ ] Update docs
 
 # Things to test after refactor
 
