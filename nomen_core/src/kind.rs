@@ -223,7 +223,7 @@ impl SignatureV1 {
         })
     }
 
-    pub fn seriealize(&self) -> Vec<u8> {
+    pub fn serialize(&self) -> Vec<u8> {
         b"NOM\x01\x02"
             .iter()
             .chain(self.signature.as_ref().iter())

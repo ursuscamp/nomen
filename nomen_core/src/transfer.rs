@@ -1,6 +1,6 @@
 use crate::NomenKind;
 use nostr_sdk::{EventId, UnsignedEvent};
-use secp256k1::XOnlyPublicKey;
+use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
 use super::{SignatureV1, TransferV1};
 
@@ -40,6 +40,10 @@ impl<'a> TransferBuilder<'a> {
         Ok(SignatureV1 {
             signature: event.sig,
         }
-        .seriealize())
+        .serialize())
+    }
+
+    pub fn signature_provided_op_return(&self, signature: Signature) -> Vec<u8> {
+        SignatureV1 { signature }.serialize()
     }
 }

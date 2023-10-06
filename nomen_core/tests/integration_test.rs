@@ -65,7 +65,7 @@ fn test_op_returns() {
                 let v1sig = SignatureV1 {
                     signature: op_return.sig.unwrap(),
                 }
-                .seriealize();
+                .serialize();
                 assert_eq!(v1sig, hex::decode(op_return.value).unwrap());
             }
             _ => panic!(),

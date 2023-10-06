@@ -325,6 +325,15 @@ pub async fn last_index_time(conn: &SqlitePool) -> anyhow::Result<i64> {
     Ok(created_at)
 }
 
+pub type NameAndKey = (String, String);
+
+pub async fn all_names(conn: &SqlitePool) -> anyhow::Result<Vec<NameAndKey>> {
+    let rows = sqlx::query_as::<_, NameAndKey>("SELECT name, pubkey FROM valid_names_vw;")
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
 pub enum UpgradeStatus {
     Upgraded,
     NotUpgraded,
