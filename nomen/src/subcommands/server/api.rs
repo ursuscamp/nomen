@@ -8,7 +8,7 @@ use crate::db;
 
 use self::models::{OpReturnResponse, TransferEventResponse};
 
-use super::{AppState, WebError};
+use super::AppState;
 
 mod models {
     use std::collections::HashMap;
@@ -132,7 +132,7 @@ pub async fn name(
 #[allow(clippy::unused_async)]
 pub async fn op_return_v1(
     Query(query): Query<models::OpReturnQuery>,
-) -> Result<Json<models::OpReturnResponse>, WebError> {
+) -> Result<Json<models::OpReturnResponse>, models::JsonError> {
     // TODO: validate name length and format
     let bytes = CreateBuilder::new(&query.pubkey, &query.name).v1_op_return();
     let orr = models::OpReturnResponse {

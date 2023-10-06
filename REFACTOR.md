@@ -9,9 +9,6 @@
 - [x] Refactor commands
   - [x] Move CLI into seperate binary?
   - [ ] Full set of CLI commands
-- [ ] Add API methods
-  - [ ] Generating PSBT
-  - [ ] Filling in PSBT
 - [x] Add a checkpoint system to rewind a hundred blocks back
   - [x] Delete entire `blockchain_index`
   - [x] Delete from stale blocks from `index_height`, `raw_blockchain`
@@ -21,13 +18,14 @@
   - [ ] Mark correct date on spec changes section.
 - [x] Fully clippy check
 - [x] Remove anyhow from nomen_core
-- [ ] API docs
+- [x] API docs
 - [ ] CORS headers for API
 - [ ] Resolve code TODOs
-- [ ] Remove unnecessary/unused code
+- [x] Remove unnecessary/unused code
 - [ ] Version indicator on name page
 - [ ] Add upgrade information
 - [ ] Update docs
+- [ ] Bump all versions in crates
 
 # Things to test after refactor
 
