@@ -33,6 +33,7 @@ futures = "0.3.28"
 tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
 time = { version = "0.3.20", features = ["formatting", "macros"] }
+tower-http = { version = "0.4.4", features = ["cors"] }
 
 
 [build-dependencies]

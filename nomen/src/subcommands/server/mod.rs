@@ -11,6 +11,7 @@ use axum::{
 };
 use sqlx::SqlitePool;
 use tokio::time::{interval, MissedTickBehavior};
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{config::Config, subcommands};
 
@@ -69,12 +70,14 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
     }
 
     if config.api() {
-        app = app
-            .route("/api/names", get(api::names))
-            .route("/api/name", get(api::name))
-            .route("/api/create/data", get(api::op_return_v1))
-            .route("/api/transfer/event", get(api::get_transfer_event))
-            .route("/api/transfer/data", get(api::get_transfer));
+        let api_router = Router::new()
+            .route("/names", get(api::names))
+            .route("/name", get(api::name))
+            .route("/create/data", get(api::op_return_v1))
+            .route("/transfer/event", get(api::get_transfer_event))
+            .route("/transfer/data", get(api::get_transfer))
+            .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any));
+        app = app.nest("/api", api_router);
     }
 
     let state = AppState {
