@@ -25,7 +25,7 @@
 - [ ] Version indicator on name page
 - [ ] Add upgrade information
 - [ ] Update docs
-- [ ] Bump all versions in crates
+- [x] Bump all versions in crates
 
 # Things to test after refactor
 
@@ -42,5 +42,4 @@
 # Bugs
 
 - [x] Continuously re-indexing from 112
-- [ ] Uncorroborated claims page not working
 - [ ] Feedback when event is broadcast

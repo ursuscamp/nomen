@@ -6,7 +6,7 @@ use nostr_sdk::EventId;
 use secp256k1::XOnlyPublicKey;
 use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
 
-use crate::{config::Config, util::format_time};
+use crate::config::Config;
 
 static MIGRATIONS: [&str; 12] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
@@ -366,49 +366,6 @@ pub async fn upgrade_v0_to_v1(
     }
 
     Ok(UpgradeStatus::NotUpgraded)
-}
-
-pub async fn uncorroborated_claims(conn: &SqlitePool) -> anyhow::Result<Vec<String>> {
-    Ok(
-        sqlx::query_as::<_, (String,)>("SELECT txid FROM uncorroborated_claims_vw;")
-            .fetch_all(conn)
-            .await?
-            .into_iter()
-            .map(|s| s.0)
-            .collect(),
-    )
-}
-
-#[derive(Debug, Clone, sqlx::FromRow, PartialEq, Eq)]
-pub struct UncorroboratedClaim {
-    pub fingerprint: String,
-    pub nsid: String,
-    pub blockhash: String,
-    pub txid: String,
-    pub blocktime: i64,
-    pub blockheight: i64,
-    pub txheight: i64,
-    pub vout: i64,
-    pub indexed_at: i64,
-}
-
-impl UncorroboratedClaim {
-    pub fn fmt_blocktime(&self) -> anyhow::Result<String> {
-        format_time(self.blocktime)
-    }
-
-    pub fn fmt_indexed_at(&self) -> anyhow::Result<String> {
-        format_time(self.indexed_at)
-    }
-}
-
-pub async fn uncorroborated_claim(
-    conn: &SqlitePool,
-    txid: &str,
-) -> anyhow::Result<UncorroboratedClaim> {
-    Ok(sqlx::query_as(
-        "SELECT fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at
-        FROM uncorroborated_claims_vw WHERE txid = ?;").bind(txid).fetch_one(conn).await?)
 }
 
 pub mod stats {

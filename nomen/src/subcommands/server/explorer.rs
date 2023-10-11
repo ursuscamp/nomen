@@ -258,39 +258,3 @@ pub async fn index_stats(State(state): State<AppState>) -> Result<IndexerInfo, W
         nostr_events: db::stats::nostr_events(&state.pool).await?,
     })
 }
-
-#[derive(askama::Template)]
-#[template(path = "uncorroborated_claims.html")]
-pub struct UncorroboratedClaims {
-    claims: Vec<String>,
-}
-
-pub async fn uncorroborated_claims(
-    State(state): State<AppState>,
-) -> Result<UncorroboratedClaims, WebError> {
-    Ok(UncorroboratedClaims {
-        claims: db::uncorroborated_claims(&state.pool).await?,
-    })
-}
-
-#[derive(askama::Template)]
-#[template(path = "uncorroborated_claim.html")]
-pub struct UncorroboratedClaim {
-    claim: db::UncorroboratedClaim,
-    blocktime: String,
-    indexed_at: String,
-}
-
-pub async fn uncorroborated_claim(
-    State(state): State<AppState>,
-    Path(nsid): Path<String>,
-) -> Result<UncorroboratedClaim, WebError> {
-    let claim = db::uncorroborated_claim(&state.pool, &nsid).await?;
-    let blocktime = claim.fmt_blocktime()?;
-    let indexed_at = claim.fmt_indexed_at()?;
-    Ok(UncorroboratedClaim {
-        claim,
-        blocktime,
-        indexed_at,
-    })
-}

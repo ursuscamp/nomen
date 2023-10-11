@@ -58,15 +58,7 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
             .route("/newname", post(explorer::new_name_submit))
             .route("/updaterecords", get(explorer::new_records_form))
             .route("/updaterecords", post(explorer::new_records_submit))
-            .route("/stats", get(explorer::index_stats))
-            .route(
-                "/uncorroborated_claims",
-                get(explorer::uncorroborated_claims),
-            )
-            .route(
-                "/uncorroborated_claims/:txid",
-                get(explorer::uncorroborated_claim),
-            );
+            .route("/stats", get(explorer::index_stats));
     }
 
     if config.api() {
