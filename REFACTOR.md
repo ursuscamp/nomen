@@ -26,6 +26,7 @@
 - [ ] Add upgrade information
 - [ ] Update docs
 - [x] Bump all versions in crates
+- [x] Set 100 block expiration on transfer cache
 
 # Things to test after refactor
 
@@ -44,3 +45,4 @@
 - [x] Continuously re-indexing from 112
 - [x] Feedback when event is broadcast
 - [x] Update Records link isn't working from name page
+- [ ] Still loggin lots of transfer messages for some reason

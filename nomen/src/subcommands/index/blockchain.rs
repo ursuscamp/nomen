@@ -18,10 +18,7 @@ enum QueueMessage {
     },
 }
 
-pub async fn raw_index(
-    config: &Config,
-    pool: &sqlx::Pool<sqlx::Sqlite>,
-) -> Result<(), anyhow::Error> {
+pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(), anyhow::Error> {
     // Check if the index is on a stale chain, and rewind the index if necessary
     rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
 
@@ -42,6 +39,9 @@ pub async fn raw_index(
 
     // Update the blockchain index by looping through raw_blockchain table and pocessing the saved outputs.
     update_blockchain_index(config, pool).await?;
+
+    // Expire unused transfer cache
+    expire_transfer_cache(pool).await?;
 
     tracing::info!("Blockchain index complete.");
     Ok(())
@@ -363,5 +363,18 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
         tx.commit().await?;
     }
 
+    Ok(())
+}
+
+async fn expire_transfer_cache(pool: &sqlx::Pool<sqlx::Sqlite>) -> anyhow::Result<()> {
+    tracing::info!("Starting transfer cache expiration.");
+    let (index_height,) = sqlx::query_as::<_, (i64,)>("SELECT max(blockheight) FROM index_height;")
+        .fetch_one(pool)
+        .await?;
+    sqlx::query("DELETE FROM transfer_cache WHERE blockheight < (? - 100);")
+        .bind(index_height)
+        .execute(pool)
+        .await?;
+    tracing::info!("Finished transfer cache expiration.");
     Ok(())
 }

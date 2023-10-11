@@ -60,7 +60,7 @@ This event should be serialized and signed like any Nostr event, and the 32-byte
 
 This event **should not** be broadcast. The format of a Nostr event for the signature was chosen so that these `OP_RETURN` outputs could be generated in browsers and signed by a user's [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md)-compliant Nostr browser extension.
 
-When encountering a transfer output, an indexer should cache the transfer. When encountering a signature output, the indexer should scan the transfer cache for matching transfers. If the signature matches any transfers, that transfer becomes valid.
+When encountering a transfer output, an indexer should cache the transfer. When encountering a signature output, the indexer should scan the transfer cache for matching transfers. If the signature matches any transfers, that transfer becomes valid. The transfer cache is only valid for 100 blocks, so the signature output must be broadcast within 100 blocks of the first output, or indexers will forget about the first output. This is necessary to prevent the transfer cache from growing forever.
 
 ### Legacy protocol v0 names
 
