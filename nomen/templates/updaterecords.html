@@ -6,9 +6,10 @@
 <main id="main" data-relays="{{relays|json}}">
   <h1>Update Records</h1>
   {% if !unsigned_event.is_empty() %}
-  
-  <p>The following event was created. You can use a NIP-07 browser extension to sign and broadcast this event, using the same keypair that was used to register the name on the blockchain.</p>
-  
+
+  <p>The following event was created. You can use a NIP-07 browser extension to sign and broadcast this event, using the
+    same keypair that was used to register the name on the blockchain.</p>
+
   <pre id="unsigned-event">{{ unsigned_event }}</pre>
 
   <p>
@@ -37,21 +38,20 @@
         let relay = window.NostrTools.relayInit(relay_url);
         relay.on('connect', () => { console.log('connected to relay') })
         await relay.connect();
-  
-        let pub = relay.publish(signed_event);
-        pub.on('ok', () => {
+
+        try {
+          await relay.publish(signed_event);
           append_msg('success', `Event successfully published to ${relay.url}`);
-        });
-        pub.on('failed', () => {
+        } catch {
           append_msg('error', `Event failed to publish to ${relay.url}`);
-        });
+        }
       });
 
     });
   </script>
 
   {% else %}
-  
+
   <form action="updaterecords" method="post">
     <p>
       <label for="name">Name</label>

@@ -42,4 +42,5 @@
 # Bugs
 
 - [x] Continuously re-indexing from 112
-- [ ] Feedback when event is broadcast
+- [x] Feedback when event is broadcast
+- [ ] Update Records link isn't working from name page
