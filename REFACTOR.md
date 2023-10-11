@@ -19,7 +19,7 @@
 - [x] Fully clippy check
 - [x] Remove anyhow from nomen_core
 - [x] API docs
-- [ ] CORS headers for API
+- [x] CORS headers for API
 - [ ] Resolve code TODOs
 - [x] Remove unnecessary/unused code
 - [ ] Version indicator on name page
