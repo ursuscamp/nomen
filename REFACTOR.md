@@ -43,4 +43,4 @@
 
 - [x] Continuously re-indexing from 112
 - [x] Feedback when event is broadcast
-- [ ] Update Records link isn't working from name page
+- [x] Update Records link isn't working from name page

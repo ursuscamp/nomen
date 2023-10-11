@@ -188,7 +188,7 @@ async fn records_from_query(query: &NewRecordsQuery, state: &AppState) -> Result
     let records = match &query.name {
         Some(name) => {
             let (records,) = sqlx::query_as::<_, (String,)>(
-                "SELECT records FROM valid_names_vw WHERE name = ?;",
+                "SELECT records FROM valid_names_records_vw WHERE name = ?;",
             )
             .bind(name)
             .fetch_optional(&state.pool)
