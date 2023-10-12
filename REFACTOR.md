@@ -45,4 +45,5 @@
 - [x] Continuously re-indexing from 112
 - [x] Feedback when event is broadcast
 - [x] Update Records link isn't working from name page
-- [ ] Still loggin lots of transfer messages for some reason
+- [x] Still loggin lots of transfer messages for some reason
+  - [x] Create vw for unindexed blocks, including using the transfer cache

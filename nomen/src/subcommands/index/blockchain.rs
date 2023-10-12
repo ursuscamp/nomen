@@ -164,7 +164,7 @@ pub async fn update_blockchain_index(
     _config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(), anyhow::Error> {
-    let mut rows = sqlx::query_as::<_, RawBlockchain>("select * from raw_blockchain rb where rb.blockheight > (select coalesce(max(blockheight), 0) from blockchain_index);").fetch(pool);
+    let mut rows = sqlx::query_as::<_, RawBlockchain>("SELECT * FROM raw_blockchain rb WHERE rb.blockheight > (SELECT coalesce(max(blockheight), 0) FROM index_blockheights_vw);").fetch(pool);
     while let Some(row) = rows.try_next().await? {
         if let Ok(create) = CreateV0::try_from(row.data.as_ref()) {
             let i = BlockchainIndex {
@@ -371,6 +371,7 @@ async fn expire_transfer_cache(pool: &sqlx::Pool<sqlx::Sqlite>) -> anyhow::Resul
     let (index_height,) = sqlx::query_as::<_, (i64,)>("SELECT max(blockheight) FROM index_height;")
         .fetch_one(pool)
         .await?;
+    sqlx::query("INSERT INTO old_transfer_cache SELECT * FROM transfer_cache WHERE blockheight < (? - 100);").bind(index_height).execute(pool).await?;
     sqlx::query("DELETE FROM transfer_cache WHERE blockheight < (? - 100);")
         .bind(index_height)
         .execute(pool)

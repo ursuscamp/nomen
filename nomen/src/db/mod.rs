@@ -8,7 +8,7 @@ use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
 
 use crate::config::Config;
 
-static MIGRATIONS: [&str; 12] = [
+static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE raw_blockchain (id INTEGER PRIMARY KEY, blockhash, txid, blocktime, blockheight, txheight, vout, data, indexed_at);",
@@ -26,6 +26,19 @@ static MIGRATIONS: [&str; 12] = [
         FROM valid_names_vw vn
         LEFT JOIN name_events ne ON vn.nsid = ne.nsid;",
     "CREATE TABLE transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
+
+    // This is useful so that we can know that this blockheight was already indexed. Even if the cache entry is deleted because it's old, we can keep it here so that
+    // we can know we already looked at it.
+    "CREATE TABLE old_transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
+
+    // This view is useful as an "interesting things" view. I.e., something related to Nomen existed at this blockheight and we have already seen it.
+    "CREATE VIEW index_blockheights_vw AS
+        SELECT blockheight FROM blockchain_index
+        UNION
+        SELECT blockheight FROM transfer_cache
+        UNION
+        SELECT blockheight FROM old_transfer_cache;",
+        
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
