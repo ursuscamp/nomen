@@ -5,14 +5,14 @@ use axum::{
     Form,
 };
 use axum_extra::extract::WithRejection;
-use bitcoin::psbt::Psbt;
+use bitcoin::Txid;
 use itertools::Itertools;
 use secp256k1::XOnlyPublicKey;
 use serde::Deserialize;
 
 use crate::{
     db::{self, NameDetails},
-    subcommands::util::{insert_outputs, name_event},
+    subcommands::util::{create_psbt, name_event},
     util::{format_time, KeyVal},
 };
 
@@ -117,16 +117,23 @@ pub async fn explore_nsid(
 #[template(path = "newname.html")]
 pub struct NewNameTemplate {
     psbt: String,
+    txid: String,
+    vout: u32,
+    address: String,
     name: String,
     pubkey: String,
     confirmations: usize,
+    fee: usize,
 }
 
 #[derive(Deserialize)]
 pub struct NewNameForm {
-    psbt: String,
+    txid: Txid,
+    vout: u32,
+    address: String,
     name: String,
     pubkey: XOnlyPublicKey,
+    fee: usize,
 }
 
 #[allow(clippy::unused_async)]
@@ -146,13 +153,26 @@ pub async fn new_name_submit(
     // let name: Name = form.name.parse()?;
     // TODO: check name availability here
     // check_name_availability(&state.config, form.name.as_ref()).await?;
-    let mut psbt: Psbt = form.psbt.parse()?;
-    insert_outputs(&mut psbt, &form.pubkey, &form.name)?;
+    let rpc = state.config.rpc_client()?;
+    let psbt = create_psbt(
+        rpc,
+        form.txid,
+        form.vout,
+        form.address.clone(),
+        form.name.clone(),
+        form.pubkey,
+        form.fee,
+    )
+    .await?;
     Ok(NewNameTemplate {
         psbt: psbt.to_string(),
+        txid: form.txid.to_string(),
+        vout: form.vout,
+        address: form.address,
         name: form.name,
         pubkey: form.pubkey.to_string(),
         confirmations: state.config.confirmations(),
+        fee: form.fee,
     })
 }
 
