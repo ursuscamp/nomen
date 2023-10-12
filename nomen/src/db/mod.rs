@@ -38,7 +38,7 @@ static MIGRATIONS: [&str; 14] = [
         SELECT blockheight FROM transfer_cache
         UNION
         SELECT blockheight FROM old_transfer_cache;",
-        
+
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
@@ -232,6 +232,7 @@ pub struct NameDetails {
     pub name: String,
     pub records: String,
     pub pubkey: String,
+    pub protocol: i64,
 }
 
 pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {

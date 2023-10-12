@@ -76,6 +76,7 @@ pub struct NsidTemplate {
     vout: i64,
     height: i64,
     pubkey: String,
+    protocol: i64,
 }
 
 impl TryFrom<NameDetails> for NsidTemplate {
@@ -97,6 +98,7 @@ impl TryFrom<NameDetails> for NsidTemplate {
             vout: value.vout,
             height: value.blockheight,
             pubkey: value.pubkey,
+            protocol: value.protocol,
         })
     }
 }

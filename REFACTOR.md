@@ -22,7 +22,7 @@
 - [x] CORS headers for API
 - [ ] Resolve code TODOs
 - [x] Remove unnecessary/unused code
-- [ ] Version indicator on name page
+- [x] Version indicator on name page
 - [ ] Add upgrade information
 - [ ] Update docs
 - [x] Bump all versions in crates
