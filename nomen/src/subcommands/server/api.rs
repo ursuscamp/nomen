@@ -57,6 +57,11 @@ mod models {
 
     #[derive(Serialize)]
     pub struct NameResult {
+        pub blockhash: String,
+        pub txid: String,
+        pub fingerprint: String,
+        pub nsid: String,
+        pub protocol: i64,
         pub records: HashMap<String, String>,
     }
 
@@ -120,13 +125,21 @@ pub async fn name(
     Query(name): Query<models::NameQuery>,
     State(state): State<AppState>,
 ) -> Result<Json<models::NameResult>, models::JsonError> {
-    // TODO: return some metdata as well
     let conn = state.pool;
     let name = db::name_records(&conn, name.name).await?;
 
-    name.map(|records| models::NameResult { records })
-        .map(Json)
-        .ok_or_else(|| models::JsonError::message("Name not found"))
+    name.and_then(|nr| {
+        Some(models::NameResult {
+            blockhash: nr.blockhash,
+            txid: nr.txid,
+            fingerprint: nr.fingerprint,
+            nsid: nr.nsid,
+            protocol: nr.protocol,
+            records: serde_json::from_str(&nr.records).ok()?,
+        })
+    })
+    .map(Json)
+    .ok_or_else(|| models::JsonError::message("Name not found"))
 }
 
 #[allow(clippy::unused_async)]

@@ -279,15 +279,23 @@ pub async fn insert_name_event(
     Ok(())
 }
 
-pub async fn name_records(
-    conn: &SqlitePool,
-    name: String,
-) -> anyhow::Result<Option<HashMap<String, String>>> {
+#[derive(FromRow)]
+pub struct NameRecords {
+    pub blockhash: String,
+    pub txid: String,
+    pub fingerprint: String,
+    pub nsid: String,
+    pub protocol: i64,
+    pub records: String,
+}
+
+pub async fn name_records(conn: &SqlitePool, name: String) -> anyhow::Result<Option<NameRecords>> {
     let fingerprint = Hash160::default()
         .chain_update(name.as_bytes())
         .fingerprint();
-    let content = sqlx::query_as::<_, (String,)>(
-        "SELECT coalesce(ne.records, '{}')
+    let records = sqlx::query_as::<_, NameRecords>(
+        "SELECT 
+            vn.blockhash, vn.txid, vn.fingerprint, vn.nsid, vn.protocol, coalesce(ne.records, '{}') as records
         FROM valid_names_vw vn
         JOIN name_events ne ON vn.nsid = ne.nsid
         WHERE vn.fingerprint = ? LIMIT 1;",
@@ -296,10 +304,10 @@ pub async fn name_records(
     .fetch_optional(conn)
     .await?;
 
-    let records = content
-        .map(|s| s.0)
-        .map(|records| serde_json::from_str(&records))
-        .transpose()?;
+    // let records = content
+    //     .map(|s| s.0)
+    //     .map(|records| serde_json::from_str(&records))
+    //     .transpose()?;
     Ok(records)
 }
 
