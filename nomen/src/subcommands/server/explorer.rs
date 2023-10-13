@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
+use anyhow::anyhow;
 use axum::{
     extract::{Path, Query, State},
     Form,
@@ -7,6 +8,7 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use bitcoin::Txid;
 use itertools::Itertools;
+use nomen_core::Name;
 use secp256k1::XOnlyPublicKey;
 use serde::Deserialize;
 
@@ -149,10 +151,11 @@ pub async fn new_name_submit(
     State(state): State<AppState>,
     WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
 ) -> Result<NewNameTemplate, WebError> {
-    // TODO: use a proper Name here.
-    // let name: Name = form.name.parse()?;
-    // TODO: check name availability here
-    // check_name_availability(&state.config, form.name.as_ref()).await?;
+    let _name = Name::from_str(&form.name).map_err(|_| anyhow!("Invalid name"))?;
+    let available = db::check_name_availability(&state.pool, form.name.as_ref()).await?;
+    if !available {
+        Err(anyhow!("Name unavailable"))?;
+    }
     let rpc = state.config.rpc_client()?;
     let psbt = create_psbt(
         rpc,

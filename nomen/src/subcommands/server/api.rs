@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
+use anyhow::anyhow;
 use axum::{
     extract::{Query, State},
     Json,
 };
-use nomen_core::{CreateBuilder, TransferBuilder};
+use nomen_core::{CreateBuilder, Name, TransferBuilder};
 
 use crate::db;
 
@@ -146,8 +149,8 @@ pub async fn name(
 pub async fn op_return_v1(
     Query(query): Query<models::OpReturnQuery>,
 ) -> Result<Json<models::OpReturnResponse>, models::JsonError> {
-    // TODO: validate name length and format
-    let bytes = CreateBuilder::new(&query.pubkey, &query.name).v1_op_return();
+    let name = Name::from_str(&query.name).map_err(|_| anyhow!("Invalid name"))?;
+    let bytes = CreateBuilder::new(&query.pubkey, name.as_ref()).v1_op_return();
     let orr = models::OpReturnResponse {
         op_return: vec![hex::encode(bytes)],
     };

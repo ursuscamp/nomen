@@ -20,7 +20,7 @@
 - [x] Remove anyhow from nomen_core
 - [x] API docs
 - [x] CORS headers for API
-- [ ] Resolve code TODOs
+- [x] Resolve code TODOs
 - [x] Remove unnecessary/unused code
 - [x] Version indicator on name page
 - [ ] Add upgrade information

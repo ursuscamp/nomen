@@ -384,6 +384,24 @@ pub async fn upgrade_v0_to_v1(
     Ok(UpgradeStatus::NotUpgraded)
 }
 
+pub async fn check_name_availability(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+) -> anyhow::Result<bool> {
+    let fp = hex::encode(
+        Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint(),
+    );
+    let (a,) = sqlx::query_as::<_, (bool,)>(
+        "SELECT COUNT(*) = 0 FROM valid_names_vw WHERE fingerprint = ?;",
+    )
+    .bind(&fp)
+    .fetch_one(conn)
+    .await?;
+    Ok(a)
+}
+
 pub mod stats {
     use sqlx::SqlitePool;
 

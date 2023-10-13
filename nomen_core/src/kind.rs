@@ -3,6 +3,8 @@ use std::{fmt::Display, str::FromStr};
 use nostr_sdk::{EventBuilder, UnsignedEvent};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
+use crate::Name;
+
 use super::{CreateBuilder, Hash160, Nsid, NsidBuilder, TransferBuilder};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -74,16 +76,10 @@ impl TryFrom<&[u8]> for CreateV0 {
     type Error = super::UtilError;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        // TODO: refactor be closer to CreateV1 try_from
-        if !value.starts_with(b"NOM") {
-            return Err(super::UtilError::NotNomenError);
+        if !value.starts_with(b"NOM\x00") {
+            return Err(super::UtilError::UnexpectedNomenTxType);
         }
-        let value = &value[3..];
-
-        if !value.starts_with(&[0x00]) {
-            return Err(super::UtilError::UnsupportedNomenVersion);
-        }
-        let value = &value[1..];
+        let value = &value[4..];
 
         match value.first() {
             Some(0x00) => Ok(CreateV0::parse_create(&value[1..])?),
@@ -116,10 +112,11 @@ impl CreateV1 {
     }
 
     pub fn parse_create(value: &[u8]) -> Result<CreateV1, super::UtilError> {
-        // TODO: verify name validity
+        let name = String::from_utf8(value[32..].to_vec())?;
+        let _ = Name::from_str(&name)?;
         Ok(CreateV1 {
             pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
-            name: String::from_utf8(value[32..].to_vec())?,
+            name,
         })
     }
 
@@ -163,10 +160,11 @@ impl TransferV1 {
     }
 
     pub fn parse_create(value: &[u8]) -> Result<TransferV1, super::UtilError> {
-        // TODO: verify name validity
+        let name = String::from_utf8(value[32..].to_vec())?;
+        let _ = Name::from_str(&name)?;
         Ok(TransferV1 {
             pubkey: XOnlyPublicKey::from_slice(&value[..32])?,
-            name: String::from_utf8(value[32..].to_vec())?,
+            name,
         })
     }
 
