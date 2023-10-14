@@ -44,7 +44,7 @@
 # Bugs
 
 - [x] Continuously re-indexing from 112
-- [ ] Creating a v0 results in an empty name in list before there is a record broadcast
+- [x] Creating a v0 results in an empty name in list before there is a record broadcast
 - [x] Feedback when event is broadcast
 - [x] Update Records link isn't working from name page
 - [x] Still loggin lots of transfer messages for some reason

@@ -311,11 +311,11 @@ pub async fn top_level_names(
 ) -> anyhow::Result<Vec<(String, String)>> {
     let sql = match query {
         Some(q) => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw WHERE instr(name, ?) ORDER BY name;",
+            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL AND instr(name, ?) ORDER BY name;",
         )
         .bind(q.to_lowercase()),
         None => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw ORDER BY name;",
+            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL ORDER BY name;",
         ),
     };
 
