@@ -67,8 +67,8 @@ pub async fn explorer(
 }
 
 #[derive(askama::Template)]
-#[template(path = "nsid.html")]
-pub struct NsidTemplate {
+#[template(path = "name.html")]
+pub struct NameTemplate {
     name: String,
     record_keys: Vec<String>,
     records: HashMap<String, String>,
@@ -81,7 +81,7 @@ pub struct NsidTemplate {
     protocol: i64,
 }
 
-impl TryFrom<NameDetails> for NsidTemplate {
+impl TryFrom<NameDetails> for NameTemplate {
     type Error = anyhow::Error;
 
     fn try_from(value: NameDetails) -> Result<Self, Self::Error> {
@@ -90,7 +90,7 @@ impl TryFrom<NameDetails> for NsidTemplate {
         record_keys.sort();
         let blocktime = format_time(value.blocktime)?;
 
-        Ok(NsidTemplate {
+        Ok(NameTemplate {
             name: value.name,
             record_keys,
             records,
@@ -105,10 +105,10 @@ impl TryFrom<NameDetails> for NsidTemplate {
     }
 }
 
-pub async fn explore_nsid(
+pub async fn show_name(
     State(state): State<AppState>,
     Path(nsid): Path<String>,
-) -> Result<NsidTemplate, WebError> {
+) -> Result<NameTemplate, WebError> {
     let conn = state.pool;
     let details = db::name_details(&conn, &nsid).await?;
 

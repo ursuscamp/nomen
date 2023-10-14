@@ -53,7 +53,7 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
         app = app
             .route("/", get(explorer::index))
             .route("/explorer", get(explorer::explorer))
-            .route("/explorer/:nsid", get(explorer::explore_nsid))
+            .route("/explorer/:nsid", get(explorer::show_name))
             .route("/newname", get(explorer::new_name_form))
             .route("/newname", post(explorer::new_name_submit))
             .route("/updaterecords", get(explorer::new_records_form))
