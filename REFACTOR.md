@@ -23,8 +23,8 @@
 - [x] Resolve code TODOs
 - [x] Remove unnecessary/unused code
 - [x] Version indicator on name page
-- [ ] Add upgrade information
-- [ ] Update docs
+- [x] Add upgrade information
+- [x] Update docs
 - [x] Bump all versions in crates
 - [x] Set 100 block expiration on transfer cache
 - [ ] Add transfer option in UI

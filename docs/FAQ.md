@@ -12,8 +12,12 @@ However, not all data can reasonably fit on the blockchain. The limited space me
 
 ## How does it work?
 
-It's actually very simple. Claims to identities are published to the Bitcoin blockchain. The claims are very small, only hashes. The data in the hash is enough to verify ownership (name + public key). This hash is the "nsid" or namespace identifier. Events are then published to Nostr relays that contain the data necessary to reconstruct the hash, and the events are signed by the same public key in the ownership hash. Per the protocol, even if two individuals claim the same identifier, the Bitcoin blockchain guarantees that one will be first, and thus valid.
+It's actually very simple. Claims to identities are published to the Bitcoin blockchain. The claims are very small, only a single OP_RETURN output (80 bytes or less). Events are then published to Nostr relays that contain teh records you want to associate with your name (npub, web address, twitter handle, etc). Per the protocol, even if two individuals claim the same identifier, the Bitcoin blockchain guarantees that one will be first, and thus valid.
 
 ## Why not inscriptions?
 
-I considered inscriptions originally when designing this protocol, but it's a complicated protocol designed for loading lots of data on the blockchain. I decided very early that instead of storing data on the blockchain, the chain would only be used for timestamping, as God intended.
+There are two parts of inscription that might have been used: Sat tracking and the inscription envelope.
+
+Sat tracking could have been used to allow transferring the name, just like Ordinals inscriptions. This adds complexity for the end user and developer because then you have to build a wallet with special coin tracking, or make sure that the user understands to be extremely careful with their UTXOs. Additionally, this is intended to be a "Nostr-native" protocol, and that means it's the Bitcoin keys that own the name, not Nostr keys. While it's true that Nostr keys can be used as Bitcoin keys in taproot addresses, all of the added complexity of trying to make it all work wasn't worth it.
+
+Inscription envelopes could have been useful. Instead of using OP_RETURN for putting the data on chain, we could have used an inscription envelope containing the name and ownership info. But inscription envelopes are really more useful for stuffing lots of data on chain. As it stands, OP_RETURN allows enough space for Nomen to include a pubkey for ownership data, and still leave 43 bytes for the name. Unlike NFTs, no one WANTS a long name. Short names are more desirable, so OP_RETURN is not only much simpler (inscriptions always require two transactions), but it is also the "official" and blessed way of putting data on chain.
