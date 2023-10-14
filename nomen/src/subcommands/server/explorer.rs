@@ -118,6 +118,7 @@ pub async fn explore_nsid(
 #[derive(askama::Template, Default)]
 #[template(path = "newname.html")]
 pub struct NewNameTemplate {
+    upgrade: bool,
     psbt: String,
     txid: String,
     vout: u32,
@@ -130,6 +131,7 @@ pub struct NewNameTemplate {
 
 #[derive(Deserialize)]
 pub struct NewNameForm {
+    upgrade: bool,
     txid: Txid,
     vout: u32,
     address: String,
@@ -138,10 +140,19 @@ pub struct NewNameForm {
     fee: usize,
 }
 
+#[derive(Deserialize)]
+pub struct NewNameQuery {
+    upgrade: Option<bool>,
+}
+
 #[allow(clippy::unused_async)]
-pub async fn new_name_form(State(state): State<AppState>) -> Result<NewNameTemplate, WebError> {
+pub async fn new_name_form(
+    State(state): State<AppState>,
+    WithRejection(Query(query), _): WithRejection<Query<NewNameQuery>, WebError>,
+) -> Result<NewNameTemplate, WebError> {
     Ok(NewNameTemplate {
         confirmations: state.config.confirmations(),
+        upgrade: query.upgrade.unwrap_or_default(),
         ..Default::default()
     })
 }
@@ -152,7 +163,13 @@ pub async fn new_name_submit(
     WithRejection(Form(form), _): WithRejection<Form<NewNameForm>, WebError>,
 ) -> Result<NewNameTemplate, WebError> {
     let _name = Name::from_str(&form.name).map_err(|_| anyhow!("Invalid name"))?;
-    let available = db::check_name_availability(&state.pool, form.name.as_ref()).await?;
+
+    // If we're upgrading an existing name, we don't actually want to error if the name exists.
+    let available = if form.upgrade {
+        true
+    } else {
+        db::check_name_availability(&state.pool, form.name.as_ref()).await?
+    };
     if !available {
         Err(anyhow!("Name unavailable"))?;
     }
@@ -168,6 +185,7 @@ pub async fn new_name_submit(
     )
     .await?;
     Ok(NewNameTemplate {
+        upgrade: form.upgrade,
         psbt: psbt.to_string(),
         txid: form.txid.to_string(),
         vout: form.vout,

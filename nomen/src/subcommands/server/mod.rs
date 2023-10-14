@@ -66,6 +66,7 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
             .route("/names", get(api::names))
             .route("/name", get(api::name))
             .route("/create/data", get(api::op_return_v1))
+            .route("/v0/create/data", get(api::op_return_v0))
             .route("/transfer/event", get(api::get_transfer_event))
             .route("/transfer/data", get(api::get_transfer))
             .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any));

@@ -37,7 +37,7 @@
 
       <tr>
         <td>Protocol Version</td>
-        <td>{{ protocol }}</td>
+        <td>{{ protocol }} {% if protocol == 0 %}<a href="/newname?upgrade=true">Upgrade to v1</a>{% endif %}</td>
       </tr>
     </tbody>
   </table>

@@ -27,12 +27,13 @@
 - [ ] Update docs
 - [x] Bump all versions in crates
 - [x] Set 100 block expiration on transfer cache
+- [ ] Add transfer option in UI
 
 # Things to test after refactor
 
 - [ ] Test that block unwinding still works
-- [ ] Test v0 create
-- [ ] Test v0 -> v1 upgrade
+- [x] Test v0 create
+- [x] Test v0 -> v1 upgrade
 - [x] Test v1 create
 - [ ] Test v1 transfer
 - [ ] Test v0 -> v1 upgrade -> v1 transfer
@@ -43,6 +44,7 @@
 # Bugs
 
 - [x] Continuously re-indexing from 112
+- [ ] Creating a v0 results in an empty name in list before there is a record broadcast
 - [x] Feedback when event is broadcast
 - [x] Update Records link isn't working from name page
 - [x] Still loggin lots of transfer messages for some reason

@@ -402,6 +402,24 @@ pub async fn check_name_availability(
     Ok(a)
 }
 
+pub async fn update_v0_index(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+    pubkey: &XOnlyPublicKey,
+    nsid: Nsid,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE blockchain_index SET name = ?, pubkey = ? WHERE protocol = 0 AND nsid = ?;",
+    )
+    .bind(name)
+    .bind(pubkey.to_string())
+    .bind(hex::encode(nsid.as_slice()))
+    .execute(conn)
+    .await?;
+
+    Ok(())
+}
+
 pub mod stats {
     use sqlx::SqlitePool;
 

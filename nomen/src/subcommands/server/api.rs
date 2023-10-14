@@ -159,6 +159,19 @@ pub async fn op_return_v1(
 }
 
 #[allow(clippy::unused_async)]
+pub async fn op_return_v0(
+    Query(query): Query<models::OpReturnQuery>,
+) -> Result<Json<models::OpReturnResponse>, models::JsonError> {
+    let name = Name::from_str(&query.name).map_err(|_| anyhow!("Invalid name"))?;
+    let bytes = CreateBuilder::new(&query.pubkey, name.as_ref()).v0_op_return();
+    let orr = models::OpReturnResponse {
+        op_return: vec![hex::encode(bytes)],
+    };
+
+    Ok(Json(orr))
+}
+
+#[allow(clippy::unused_async)]
 pub async fn get_transfer_event(
     Query(query): Query<models::TransferEventQuery>,
 ) -> Result<Json<models::TransferEventResponse>, models::JsonError> {

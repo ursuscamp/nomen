@@ -2,7 +2,7 @@
 
 {% block body %}
 <main>
-  <h1>New Name</h1>
+  <h1>{% if upgrade %}Upgrade{% else %}New{% endif %} Name</h1>
 
   {% if !psbt.is_empty() %}
   <p>Sign and broadcast this transaction with your Bitcoin wallet:</p>
@@ -26,12 +26,20 @@
   </script>
 
   {% else %}
+
+  {% if upgrade %}
+  <p>
+    You can upgrade an old-style v0 name to v1 by simply recreating it. As long as the name and pubkey match, the
+    protocol will treat it as an upgrade.
+  </p>
+  {% else %}
   <p>
     You can generate a Bitcoin transaction that will reserve a name for you. Simply enter a transaction id and output
     number for a UTXO that you control.
     Also enter your fee rate that you wish to spend to the miners, the name you are reserving and the pubkey that will
     be the owner of the name.
   </p>
+  {% endif %}
 
   <p>
     After submitting the form, you will be given a PSBT (partially-signed Bitcoin transaction) which you can sign with
@@ -46,6 +54,7 @@
   </p>
 
   <form action="/newname" method="POST">
+    <input type="hidden" name="upgrade" value="{{ upgrade }}">
     <h2>Input Tx</h2>
     <p>
       <label for="txid">Txid</label>

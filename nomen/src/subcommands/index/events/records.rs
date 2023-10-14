@@ -36,7 +36,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     } = ed;
     db::insert_name_event(
         pool,
-        name,
+        name.clone(),
         fingerprint,
         calculated_nsid,
         pubkey,
@@ -46,6 +46,8 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         raw_event,
     )
     .await?;
+
+    db::update_v0_index(pool, name.as_ref(), &pubkey, calculated_nsid).await?;
 
     Ok(())
 }
