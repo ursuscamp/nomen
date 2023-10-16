@@ -29,7 +29,7 @@ static MIGRATIONS: [&str; 14] = [
 
     // This is useful so that we can know that this blockheight was already indexed. Even if the cache entry is deleted because it's old, we can keep it here so that
     // we can know we already looked at it.
-    "CREATE TABLE old_transfer_cache (id INTEGER PRIMARY KEY, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
+    "CREATE TABLE old_transfer_cache (id, protocol, fingerprint, nsid, name, pubkey, blockhash, txid, blocktime, blockheight, txheight, vout, indexed_at);",
 
     // This view is useful as an "interesting things" view. I.e., something related to Nomen existed at this blockheight and we have already seen it.
     "CREATE VIEW index_blockheights_vw AS
