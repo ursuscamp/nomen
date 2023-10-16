@@ -27,7 +27,10 @@
 - [x] Update docs
 - [x] Bump all versions in crates
 - [x] Set 100 block expiration on transfer cache
-- [ ] Add transfer option in UI
+- [x] Add transfer option in UI
+- [ ] Simplify index, just rescan raw_blockchain on startup and rebuild in-memoery index
+  - [ ] Add option to output JSON/CSV of results
+  - [ ] Raw blockchain test vectors
 
 # Things to test after refactor
 
@@ -40,6 +43,7 @@
 - [ ] Test duplicate names
 - [ ] Test invalid transfer signature
 - [x] Test name record
+- [ ] test npubs
 
 # Bugs
 

@@ -58,6 +58,9 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
             .route("/newname", post(explorer::new_name_submit))
             .route("/updaterecords", get(explorer::new_records_form))
             .route("/updaterecords", post(explorer::new_records_submit))
+            .route("/transfer", get(explorer::transfer::initiate))
+            .route("/transfer", post(explorer::transfer::submit_initiate))
+            .route("/transfer/sign", post(explorer::transfer::complete))
             .route("/stats", get(explorer::index_stats));
     }
 

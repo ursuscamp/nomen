@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <p>Sign and broadcast these transactions with your Bitcoin wallet. The first one ways from the UTXO you specified, and
+    the second UTXO pays from the first in a CPFP (child pays for parent) transaction.</p>
+  <p>
+  <pre id="psbt1">{{ tx1 }}</pre>
+  <button id="copy1">Copy</button>
+  </p>
+
+  <p>
+  <pre id="psbt2">{{ tx2 }}</pre>
+  <button id="copy2">Copy</button>
+  </p>
+</main>
+
+<script>
+  let btn1 = document.getElementById('copy1');
+  btn1.addEventListener('click', async (event) => {
+    event.preventDefault();
+    let tx = document.getElementById('psbt1').innerHTML;
+    await navigator.clipboard.writeText(tx);
+    btn.innerHTML = 'Copied'
+    setTimeout(() => {
+      btn.innerHTML = 'Copy'
+    }, 1000);
+  });
+
+  let btn2 = document.getElementById('copy2');
+  btn2.addEventListener('click', async (event) => {
+    event.preventDefault();
+    let tx = document.getElementById('psbt2').innerHTML;
+    await navigator.clipboard.writeText(tx);
+    btn.innerHTML = 'Copied'
+    setTimeout(() => {
+      btn.innerHTML = 'Copy'
+    }, 1000);
+  });
+</script>
+{% endblock %}

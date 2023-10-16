@@ -301,3 +301,130 @@ pub async fn index_stats(State(state): State<AppState>) -> Result<IndexerInfo, W
         nostr_events: db::stats::nostr_events(&state.pool).await?,
     })
 }
+
+pub mod transfer {
+    use axum::{extract::State, Form};
+    use bitcoin::{
+        address::{NetworkChecked, NetworkUnchecked},
+        Address, Amount, Txid,
+    };
+    use nomen_core::TransferBuilder;
+    use secp256k1::{schnorr::Signature, XOnlyPublicKey};
+    use serde::Deserialize;
+
+    use crate::subcommands::{
+        util::{transfer_psbt1, transfer_psbt2},
+        AppState, WebError,
+    };
+
+    #[derive(askama::Template)]
+    #[template(path = "transfer/initiate.html")]
+    pub struct InitiateTransferTemplate;
+
+    #[derive(Deserialize)]
+    pub struct InitiateTransferForm {
+        txid: Txid,
+        vout: u64,
+        address: Address<NetworkUnchecked>,
+        fee: u64,
+        name: String,
+        pubkey: XOnlyPublicKey,
+        old_pubkey: XOnlyPublicKey,
+    }
+
+    #[allow(clippy::unused_async)]
+    pub async fn initiate() -> InitiateTransferTemplate {
+        InitiateTransferTemplate
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "transfer/sign.html")]
+    pub struct SignEventTemplate {
+        txid: Txid,
+        vout: u64,
+        address: Address<NetworkChecked>,
+        fee: u64,
+        name: String,
+        pubkey: XOnlyPublicKey,
+        old_pubkey: XOnlyPublicKey,
+        event: String,
+    }
+
+    #[allow(clippy::unused_async)]
+    pub async fn submit_initiate(
+        State(state): State<AppState>,
+        Form(transfer): Form<InitiateTransferForm>,
+    ) -> Result<SignEventTemplate, WebError> {
+        let te = TransferBuilder {
+            new_pubkey: &transfer.pubkey,
+            name: &transfer.name,
+        };
+        let event = te.unsigned_event(&transfer.old_pubkey);
+        Ok(SignEventTemplate {
+            txid: transfer.txid,
+            vout: transfer.vout,
+            address: transfer.address.require_network(state.config.network())?,
+            fee: transfer.fee,
+            name: transfer.name,
+            pubkey: transfer.pubkey,
+            old_pubkey: transfer.old_pubkey,
+            event: serde_json::to_string(&event)?,
+        })
+    }
+
+    #[derive(Deserialize)]
+    pub struct FinalTransferForm {
+        txid: Txid,
+        vout: u32,
+        address: Address<NetworkUnchecked>,
+        fee: usize,
+        name: String,
+        pubkey: XOnlyPublicKey,
+        sig: Signature,
+    }
+
+    #[derive(askama::Template)]
+    #[template(path = "transfer/complete.html")]
+    pub struct CompleteTransferTemplate {
+        tx1: String,
+        tx2: String,
+    }
+
+    pub async fn complete(
+        State(state): State<AppState>,
+        Form(transfer): Form<FinalTransferForm>,
+    ) -> Result<CompleteTransferTemplate, WebError> {
+        let address = transfer.address.require_network(state.config.network())?;
+        let tx1 = transfer_psbt1(
+            state.config.rpc_client()?,
+            transfer.txid,
+            transfer.vout,
+            &address.to_string(),
+            &transfer.name,
+            &transfer.pubkey,
+            transfer.fee,
+        )
+        .await?;
+
+        let consensus_tx = tx1.clone().extract_tx();
+        let value = Amount::from_sat(consensus_tx.output[0].value);
+
+        let tx2 = transfer_psbt2(
+            state.config.rpc_client()?,
+            consensus_tx.txid(),
+            0,
+            address.to_string(),
+            transfer.name,
+            transfer.pubkey,
+            transfer.fee,
+            transfer.sig,
+            value,
+        )
+        .await?;
+
+        Ok(CompleteTransferTemplate {
+            tx1: tx1.to_string(),
+            tx2: tx2.to_string(),
+        })
+    }
+}
