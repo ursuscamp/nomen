@@ -34,13 +34,13 @@
 
 # Things to test after refactor
 
-- [ ] Test that block unwinding still works
+- [x] Test that block unwinding still works
 - [x] Test v0 create
 - [x] Test v0 -> v1 upgrade
 - [x] Test v1 create
-- [ ] Test v1 transfer
-- [ ] Test v0 -> v1 upgrade -> v1 transfer
-- [ ] Test duplicate names
+- [x] Test v1 transfer
+- [x] Test v0 -> v1 upgrade -> v1 transfer
+- [x] Test duplicate names
 - [ ] Test invalid transfer signature
 - [x] Test name record
 - [ ] test npubs
@@ -53,3 +53,4 @@
 - [x] Update Records link isn't working from name page
 - [x] Still loggin lots of transfer messages for some reason
   - [x] Create vw for unindexed blocks, including using the transfer cache
+- [ ] Item left in transfer cache after transfer is complete

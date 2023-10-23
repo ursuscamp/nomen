@@ -353,7 +353,16 @@ async fn rewind_invalid_chain(client: Client, pool: SqlitePool) -> anyhow::Resul
             .bind(stale_block as i64)
             .execute(&mut tx)
             .await?;
-        sqlx::query("DELETE FROM blockchain_index;")
+        sqlx::query("DELETE FROM blockchain_index WHERE blockheight >= ?;")
+            .bind(stale_block as i64)
+            .execute(&mut tx)
+            .await?;
+        sqlx::query("DELETE FROM transfer_cache WHERE blockheight >= ?;")
+            .bind(stale_block as i64)
+            .execute(&mut tx)
+            .await?;
+        sqlx::query("DELETE FROM old_transfer_cache WHERE blockheight >= ?;")
+            .bind(stale_block as i64)
             .execute(&mut tx)
             .await?;
         sqlx::query("DELETE FROM index_height WHERE blockheight >= ?;")

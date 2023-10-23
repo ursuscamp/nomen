@@ -215,6 +215,7 @@ pub async fn delete_from_transfer_cache(
     conn: &sqlx::Pool<sqlx::Sqlite>,
     id: i64,
 ) -> Result<(), anyhow::Error> {
+    tracing::debug!("DELETING transfer_cache with id {id}");
     sqlx::query("DELETE FROM transfer_cache WHERE id = ?;")
         .bind(id)
         .execute(conn)
