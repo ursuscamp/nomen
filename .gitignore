@@ -16,3 +16,4 @@ records1.json
 release/
 *.bak
 contrib/*
+backup/

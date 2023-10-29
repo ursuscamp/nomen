@@ -112,7 +112,7 @@ fn spawn_index_thread(
 
             for (txheight, tx) in block.txdata.iter().enumerate() {
                 for (vout, output) in tx.output.iter().enumerate() {
-                    if output.script_pubkey.is_op_return() {
+                    if output.script_pubkey.is_op_return() && output.script_pubkey.len() >= 3 {
                         let b = &output.script_pubkey.as_bytes()[2..];
 
                         // Pre-check if it starts with NOM, so we can filter out some unnecessary errors from the logs
@@ -164,8 +164,8 @@ pub async fn update_blockchain_index(
     _config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(), anyhow::Error> {
-    let mut rows = sqlx::query_as::<_, RawBlockchain>("SELECT * FROM raw_blockchain rb WHERE rb.blockheight > (SELECT coalesce(max(blockheight), 0) FROM index_blockheights_vw);").fetch(pool);
-    while let Some(row) = rows.try_next().await? {
+    let rows = sqlx::query_as::<_, RawBlockchain>("SELECT * FROM raw_blockchain rb WHERE rb.blockheight > (SELECT coalesce(max(blockheight), 0) FROM index_blockheights_vw);").fetch_all(pool).await?;
+    for row in rows {
         if let Ok(create) = CreateV0::try_from(row.data.as_ref()) {
             let i = BlockchainIndex {
                 protocol: 0,
