@@ -5,7 +5,8 @@
   <h1>{% if upgrade %}Upgrade{% else %}New{% endif %} Name</h1>
 
   {% if !data.is_empty() %}
-  <p>Sign and broadcast this transaction with your Bitcoin wallet:</p>
+  <p>{% if is_psbt %}Sign and broadcast this transaction with your Bitcoin wallet{% else %}Broadcast a transaction with
+    this <code>OP_RETURN</code> data{% endif %}:</p>
   <pre id="data">{{ data }}</pre>
   <button id="copy">Copy</button>
 
@@ -35,11 +36,15 @@
   {% endif %}
 
   <p>
-    Using a bitcoin wallet, create a partially signed bitcoin transaction from one of your UTXOs to yourself. Save it,
-    don't sign and broadcast it yet. This tool will add an extra output to it (a ZERO SAT OP_RETURN output).
-    Slightly over-estimate the fees to account for the extra data that will be inserted.
-    Enter the name and pubkey you wish to register, as well. After submitting it, you will be returned a new PSBT.
-    Simply sign it with your wallet and broadcast. Be sure to check it first, however!
+    You have two options:
+  <ol>
+    <li>Create an unsigned PSBT (partially signed Bitcoin transaction) and paste it below. This will modify the PSBT by
+      adding an
+      additional zero value <code>OP_RETURN</code> output. Make sure to slightly over-estimate the fee to account for
+      the bit of extra data, and check the transaction before you sign and broadcast it!</li>
+    <li>Leave the PSBT field blank, and you will be given a hex-encoded <code>OP_RETURN</code> value which you can use
+      in a Bitcoin wallet of your choice which supports it (Bitcoin Core, Electrum, etc).</li>
+  </ol>
   </p>
 
   <p>

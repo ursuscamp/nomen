@@ -127,6 +127,7 @@ pub struct NewNameTemplate {
     name: String,
     pubkey: String,
     confirmations: usize,
+    is_psbt: bool,
 }
 
 #[derive(Deserialize)]
@@ -170,14 +171,21 @@ pub async fn new_name_submit(
     if !available {
         Err(anyhow!("Name unavailable"))?;
     }
-    let mut psbt: Psbt = form.psbt.parse()?;
-    extend_psbt(&mut psbt, &form.name, &form.pubkey);
+    let (is_psbt, data) = if form.psbt.len() > 0 {
+        let mut psbt: Psbt = form.psbt.parse()?;
+        extend_psbt(&mut psbt, &form.name, &form.pubkey);
+        (true, psbt.to_string())
+    } else {
+        let d = CreateBuilder::new(&form.pubkey, &form.name).v1_op_return();
+        (false, hex::encode(d))
+    };
     Ok(NewNameTemplate {
         upgrade: form.upgrade,
-        data: psbt.to_string(),
+        data,
         name: form.name,
         pubkey: form.pubkey.to_string(),
         confirmations: state.config.confirmations(),
+        is_psbt,
     })
 }
 
