@@ -1,23 +1,29 @@
 use std::collections::HashMap;
 
 use anyhow::anyhow;
-use bitcoin::{psbt::Psbt, script::PushBytesBuf, Amount, ScriptBuf, TxOut, Txid};
+use bitcoin::{
+    psbt::{Output, Psbt},
+    script::PushBytesBuf,
+    Amount, ScriptBuf, TxOut, Txid,
+};
 use bitcoincore_rpc::{bitcoincore_rpc_json::CreateRawTransactionInput, Client, RpcApi};
 use nomen_core::{CreateBuilder, NameKind, NsidBuilder, TransferBuilder};
 use nostr_sdk::{EventBuilder, Tag, TagKind, UnsignedEvent};
 use secp256k1::{schnorr::Signature, XOnlyPublicKey};
 
-pub async fn create_psbt(
-    client: Client,
-    txid: Txid,
-    vout: u32,
-    address: String,
-    name: String,
-    pubkey: XOnlyPublicKey,
-    fee_rate: usize,
-) -> anyhow::Result<Psbt> {
-    let op_return = new_name_op_return(pubkey, &name);
-    create_transaction(client, txid, vout, address, op_return, fee_rate, None).await
+pub fn extend_psbt(psbt: &mut Psbt, name: &str, pubkey: &XOnlyPublicKey) {
+    let data = CreateBuilder::new(pubkey, name).v1_op_return();
+    let mut pb = PushBytesBuf::new();
+    pb.extend_from_slice(&data).expect("OP_RETURN fail");
+    let data = ScriptBuf::new_op_return(&pb);
+    psbt.outputs.push(Output {
+        witness_script: Some(data.clone()),
+        ..Default::default()
+    });
+    psbt.unsigned_tx.output.push(TxOut {
+        value: 0,
+        script_pubkey: data,
+    });
 }
 
 #[allow(clippy::unused_async)]
@@ -79,13 +85,20 @@ async fn create_transaction(
 ) -> Result<Psbt, anyhow::Error> {
     tokio::task::spawn_blocking(move || -> Result<Psbt, anyhow::Error> {
         // Get UTXO info from the Bitcoin Node, then construct a new transaction with the specified inputs and outputs, plus the name OP_RETURN
-        let value = if let Some(amount) = value {
-            amount
+        let (scriptpk, value) = if let Some(amount) = value {
+            (ScriptBuf::new(), amount)
         } else {
             let utxo = client
                 .get_tx_out(&txid, vout, Some(false))?
                 .ok_or(anyhow!("Tx not found"))?;
-            utxo.value
+            (
+                utxo.script_pub_key
+                    .address
+                    .ok_or_else(|| anyhow!("Invalid prev out"))
+                    .map(|f| f.assume_checked().script_pubkey())
+                    .unwrap_or_default(),
+                utxo.value,
+            )
         };
         let input = CreateRawTransactionInput {
             txid,
@@ -99,7 +112,12 @@ async fn create_transaction(
         let size = tx.vsize();
         let fee = size * fee_rate;
         tx.output[0].value -= fee as u64;
-        let psbt = Psbt::from_unsigned_tx(tx)?;
+        let mut psbt = Psbt::from_unsigned_tx(tx)?;
+        psbt.inputs[0].witness_utxo = Some(TxOut {
+            value: value.to_sat(),
+            script_pubkey: scriptpk,
+        });
+        // psbt.outputs = psbt.unsigned_tx.output.clone();
         Ok(psbt)
     })
     .await?

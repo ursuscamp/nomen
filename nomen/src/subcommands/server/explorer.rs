@@ -6,15 +6,19 @@ use axum::{
     Form,
 };
 use axum_extra::extract::WithRejection;
-use bitcoin::Txid;
+use bitcoin::{
+    psbt::{Output, Psbt},
+    script::{PushBytes, PushBytesBuf},
+    Amount, ScriptBuf, TxOut,
+};
 use itertools::Itertools;
-use nomen_core::Name;
+use nomen_core::{CreateBuilder, Name};
 use secp256k1::XOnlyPublicKey;
 use serde::Deserialize;
 
 use crate::{
     db::{self, NameDetails},
-    subcommands::util::{create_psbt, name_event},
+    subcommands::util::{extend_psbt, name_event},
     util::{format_time, KeyVal},
 };
 
@@ -119,25 +123,18 @@ pub async fn show_name(
 #[template(path = "newname.html")]
 pub struct NewNameTemplate {
     upgrade: bool,
-    psbt: String,
-    txid: String,
-    vout: u32,
-    address: String,
+    data: String,
     name: String,
     pubkey: String,
     confirmations: usize,
-    fee: usize,
 }
 
 #[derive(Deserialize)]
 pub struct NewNameForm {
     upgrade: bool,
-    txid: Txid,
-    vout: u32,
-    address: String,
     name: String,
     pubkey: XOnlyPublicKey,
-    fee: usize,
+    psbt: String,
 }
 
 #[derive(Deserialize)]
@@ -173,27 +170,14 @@ pub async fn new_name_submit(
     if !available {
         Err(anyhow!("Name unavailable"))?;
     }
-    let rpc = state.config.rpc_client()?;
-    let psbt = create_psbt(
-        rpc,
-        form.txid,
-        form.vout,
-        form.address.clone(),
-        form.name.clone(),
-        form.pubkey,
-        form.fee,
-    )
-    .await?;
+    let mut psbt: Psbt = form.psbt.parse()?;
+    extend_psbt(&mut psbt, &form.name, &form.pubkey);
     Ok(NewNameTemplate {
         upgrade: form.upgrade,
-        psbt: psbt.to_string(),
-        txid: form.txid.to_string(),
-        vout: form.vout,
-        address: form.address,
+        data: psbt.to_string(),
         name: form.name,
         pubkey: form.pubkey.to_string(),
         confirmations: state.config.confirmations(),
-        fee: form.fee,
     })
 }
 

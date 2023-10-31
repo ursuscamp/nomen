@@ -4,9 +4,9 @@
 <main>
   <h1>{% if upgrade %}Upgrade{% else %}New{% endif %} Name</h1>
 
-  {% if !psbt.is_empty() %}
+  {% if !data.is_empty() %}
   <p>Sign and broadcast this transaction with your Bitcoin wallet:</p>
-  <pre id="psbt">{{ psbt }}</pre>
+  <pre id="data">{{ data }}</pre>
   <button id="copy">Copy</button>
 
   <p>After signing and transmitting the transaction, <a href="/updaterecords?name={{ name }}&pubkey={{ pubkey }}">setup
@@ -16,7 +16,7 @@
     let btn = document.getElementById('copy');
     btn.addEventListener('click', async (event) => {
       event.preventDefault();
-      let tx = document.getElementById('psbt').innerHTML;
+      let tx = document.getElementById('data').innerHTML;
       await navigator.clipboard.writeText(tx);
       btn.innerHTML = 'Copied'
       setTimeout(() => {
@@ -32,19 +32,18 @@
     You can upgrade an old-style v0 name to v1 by simply recreating it. As long as the name and pubkey match, the
     protocol will treat it as an upgrade.
   </p>
-  {% else %}
-  <p>
-    You can generate a Bitcoin transaction that will reserve a name for you. Simply enter a transaction id and output
-    number for a UTXO that you control.
-    Also enter your fee rate that you wish to spend to the miners, the name you are reserving and the pubkey that will
-    be the owner of the name.
-  </p>
   {% endif %}
 
   <p>
-    After submitting the form, you will be given a PSBT (partially-signed Bitcoin transaction) which you can sign with
-    your Bitcoin wallet and broadcast. Once it is
-    mined and has {{ confirmations }} confirmations, it will be indexed.
+    Using a bitcoin wallet, create a partially signed bitcoin transaction from one of your UTXOs to yourself. Save it,
+    don't sign and broadcast it yet. This tool will add an extra output to it (a ZERO SAT OP_RETURN output).
+    Slightly over-estimate the fees to account for the extra data that will be inserted.
+    Enter the name and pubkey you wish to register, as well. After submitting it, you will be returned a new PSBT.
+    Simply sign it with your wallet and broadcast. Be sure to check it first, however!
+  </p>
+
+  <p>
+    Once it is mined and has {{ confirmations }} confirmations, it will be indexed.
   </p>
 
   <p>
@@ -55,27 +54,9 @@
 
   <form action="/newname" method="POST">
     <input type="hidden" name="upgrade" value="{{ upgrade }}">
-    <h2>Input Tx</h2>
     <p>
-      <label for="txid">Txid</label>
-      <input type="text" name="txid" id="txid" value="{{ txid }}">
-    </p>
-
-    <p>
-      <label for="vout">Vout</label>
-      <input type="text" name="vout" id="vout" value="{{ vout }}">
-    </p>
-
-    <h2>Output</h2>
-
-    <p>
-      <label for="address">Change Address</label>
-      <input type="text" id="address" name="address" value="{{ address }}">
-    </p>
-
-    <p>
-      <label for="fee">Fee (sats/vb)</label>
-      <input type="text" id="fee" name="fee" value="{{ fee }}">
+      <label for="psbt">Psbt</label>
+      <input type="text" id="psbt" name="psbt">
     </p>
 
     <p>
