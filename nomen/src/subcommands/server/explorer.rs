@@ -6,11 +6,7 @@ use axum::{
     Form,
 };
 use axum_extra::extract::WithRejection;
-use bitcoin::{
-    psbt::{Output, Psbt},
-    script::{PushBytes, PushBytesBuf},
-    Amount, ScriptBuf, TxOut,
-};
+use bitcoin::psbt::Psbt;
 use itertools::Itertools;
 use nomen_core::{CreateBuilder, Name};
 use secp256k1::XOnlyPublicKey;
@@ -171,13 +167,13 @@ pub async fn new_name_submit(
     if !available {
         Err(anyhow!("Name unavailable"))?;
     }
-    let (is_psbt, data) = if form.psbt.len() > 0 {
+    let (is_psbt, data) = if form.psbt.is_empty() {
+        let d = CreateBuilder::new(&form.pubkey, &form.name).v1_op_return();
+        (false, hex::encode(d))
+    } else {
         let mut psbt: Psbt = form.psbt.parse()?;
         extend_psbt(&mut psbt, &form.name, &form.pubkey);
         (true, psbt.to_string())
-    } else {
-        let d = CreateBuilder::new(&form.pubkey, &form.name).v1_op_return();
-        (false, hex::encode(d))
     };
     Ok(NewNameTemplate {
         upgrade: form.upgrade,

@@ -2,9 +2,12 @@
 
 ## 0.3.0 (Unreleased)
 
+The indexer has been fully refactores (nearly rewritten), and the protocol been upgraded to v1. It is backwards compatible with v0 (they share the same namespace).
+
 Features:
 
-Bugs:
+- v1 protocol, including transfers
+- New API methods
 
 Other:
   - Set a minimum supported Rust version of 1.71. Will try to maintain this for a while.

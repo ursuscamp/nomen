@@ -123,16 +123,6 @@ async fn create_transaction(
     .await?
 }
 
-fn new_name_op_return(pubkey: XOnlyPublicKey, name: &str) -> TxOut {
-    let or = CreateBuilder::new(&pubkey, name).v1_op_return();
-    let pb = PushBytesBuf::try_from(or).expect("invalid OP_RETURN");
-    let script = ScriptBuf::new_op_return(&pb);
-    TxOut {
-        value: 0,
-        script_pubkey: script,
-    }
-}
-
 pub fn name_event(
     pubkey: XOnlyPublicKey,
     records: &HashMap<String, String>,

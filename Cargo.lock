@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "nomen"
-version = "0.3.0-rc.1"
+version = "0.3.0-pre.2"
 dependencies = [
  "anyhow",
  "askama",
@@ -1354,7 +1354,7 @@ dependencies = [
 
 [[package]]
 name = "nomen-cli"
-version = "0.3.0-rc.1"
+version = "0.3.0-pre.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1367,7 +1367,7 @@ dependencies = [
 
 [[package]]
 name = "nomen_core"
-version = "0.3.0-rc.1"
+version = "0.3.0-pre.2"
 dependencies = [
  "bitcoin",
  "bitcoin_hashes 0.12.0",
