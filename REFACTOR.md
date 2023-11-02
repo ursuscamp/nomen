@@ -28,9 +28,6 @@
 - [x] Bump all versions in crates
 - [x] Set 100 block expiration on transfer cache
 - [x] Add transfer option in UI
-- [ ] Simplify index, just rescan raw_blockchain on startup and rebuild in-memoery index
-  - [ ] Add option to output JSON/CSV of results
-  - [ ] Raw blockchain test vectors
 
 # Things to test after refactor
 
@@ -53,4 +50,4 @@
 - [x] Update Records link isn't working from name page
 - [x] Still loggin lots of transfer messages for some reason
   - [x] Create vw for unindexed blocks, including using the transfer cache
-- [ ] Item left in transfer cache after transfer is complete
+- [x] Item left in transfer cache after transfer is complete

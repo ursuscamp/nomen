@@ -10,33 +10,11 @@
   </p>
 
   <p>
-    Provide UTXO information below, and then you will be prompted to sign the transfer with your Nostr extension.
+    To initiate a transfer, enter the name you wish to transfer, and the pubkeys of the previous (current) owner and
+    the new owner.
   </p>
 
   <form action="/transfer" method="POST">
-    <h2>Input Tx</h2>
-    <p>
-      <label for="txid">Txid</label>
-      <input type="text" name="txid" id="txid">
-    </p>
-
-    <p>
-      <label for="vout">Vout</label>
-      <input type="text" name="vout" id="vout">
-    </p>
-
-    <h2>Output</h2>
-
-    <p>
-      <label for="address">Change Address</label>
-      <input type="text" id="address" name="address">
-    </p>
-
-    <p>
-      <label for="fee">Fee (sats/vb)</label>
-      <input type="text" id="fee" name="fee">
-    </p>
-
     <p>
       <label for="name">Name</label>
       <input type="text" id="name" name="name">

@@ -209,13 +209,13 @@ pub struct SignatureV1 {
     pub signature: Signature,
 }
 impl SignatureV1 {
-    pub fn create(signature: &Signature) -> SignatureV1 {
+    pub fn new(signature: &Signature) -> SignatureV1 {
         SignatureV1 {
             signature: *signature,
         }
     }
 
-    pub fn parse_create(value: &[u8]) -> Result<SignatureV1, super::UtilError> {
+    pub fn parse_signature(value: &[u8]) -> Result<SignatureV1, super::UtilError> {
         Ok(SignatureV1 {
             signature: Signature::from_slice(value)?,
         })
@@ -240,7 +240,7 @@ impl TryFrom<&[u8]> for SignatureV1 {
         let value = &value[4..];
 
         match value.first() {
-            Some(0x02) => Ok(SignatureV1::parse_create(&value[1..])?),
+            Some(0x02) => Ok(SignatureV1::parse_signature(&value[1..])?),
             _ => Err(super::UtilError::UnexpectedNomenTxType),
         }
     }
