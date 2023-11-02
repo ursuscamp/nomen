@@ -421,6 +421,25 @@ pub async fn update_v0_index(
     Ok(())
 }
 
+pub async fn reindex(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    blockheight: i64,
+) -> anyhow::Result<()> {
+    sqlx::query("DELETE FROM blockchain_index WHERE blockheight >= ?;")
+        .bind(blockheight)
+        .execute(conn)
+        .await?;
+    sqlx::query("DELETE FROM transfer_cache WHERE blockheight >= ?;")
+        .bind(blockheight)
+        .execute(conn)
+        .await?;
+    sqlx::query("DELETE FROM old_transfer_cache WHERE blockheight >= ?;")
+        .bind(blockheight)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
 pub mod stats {
     use sqlx::SqlitePool;
 

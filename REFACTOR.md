@@ -29,7 +29,7 @@
 - [x] Set 100 block expiration on transfer cache
 - [x] Add transfer option in UI
 - [x] Add re-index command.
-- [ ] Add re-scan command.
+- [x] Add re-scan command.
 
 # Things to test after refactor
 
