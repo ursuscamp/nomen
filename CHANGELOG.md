@@ -8,6 +8,7 @@ Features:
 
 - v1 protocol, including transfers
 - New API methods
+- `reindex` subcommand forces the indexer to re-index the Nomen outputs. This is not the same thing as re-scanning the blockchain. The indexer caches Nomen-related and those are used for re-indexing. This is a fast operation. This is mainly useful for testing, or recovering from indexer bugs that don't require rescanning
 
 Other:
   - Set a minimum supported Rust version of 1.71. Will try to maintain this for a while.
