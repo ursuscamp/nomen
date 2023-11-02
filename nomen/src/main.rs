@@ -28,6 +28,9 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::Init => subcommands::init()?,
         config::Subcommand::Index => subcommands::index(&config).await?,
         config::Subcommand::Server => subcommands::start(&config, &pool).await?,
+        config::Subcommand::Reindex { blockheight } => {
+            subcommands::reindex(&config, &pool, blockheight.unwrap_or_default()).await?;
+        }
     }
 
     Ok(())

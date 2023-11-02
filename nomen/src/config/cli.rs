@@ -20,6 +20,9 @@ pub enum Subcommand {
     /// Scan and index the blockchain.
     Index,
 
-    /// Start the HTTP server
+    /// Start the HTTP server.
     Server,
+
+    /// Force the indexer to re-index, given an optional starting blockheight. Note: This does NOT force a blockchain rescan.
+    Reindex { blockheight: Option<i64> },
 }
