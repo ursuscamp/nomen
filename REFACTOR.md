@@ -42,7 +42,7 @@
 - [x] Test duplicate names
 - [ ] Test invalid transfer signature
 - [x] Test name record
-- [ ] test npubs
+- [x] test npubs
 
 # Bugs
 

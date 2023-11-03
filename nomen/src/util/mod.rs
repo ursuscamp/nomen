@@ -1,6 +1,8 @@
 mod keyval;
+mod pubkey;
 
 pub use keyval::*;
+pub use pubkey::*;
 
 use time::{macros::format_description, OffsetDateTime};
 

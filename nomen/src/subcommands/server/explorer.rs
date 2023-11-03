@@ -9,13 +9,12 @@ use axum_extra::extract::WithRejection;
 use bitcoin::psbt::Psbt;
 use itertools::Itertools;
 use nomen_core::{CreateBuilder, Name};
-use secp256k1::XOnlyPublicKey;
 use serde::Deserialize;
 
 use crate::{
     db::{self, NameDetails},
     subcommands::util::{extend_psbt, name_event},
-    util::{format_time, KeyVal},
+    util::{format_time, KeyVal, Pubkey},
 };
 
 use super::{AppState, WebError};
@@ -130,7 +129,7 @@ pub struct NewNameTemplate {
 pub struct NewNameForm {
     upgrade: bool,
     name: String,
-    pubkey: XOnlyPublicKey,
+    pubkey: Pubkey,
     psbt: String,
 }
 
@@ -168,11 +167,11 @@ pub async fn new_name_submit(
         Err(anyhow!("Name unavailable"))?;
     }
     let (is_psbt, data) = if form.psbt.is_empty() {
-        let d = CreateBuilder::new(&form.pubkey, &form.name).v1_op_return();
+        let d = CreateBuilder::new(form.pubkey.as_ref(), &form.name).v1_op_return();
         (false, hex::encode(d))
     } else {
         let mut psbt: Psbt = form.psbt.parse()?;
-        extend_psbt(&mut psbt, &form.name, &form.pubkey);
+        extend_psbt(&mut psbt, &form.name, form.pubkey.as_ref());
         (true, psbt.to_string())
     };
     Ok(NewNameTemplate {
@@ -198,7 +197,7 @@ pub struct NewRecordsTemplate {
 #[derive(Deserialize)]
 pub struct NewRecordsQuery {
     name: Option<String>,
-    pubkey: Option<XOnlyPublicKey>,
+    pubkey: Option<Pubkey>,
 }
 
 pub async fn new_records_form(
@@ -241,7 +240,7 @@ async fn records_from_query(query: &NewRecordsQuery, state: &AppState) -> Result
 pub struct NewRecordsForm {
     records: String,
     name: String,
-    pubkey: XOnlyPublicKey,
+    pubkey: Pubkey,
 }
 
 #[allow(clippy::unused_async)]
@@ -257,7 +256,7 @@ pub async fn new_records_submit(
         .iter()
         .map(|kv| kv.clone().pair())
         .collect::<HashMap<_, _>>();
-    let event = name_event(form.pubkey, &records, &form.name)?;
+    let event = name_event(*form.pubkey.as_ref(), &records, &form.name)?;
     let unsigned_event = serde_json::to_string_pretty(&event)?;
     Ok(NewRecordsTemplate {
         name: form.name.to_string(),
@@ -293,10 +292,13 @@ pub async fn index_stats(State(state): State<AppState>) -> Result<IndexerInfo, W
 pub mod transfer {
     use axum::{extract::State, Form};
     use nomen_core::{SignatureV1, TransferBuilder, TransferV1};
-    use secp256k1::{schnorr::Signature, XOnlyPublicKey};
+    use secp256k1::schnorr::Signature;
     use serde::Deserialize;
 
-    use crate::subcommands::{AppState, WebError};
+    use crate::{
+        subcommands::{AppState, WebError},
+        util::Pubkey,
+    };
 
     #[derive(askama::Template)]
     #[template(path = "transfer/initiate.html")]
@@ -305,8 +307,8 @@ pub mod transfer {
     #[derive(Deserialize)]
     pub struct InitiateTransferForm {
         name: String,
-        pubkey: XOnlyPublicKey,
-        old_pubkey: XOnlyPublicKey,
+        pubkey: Pubkey,
+        old_pubkey: Pubkey,
     }
 
     #[allow(clippy::unused_async)]
@@ -318,8 +320,8 @@ pub mod transfer {
     #[template(path = "transfer/sign.html")]
     pub struct SignEventTemplate {
         name: String,
-        pubkey: XOnlyPublicKey,
-        old_pubkey: XOnlyPublicKey,
+        pubkey: Pubkey,
+        old_pubkey: Pubkey,
         event: String,
     }
 
@@ -329,10 +331,10 @@ pub mod transfer {
         Form(transfer): Form<InitiateTransferForm>,
     ) -> Result<SignEventTemplate, WebError> {
         let te = TransferBuilder {
-            new_pubkey: &transfer.pubkey,
+            new_pubkey: transfer.pubkey.as_ref(),
             name: &transfer.name,
         };
-        let event = te.unsigned_event(&transfer.old_pubkey);
+        let event = te.unsigned_event(transfer.old_pubkey.as_ref());
         Ok(SignEventTemplate {
             name: transfer.name,
             pubkey: transfer.pubkey,
@@ -344,7 +346,7 @@ pub mod transfer {
     #[derive(Deserialize)]
     pub struct FinalTransferForm {
         name: String,
-        pubkey: XOnlyPublicKey,
+        pubkey: Pubkey,
         sig: Signature,
     }
 
@@ -361,7 +363,7 @@ pub mod transfer {
         Form(transfer): Form<FinalTransferForm>,
     ) -> Result<CompleteTransferTemplate, WebError> {
         let data1 = TransferV1 {
-            pubkey: transfer.pubkey,
+            pubkey: *transfer.pubkey.as_ref(),
             name: transfer.name.clone(),
         }
         .serialize();
