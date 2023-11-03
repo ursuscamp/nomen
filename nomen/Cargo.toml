@@ -1,6 +1,6 @@
 [package]
 name = "nomen"
-version = "0.3.0-pre.3"
+version = "0.3.0-pre.4"
 edition = "2021"
 build = "build.rs"
 default-run = "nomen"
@@ -34,6 +34,7 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
 time = { version = "0.3.20", features = ["formatting", "macros"] }
 tower-http = { version = "0.4.4", features = ["cors"] }
+serde_with = "3.4.0"
 
 
 [build-dependencies]
