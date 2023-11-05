@@ -18,6 +18,11 @@ With Bitcoin, there is no need to create a new blockchain or have a trusted thir
 
 Read [the spec](https://github.com/ursuscamp/nomen/blob/master/docs/SPEC.md) for more details about the protocol itself. It's very simple.
 
+## Documentation
+
+- [Changelog](docs/changelogs/v0.3.0.md)
+- [Release Notes](docs/release_notes/v0.3.0.md)
+
 ## Setting up a dev environment
 
 Follow the steps in [DEVELOPMENT.md](./docs/DEVELOPMENT.md).
