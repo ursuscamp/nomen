@@ -1,8 +1,9 @@
 [package]
 name = "nomen_core"
-version = "0.3.0-pre.4"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.71"
+repository = "https://github.com/ursuscamp/nomen"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
