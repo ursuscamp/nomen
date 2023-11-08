@@ -7,9 +7,6 @@ What you will need:
 3. A keypair (any schnorr-compatible Bitcoin or Nostr keypair will work)
    * If you need one, use optional step below.
 
-How it works:
-
-You must publish your name on the Bitcoin blockchain, so you need a transaction. Construct an unsigned PSBT with Bitcoin wallet
 ## Using the Explorer
 
 1. Construct an unsigned PSBT with your Bitcoin wallet.

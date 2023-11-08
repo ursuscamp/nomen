@@ -16,7 +16,7 @@ Owners then publish Nostr events signed with the same key to update their record
 
 With Bitcoin, there is no need to create a new blockchain or have a trusted third party. With Nostr, there's no need to bootstrap a new P2P transport layer.
 
-Read [the spec](https://github.com/ursuscamp/nomen/blob/master/docs/SPEC.md) for more details about the protocol itself. It's very simple.
+Read [the specs](https://github.com/ursuscamp/noms) for more details about the protocol itself. It's very simple.
 
 ## Documentation
 
