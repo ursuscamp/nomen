@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h1>{% if upgrade %}Upgrade{% else %}New{% endif %} Name</h1>
+
+  {% if !data.is_empty() %}
+  <p>{% if is_psbt %}Sign and broadcast this transaction with your Bitcoin wallet{% else %}Broadcast a transaction with
+    this <code>OP_RETURN</code> data{% endif %}:</p>
+  <pre id="data">{{ data }}</pre>
+  <button id="copy">Copy</button>
+
+  <p>After signing and transmitting the transaction, <a href="/updaterecords?name={{ name }}&pubkey={{ pubkey }}">setup
+      your records</a> for the indexer to property index your new name.</p>
+
+  <script>
+    let btn = document.getElementById('copy');
+    btn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      let tx = document.getElementById('data').innerHTML;
+      await navigator.clipboard.writeText(tx);
+      btn.innerHTML = 'Copied'
+      setTimeout(() => {
+        btn.innerHTML = 'Copy'
+      }, 1000);
+    });
+  </script>
+
+  {% else %}
+
+  {% if upgrade %}
+  <p>
+    You can upgrade an old-style v0 name to v1 by simply recreating it. As long as the name and pubkey match, the
+    protocol will treat it as an upgrade.
+  </p>
+  {% endif %}
+
+  <p>
+    You have two options:
+  <ol>
+    <li>Create an unsigned PSBT (partially signed Bitcoin transaction) and paste it below. This will modify the PSBT by
+      adding an
+      additional zero value <code>OP_RETURN</code> output. Make sure to slightly over-estimate the fee to account for
+      the bit of extra data, and check the transaction before you sign and broadcast it!</li>
+    <li>Leave the PSBT field blank, and you will be given a hex-encoded <code>OP_RETURN</code> value which you can use
+      in a Bitcoin wallet of your choice which supports it (Bitcoin Core, Electrum, etc).</li>
+  </ol>
+  </p>
+
+  <p>
+    Once it is mined and has {{ confirmations }} confirmations, it will be indexed.
+  </p>
+
+  <p>
+    In order for the indexer to properly index your name, you also need to send your records after you broadcast your
+    transaction!
+    You can comeback anytime and click on <a href="/updaterecords">Update Records</a> in the navigation menu.
+  </p>
+
+  <form action="/newname" method="POST">
+    <input type="hidden" name="upgrade" value="{{ upgrade }}">
+    <p>
+      <label for="psbt">Psbt</label>
+      <input type="text" id="psbt" name="psbt">
+    </p>
+
+    <p>
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ name }}">
+    </p>
+
+    {% include "pubkey.html" %}
+
+    <p>
+      <input type="submit" value="Submit">
+    </p>
+  </form>
+
+
+
+  {% endif %}
+</main>
+
+{% endblock %}

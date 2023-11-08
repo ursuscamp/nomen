@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <p>
+    Here are two <code>OP_RETURN</code>s they must be included in Bitcoin blocks, in this order. The first
+    <code>OP_RETURN</code>
+    contains the information for the new owner, and the second contains the signature that authorizes the transfer.
+    For now, Bitcoin standardness rules prevent multiple <code>OP_RETURN</code>s in a single transaction. Unless you
+    have a miner connection, they will need to broadcast in separate transactions. The best way to ensure that they
+    are mined in the correct order to include the first <code>OP_RETURN</code> in a transaction, then do a CPFP
+    (Child-Pays-For-Parent) transaction from the new UTXO and include the second OP_RETURN
+  </p>
+  <p>
+  <pre id="data1">{{ data1 }}</pre>
+  <button id="copy1">Copy</button>
+  </p>
+
+  <p>
+  <pre id="data2">{{ data2 }}</pre>
+  <button id="copy2">Copy</button>
+  </p>
+</main>
+
+<script>
+  let btn1 = document.getElementById('copy1');
+  btn1.addEventListener('click', async (event) => {
+    event.preventDefault();
+    let tx = document.getElementById('data1').innerHTML;
+    await navigator.clipboard.writeText(tx);
+    btn.innerHTML = 'Copied'
+    setTimeout(() => {
+      btn.innerHTML = 'Copy'
+    }, 1000);
+  });
+
+  let btn2 = document.getElementById('copy2');
+  btn2.addEventListener('click', async (event) => {
+    event.preventDefault();
+    let tx = document.getElementById('data2').innerHTML;
+    await navigator.clipboard.writeText(tx);
+    btn.innerHTML = 'Copied'
+    setTimeout(() => {
+      btn.innerHTML = 'Copy'
+    }, 1000);
+  });
+</script>
+{% endblock %}

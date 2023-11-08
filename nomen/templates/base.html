@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nomen Explorer</title>
+
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+
+  <style>
+    :root {
+      --accent: violet;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h2 style="margin: 12px;">Nomen Explorer</h2>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/explorer">Explorer</a>
+      <a href="/stats">Index Stats</a>
+      <a href="/newname">New Name</a>
+      <a href="/updaterecords">Update Records</a>
+      <a href="/transfer">Transfer Name</a>
+    </nav>
+  </header>
+
+  {% block body %}{% endblock %}
+
+</body>
+
+</html>

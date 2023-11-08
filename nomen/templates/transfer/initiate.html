@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h1>Transfer Name</h1>
+
+  <p>
+    To transfer a name, two transfer transactions must be broadcast containting data for the new owner, and a signature
+    authorizing the transfer, signed by the original owner.
+  </p>
+
+  <p>
+    To initiate a transfer, enter the name you wish to transfer, and the pubkeys of the previous (current) owner and
+    the new owner.
+  </p>
+
+  <form action="/transfer" method="POST">
+    <p>
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name">
+    </p>
+
+    <p>
+      <label for="pubkey">New owner pubkey (hex or npub encoded)</label>
+      <input type="text" id="pubkey" name="pubkey">
+    </p>
+
+    <p>
+      <label for="old_pubkey">Previous owner pubkey (hex or npub encoded)</label>
+      <input type="text" id="old_pubkey" name="old_pubkey">
+    </p>
+
+    <p>
+      <input type="submit" value="Submit">
+    </p>
+  </form>
+</main>
+{% endblock %}

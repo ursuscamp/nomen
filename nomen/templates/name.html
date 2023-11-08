@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main>
+  <h2>{{ name }}</h2>
+
+  <h3>Blockchain Info</h3>
+
+  <table>
+    <tbody>
+      <tr>
+        <td>Blockhash</td>
+        <td><a href="https://mempool.space/block/{{blockhash}}">{{ blockhash }}</a></td>
+      </tr>
+      <tr>
+        <td>Block Height</td>
+        <td>{{ height }}</td>
+      </tr>
+      <tr>
+        <td>Txid</td>
+        <td><a href="https://mempool.space/tx/{{ txid }}">{{ txid }}</a></td>
+      </tr>
+      <tr>
+        <td>Vout</td>
+        <td>{{ vout }}</td>
+      </tr>
+
+      <tr>
+        <td>Blocktime</td>
+        <td>{{ blocktime }}</td>
+      </tr>
+
+      <tr>
+        <td>Owner (pubkey)</td>
+        <td>{{ pubkey }}</td>
+      </tr>
+
+      <tr>
+        <td>Protocol Version</td>
+        <td>{{ protocol }} {% if protocol == 0 %}<a href="/newname?upgrade=true">Upgrade to v1</a>{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Records</h3>
+
+  <p><small><a href="/updaterecords?name={{ name }}&pubkey={{ pubkey }}">Update Records</a></small></p>
+
+  {% if records.is_empty() %}
+  <p>No records found.</p>
+  {% else %}
+  <table>
+    <thead>
+      <tr>
+        <th>Record Type</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for key in record_keys %}
+      <tr>
+        <td>{{ key }}</td>
+        {% if key == "WEB" %}
+        <td><a href="{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "NPUB" %}
+        <td><a href="https://primal.net/p/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "TWITTER" %}
+        <td><a href="https://twitter.com/{{ records[key] }}" target="_blank">{{ records[key] }}</a></td>
+        {% else if key == "MOTD" %}
+        <td>
+          <i>"{{ records[key] }}"</i>
+        </td>
+        {% else %}
+        <td>{{ records[key] }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</main>
+{% endblock %}

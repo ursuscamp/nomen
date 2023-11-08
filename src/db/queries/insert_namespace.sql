@@ -1,1 +1,0 @@
-INSERT INTO blockchain (fingerprint, nsid, blockhash, txid, blocktime, blockheight, txheight, vout, kind, indexed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch());

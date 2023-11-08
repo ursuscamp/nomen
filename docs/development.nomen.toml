@@ -1,0 +1,16 @@
+[rpc]
+
+user="regtest"
+password="regtest"
+host="localhost"
+port=18443
+network="regtest"
+
+[nostr]
+
+relays=["ws://127.0.0.1:8080"]
+
+[server]
+
+bind = "127.0.0.1:8888"
+confirmations = 3

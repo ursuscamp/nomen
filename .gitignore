@@ -15,3 +15,5 @@ records1.json
 *.psbt
 release/
 *.bak
+contrib/*
+backup/

@@ -1,0 +1,22 @@
+data = "nomen.db"
+
+[nostr]
+relays = ["wss://relay.damus.io"]
+
+[server]
+bind = "0.0.0.0:8080"
+without_explorer = false
+without_api = false
+without_indexer = false
+indexer_delay = 30
+confirmations = 3
+
+[rpc]
+# Include either cookie or user/password (or none for no RPC auth)
+cookie = "path/to/cookie/file"
+user = "rpc username"
+password = "rpc password"
+host = "localhost"
+port = 8441
+network = "bitcoin"
+ 

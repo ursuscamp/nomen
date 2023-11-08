@@ -1,3 +1,6 @@
+BITCOINDIR=.bitcoin
+REGTESTCLI=bitcoin-cli -datadir=$(BITCOINDIR) -chain=regtest
+
 .PHONY: mac-aarch64 linux-amd64 windows-amd64 release
 
 mac-aarch64:
@@ -15,3 +18,14 @@ release: mac-aarch64 linux-amd64 windows-amd64
 	zip release/nomen-mac-aarch64-$(VERSION).zip target/aarch64-apple-darwin/release/nomen
 	zip release/nomen-linux-amd64-$(VERSION).zip target/x86_64-unknown-linux-musl/release/nomen
 	zip release/nomen-windows-amd64-$(VERSION).zip target/x86_64-pc-windows-gnu/release/nomen.exe
+
+bitcoin-local:
+	mkdir -p .bitcoin
+	bitcoind -datadir=$(BITCOINDIR) -chain=regtest -fallbackfee=0.001 -txindex -rpcuser=regtest -rpcpassword=regtest
+
+bitcoin-wallet:
+	$(REGTESTCLI) createwallet regtest
+	$(REGTESTCLI) generatetoaddress 101 $$($(REGTESTCLI) getnewaddress)
+
+bitcoin-reset:
+	rm -rf .bitcoin
