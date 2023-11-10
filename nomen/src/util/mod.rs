@@ -1,10 +1,10 @@
 mod keyval;
+mod npub;
 mod nsec;
-mod pubkey;
 
 pub use keyval::*;
+pub use npub::*;
 pub use nsec::*;
-pub use pubkey::*;
 
 use time::{macros::format_description, OffsetDateTime};
 

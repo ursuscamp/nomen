@@ -289,6 +289,7 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
                     }
                 }
             }
+            db::relay_index::queue(conn, name).await?;
         }
     } else {
         db::insert_blockchain_index(conn, &index).await?;

@@ -13,9 +13,10 @@ use sqlx::{Sqlite, SqlitePool};
 mod index;
 mod name;
 mod raw;
+pub mod relay_index;
 pub mod stats;
 
-static MIGRATIONS: [&str; 14] = [
+static MIGRATIONS: [&str; 15] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE raw_blockchain (id INTEGER PRIMARY KEY, blockhash, txid, blocktime, blockheight, txheight, vout, data, indexed_at);",
@@ -49,6 +50,7 @@ static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE name_events (name, fingerprint, nsid, pubkey, created_at, event_id, records, indexed_at, raw_event);",
     "CREATE UNIQUE INDEX name_events_unique_idx ON name_events(name, pubkey);",
     "CREATE INDEX name_events_created_at_idx ON name_events(created_at);",
+    "CREATE TABLE relay_index_queue (name);"
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {

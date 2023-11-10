@@ -64,6 +64,10 @@ pub async fn start(config: &Config, conn: &SqlitePool) -> anyhow::Result<()> {
             .route("/stats", get(explorer::index_stats));
     }
 
+    if config.well_known() {
+        app = app.route("/.well-known/nomen.json", get(explorer::well_known::nomen));
+    }
+
     if config.api() {
         let api_router = Router::new()
             .route("/names", get(api::names))

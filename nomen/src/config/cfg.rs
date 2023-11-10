@@ -8,6 +8,8 @@ use nostr_sdk::{
 };
 use sqlx::{sqlite, SqlitePool};
 
+use crate::util::Nsec;
+
 use super::{Cli, ConfigFile};
 
 #[derive(Clone, Debug)]
@@ -71,6 +73,19 @@ impl Config {
         Ok((keys, client))
     }
 
+    pub async fn nostr_keys_client(
+        &self,
+        keys: &nostr_sdk::Keys,
+    ) -> anyhow::Result<nostr_sdk::Client> {
+        let client = nostr_sdk::Client::with_opts(keys, Options::new().wait_for_send(true));
+        let relays = self.relays();
+        for relay in relays {
+            client.add_relay(relay, None).await?;
+        }
+        client.connect().await;
+        Ok(client)
+    }
+
     pub async fn nostr_random_client(
         &self,
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
@@ -98,12 +113,16 @@ impl Config {
         (self.publish_index() || self.well_known()) && self.file.nostr.secret.is_none()
     }
 
-    fn publish_index(&self) -> bool {
+    pub fn publish_index(&self) -> bool {
         self.file.nostr.publish.unwrap_or_default()
     }
 
-    fn well_known(&self) -> bool {
+    pub fn well_known(&self) -> bool {
         self.file.nostr.well_known.unwrap_or_default()
+    }
+
+    pub fn secret_key(&self) -> Option<Nsec> {
+        self.file.nostr.secret
     }
 
     fn rpc_cookie(&self) -> Option<PathBuf> {

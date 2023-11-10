@@ -14,7 +14,7 @@ use serde::Deserialize;
 use crate::{
     db::{self, NameDetails},
     subcommands::util::{extend_psbt, name_event},
-    util::{format_time, KeyVal, Pubkey},
+    util::{format_time, KeyVal, Npub},
 };
 
 use super::{AppState, WebError};
@@ -129,7 +129,7 @@ pub struct NewNameTemplate {
 pub struct NewNameForm {
     upgrade: bool,
     name: String,
-    pubkey: Pubkey,
+    pubkey: Npub,
     psbt: String,
 }
 
@@ -197,7 +197,7 @@ pub struct NewRecordsTemplate {
 #[derive(Deserialize)]
 pub struct NewRecordsQuery {
     name: Option<String>,
-    pubkey: Option<Pubkey>,
+    pubkey: Option<Npub>,
 }
 
 pub async fn new_records_form(
@@ -240,7 +240,7 @@ async fn records_from_query(query: &NewRecordsQuery, state: &AppState) -> Result
 pub struct NewRecordsForm {
     records: String,
     name: String,
-    pubkey: Pubkey,
+    pubkey: Npub,
 }
 
 #[allow(clippy::unused_async)]
@@ -297,7 +297,7 @@ pub mod transfer {
 
     use crate::{
         subcommands::{AppState, WebError},
-        util::Pubkey,
+        util::Npub,
     };
 
     #[derive(askama::Template)]
@@ -307,8 +307,8 @@ pub mod transfer {
     #[derive(Deserialize)]
     pub struct InitiateTransferForm {
         name: String,
-        pubkey: Pubkey,
-        old_pubkey: Pubkey,
+        pubkey: Npub,
+        old_pubkey: Npub,
     }
 
     #[allow(clippy::unused_async)]
@@ -320,8 +320,8 @@ pub mod transfer {
     #[template(path = "transfer/sign.html")]
     pub struct SignEventTemplate {
         name: String,
-        pubkey: Pubkey,
-        old_pubkey: Pubkey,
+        pubkey: Npub,
+        old_pubkey: Npub,
         event: String,
     }
 
@@ -346,7 +346,7 @@ pub mod transfer {
     #[derive(Deserialize)]
     pub struct FinalTransferForm {
         name: String,
-        pubkey: Pubkey,
+        pubkey: Npub,
         sig: Signature,
     }
 
@@ -374,5 +374,29 @@ pub mod transfer {
             data1: hex::encode(data1),
             data2: hex::encode(data2),
         })
+    }
+}
+
+pub mod well_known {
+    use axum::{extract::State, Json};
+    use nostr_sdk::Keys;
+
+    use crate::subcommands::{AppState, WebError};
+
+    #[allow(clippy::unused_async)]
+    pub async fn nomen(
+        State(state): State<AppState>,
+    ) -> anyhow::Result<Json<serde_json::Value>, WebError> {
+        let sk = state.config.secret_key().ok_or(anyhow::anyhow!(
+            "Config: secret key required for .well-known"
+        ))?;
+        let pk = Keys::new(*sk.as_ref()).public_key();
+        let result = serde_json::json!({
+            "indexer": {
+                "pubkey": pk.to_string()
+            }
+        });
+
+        Ok(Json(result))
     }
 }

@@ -49,6 +49,8 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
 
     db::update_v0_index(pool, name.as_ref(), &pubkey, calculated_nsid).await?;
 
+    db::relay_index::queue(pool, name.as_ref()).await?;
+
     Ok(())
 }
 
