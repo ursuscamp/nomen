@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::bail;
 use bitcoin::Network;
 use nostr_sdk::{
     prelude::{FromSkStr, ToBech32},
@@ -84,6 +85,25 @@ impl Config {
             Network::Signet => 143_500,
             _ => 0,
         }
+    }
+
+    pub fn validate(&self) -> anyhow::Result<()> {
+        if self.missing_secret_key() {
+            bail!("Config: Secret key required for relay publising");
+        }
+        Ok(())
+    }
+
+    fn missing_secret_key(&self) -> bool {
+        (self.publish_index() || self.well_known()) && self.file.nostr.secret.is_none()
+    }
+
+    fn publish_index(&self) -> bool {
+        self.file.nostr.publish.unwrap_or_default()
+    }
+
+    fn well_known(&self) -> bool {
+        self.file.nostr.well_known.unwrap_or_default()
     }
 
     fn rpc_cookie(&self) -> Option<PathBuf> {

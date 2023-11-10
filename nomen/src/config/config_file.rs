@@ -54,8 +54,8 @@ impl RpcConfig {
 pub struct NostrConfig {
     pub relays: Option<Vec<String>>,
     pub secret: Option<Nsec>,
-    pub publish: bool,
-    pub well_known: bool,
+    pub publish: Option<bool>,
+    pub well_known: Option<bool>,
 }
 impl NostrConfig {
     fn example() -> NostrConfig {
@@ -65,8 +65,8 @@ impl NostrConfig {
                 .secret_key()
                 .ok()
                 .map(std::convert::Into::into),
-            publish: true,
-            well_known: true,
+            publish: Some(true),
+            well_known: Some(true),
         }
     }
 }
