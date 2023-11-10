@@ -35,6 +35,12 @@ impl From<SecretKey> for Nsec {
     }
 }
 
+impl From<Nsec> for SecretKey {
+    fn from(value: Nsec) -> Self {
+        value.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

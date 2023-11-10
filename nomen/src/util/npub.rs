@@ -6,24 +6,24 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, Serialize, serde_with::DeserializeFromStr)]
 
-pub struct Pubkey(XOnlyPublicKey);
+pub struct Npub(XOnlyPublicKey);
 
-impl AsRef<XOnlyPublicKey> for Pubkey {
+impl AsRef<XOnlyPublicKey> for Npub {
     fn as_ref(&self) -> &XOnlyPublicKey {
         &self.0
     }
 }
 
-impl FromStr for Pubkey {
+impl FromStr for Npub {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let keys = Keys::from_pk_str(s)?;
-        Ok(Pubkey(keys.public_key()))
+        Ok(Npub(keys.public_key()))
     }
 }
 
-impl Display for Pubkey {
+impl Display for Npub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.to_string())
     }
@@ -35,14 +35,14 @@ mod tests {
 
     #[test]
     fn test_npub() {
-        let _pubkey: Pubkey = "npub1u50q2x85utgcgqrmv607crvmk8x3k2nvyun84dxlj6034kajje0s2cm3r0"
+        let _pubkey: Npub = "npub1u50q2x85utgcgqrmv607crvmk8x3k2nvyun84dxlj6034kajje0s2cm3r0"
             .parse()
             .unwrap();
     }
 
     #[test]
     fn test_hex() {
-        let _pubkey: Pubkey = "e51e0518f4e2d184007b669fec0d9bb1cd1b2a6c27267ab4df969f1adbb2965f"
+        let _pubkey: Npub = "e51e0518f4e2d184007b669fec0d9bb1cd1b2a6c27267ab4df969f1adbb2965f"
             .parse()
             .unwrap();
     }
