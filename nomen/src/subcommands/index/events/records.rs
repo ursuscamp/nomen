@@ -56,10 +56,10 @@ async fn latest_events(
     config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> anyhow::Result<Vec<Event>> {
-    let index_height = db::last_records_time(pool).await?;
+    let records_time = db::last_records_time(pool).await? + 1;
     let filter = Filter::new()
         .kind(NameKind::Name.into())
-        .since(index_height.into());
+        .since(records_time.into());
 
     let (_keys, client) = config.nostr_random_client().await?;
     let events = client
