@@ -52,6 +52,7 @@ fn parse_config() -> anyhow::Result<Config> {
     };
 
     let config = Config::new(cli, file);
+    config.validate()?;
 
     tracing::debug!("Config loaded: {config:?}");
 
