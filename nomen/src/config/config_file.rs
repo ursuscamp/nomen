@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use bitcoin::Network;
+use nostr_sdk::Keys;
 use serde::{Deserialize, Serialize};
+
+use crate::util::Nsec;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ServerConfig {
@@ -50,11 +53,20 @@ impl RpcConfig {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct NostrConfig {
     pub relays: Option<Vec<String>>,
+    pub secret: Option<Nsec>,
+    pub publish: bool,
+    pub well_known: bool,
 }
 impl NostrConfig {
     fn example() -> NostrConfig {
         NostrConfig {
             relays: Some(vec!["wss://relay.damus.io".into()]),
+            secret: Keys::generate()
+                .secret_key()
+                .ok()
+                .map(std::convert::Into::into),
+            publish: true,
+            well_known: true,
         }
     }
 }

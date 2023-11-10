@@ -3,6 +3,11 @@ data = "nomen.db"
 [nostr]
 relays = ["wss://relay.damus.io"]
 
+# Per NOM-04 spec: Publish indexes to relays
+secret = "nsec1..."
+publish = true
+well-known = true
+
 [server]
 bind = "0.0.0.0:8080"
 without_explorer = false
