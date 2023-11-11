@@ -47,3 +47,26 @@ impl<'a> TransferBuilder<'a> {
         SignatureV1 { signature }.serialize()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_op_returns() {
+        let new_pubkey = XOnlyPublicKey::from_str(
+            "74301b9c5d30b764bca8d3eb4febb06862f558d292fde93b4a290d90850bac91",
+        )
+        .unwrap();
+        let tb = TransferBuilder {
+            new_pubkey: &new_pubkey,
+            name: "hello-world",
+        };
+
+        assert_eq!(hex::encode(tb.transfer_op_return()), "4e4f4d010174301b9c5d30b764bca8d3eb4febb06862f558d292fde93b4a290d90850bac9168656c6c6f2d776f726c64");
+
+        // Signatures are not consistent, so they can't really be tested here.
+    }
+}

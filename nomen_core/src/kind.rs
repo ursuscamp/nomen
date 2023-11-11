@@ -255,36 +255,58 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_create_v0() {
-        let fp = hex::decode("0102030405").unwrap();
-        let nsid = Nsid::from_str("c215a040e1c3566deb8ef3d37e2a4915cd9ba672").unwrap();
-        let create = b"NOM\x00\x00"
-            .iter()
-            .chain(fp.iter())
-            .chain(nsid.to_vec().iter())
-            .copied()
-            .collect_vec();
-        assert_eq!(
-            CreateV0::try_from(create.as_ref()).unwrap(),
-            CreateV0::create(fp.try_into().unwrap(), nsid)
-        );
+    fn test_parse_create_serialize_v0() {
+        let or =
+            hex::decode("4e4f4d0000e5401df4b4273968a1e7be2ef0acbcae6f61d53e73101e2983").unwrap();
+        let c = CreateV0::try_from(or.as_ref());
+        assert!(c.is_ok());
+        assert_eq!(c.unwrap().serialize(), or);
     }
 
     #[test]
-    fn test_parse_create_v1() {
-        let pk = hex::decode("285d4ca25cbe209832aa15a4b94353b877a2fe6c3b94dee1a4c8bc36770304db")
-            .unwrap();
-        let pk = XOnlyPublicKey::from_slice(&pk).unwrap();
-        let create = b"NOM\x01\x00"
-            .iter()
-            .chain(pk.serialize().iter())
-            .chain(b"hello-world".iter())
-            .copied()
-            .collect_vec();
-        assert_eq!(
-            CreateV1::try_from(create.as_slice()).unwrap(),
-            CreateV1::create(pk, "hello-world")
-        );
+    fn test_invalid_create_v0() {
+        let or =
+            hex::decode("4e4f4d0001e5401df4b4273968a1e7be2ef0acbcae6f61d53e73101e2983").unwrap();
+        let c = CreateV0::try_from(or.as_ref());
+        assert!(c.is_err());
+    }
+
+    #[test]
+    fn test_parse_create_serialize_v1() {
+        let pk = XOnlyPublicKey::from_str(
+            "60de6fbc4a78209942c62706d904ff9592c2e856f219793f7f73e62fc33bfc18",
+        )
+        .unwrap();
+        let or = hex::decode("4e4f4d010060de6fbc4a78209942c62706d904ff9592c2e856f219793f7f73e62fc33bfc1868656c6c6f2d776f726c64").unwrap();
+        let c = CreateV1::try_from(or.as_ref());
+        assert!(c.is_ok());
+        assert_eq!(c.unwrap().serialize(), or);
+    }
+
+    #[test]
+    fn test_invalid_create_v1() {
+        let or = hex::decode(
+            "4e4f4d010060de6fbc4a78209942c62706d904ff9592c2e856f219793f7f73e62fc33bfc186c64",
+        )
+        .unwrap();
+        let c = CreateV1::try_from(or.as_ref());
+        assert!(c.is_err());
+    }
+
+    #[test]
+    fn test_parse_transfer_serialize_v1() {
+        let or = hex::decode("4e4f4d010174301b9c5d30b764bca8d3eb4febb06862f558d292fde93b4a290d90850bac9168656c6c6f2d776f726c64").unwrap();
+        let t = TransferV1::try_from(or.as_ref());
+        assert!(t.is_ok());
+        assert_eq!(t.unwrap().serialize(), or);
+    }
+
+    #[test]
+    fn test_parse_signatuyre_serialize_v1() {
+        let or = hex::decode("4e4f4d0102489e4e3ab29408da53733473156040a25e5a84cbca788c2b7143f971ead84192ae8bd8e4890cfabb08dca693875c28a1949ae0d13f5c6b08617e4fdc022bc751").unwrap();
+        let t = SignatureV1::try_from(or.as_ref());
+        assert!(t.is_ok());
+        assert_eq!(t.unwrap().serialize(), or);
     }
 
     #[test]
