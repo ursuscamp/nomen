@@ -31,14 +31,14 @@ mod tests {
 
     #[test]
     fn test_nsid_builder() {
-        let pk: XOnlyPublicKey = "d57b873363d2233d3cd54453416deff9546df50d963bb1208da37f10a4c23d6f"
+        let pk: XOnlyPublicKey = "60de6fbc4a78209942c62706d904ff9592c2e856f219793f7f73e62fc33bfc18"
             .parse()
             .unwrap();
-        let nsid = NsidBuilder::new("smith", &pk).finalize();
+        let nsid = NsidBuilder::new("hello-world", &pk).finalize();
 
         assert_eq!(
             nsid,
-            "28d63a9a61c6c5ce6be37a830105c92cf7a8f365".parse().unwrap()
+            "273968a1e7be2ef0acbcae6f61d53e73101e2983".parse().unwrap()
         )
     }
 }

@@ -29,13 +29,23 @@ mod tests {
 
     #[test]
     fn test_valid() {
-        let s: Result<Name, UtilError> = "smith".parse();
-        assert_eq!(s.unwrap(), Name("smith".to_string()))
+        let r = ["hello-world", "123abc"]
+            .into_iter()
+            .map(Name::from_str)
+            .all(|r| r.is_ok());
+        assert!(r);
     }
 
     #[test]
     fn test_invalid() {
-        let s: Result<Name, UtilError> = "Smith".parse();
-        assert!(s.is_err())
+        let r = [
+            "hello!",
+            "ld",
+            "abcdefghijklmnopqrztuvwxyzabcdefghijklmnopqrztuvwxyz",
+        ]
+        .into_iter()
+        .map(Name::from_str)
+        .all(|r| r.is_err());
+        assert!(r);
     }
 }
