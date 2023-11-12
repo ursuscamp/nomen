@@ -1,18 +1,17 @@
 use crate::config::Config;
-pub use blockchain_index::{insert_blockchain_index, insert_transfer_cache, BlockchainIndex};
-pub use index::{insert_index_height, next_index_height, update_index_for_transfer};
-pub use name_details::{name_details, NameDetails};
-pub use name_records::{name_records, NameRecords};
+pub use index::{
+    insert_blockchain_index, insert_index_height, insert_transfer_cache, next_index_height,
+    update_index_for_transfer, BlockchainIndex,
+};
+pub use name::{name_details, name_records, top_level_names, NameDetails, NameRecords};
 use nomen_core::{Hash160, Name, Nsid, NsidBuilder};
 use nostr_sdk::EventId;
 pub use raw::{insert_raw_blockchain, RawBlockchain};
 use secp256k1::XOnlyPublicKey;
 use sqlx::{Sqlite, SqlitePool};
 
-mod blockchain_index;
 mod index;
-mod name_details;
-mod name_records;
+mod name;
 mod raw;
 pub mod stats;
 
@@ -122,23 +121,6 @@ pub async fn insert_name_event(
         .execute(conn)
         .await?;
     Ok(())
-}
-
-pub async fn top_level_names(
-    conn: &SqlitePool,
-    query: Option<String>,
-) -> anyhow::Result<Vec<(String, String)>> {
-    let sql = match query {
-        Some(q) => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL AND instr(name, ?) ORDER BY name;",
-        )
-        .bind(q.to_lowercase()),
-        None => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL ORDER BY name;",
-        ),
-    };
-
-    Ok(sql.fetch_all(conn).await?)
 }
 
 pub async fn save_event(conn: &SqlitePool, evt_type: &str, evt_data: &str) -> anyhow::Result<()> {
