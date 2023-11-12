@@ -1,3 +1,5 @@
+#![allow(clippy::module_name_repetitions)]
+
 use nomen_core::Hash160;
 use sqlx::{FromRow, SqlitePool};
 
