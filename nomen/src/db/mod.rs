@@ -1,12 +1,19 @@
-use std::str::FromStr;
-
-use bitcoin::{BlockHash, Txid};
+use crate::config::Config;
+pub use index::{
+    insert_blockchain_index, insert_index_height, insert_transfer_cache, next_index_height,
+    update_index_for_transfer, BlockchainIndex,
+};
+pub use name::{name_details, name_records, top_level_names, NameDetails, NameRecords};
 use nomen_core::{Hash160, Name, Nsid, NsidBuilder};
 use nostr_sdk::EventId;
+pub use raw::{insert_raw_blockchain, RawBlockchain};
 use secp256k1::XOnlyPublicKey;
-use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite, SqlitePool};
+use sqlx::{Sqlite, SqlitePool};
 
-use crate::config::Config;
+mod index;
+mod name;
+mod raw;
+pub mod stats;
 
 static MIGRATIONS: [&str; 14] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
@@ -71,146 +78,6 @@ pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {
     Ok(conn)
 }
 
-pub struct RawBlockchain {
-    pub blockhash: BlockHash,
-    pub txid: Txid,
-    pub blocktime: usize,
-    pub blockheight: usize,
-    pub txheight: usize,
-    pub vout: usize,
-    pub data: Vec<u8>,
-}
-
-impl FromRow<'_, SqliteRow> for RawBlockchain {
-    fn from_row(row: &'_ SqliteRow) -> Result<Self, sqlx::Error> {
-        Ok(RawBlockchain {
-            blockhash: BlockHash::from_str(row.try_get("blockhash")?)
-                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
-            txid: Txid::from_str(row.try_get("txid")?)
-                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
-            blocktime: row.try_get::<i64, _>("blocktime")? as usize,
-            blockheight: row.try_get::<i64, _>("blockheight")? as usize,
-            txheight: row.try_get::<i64, _>("txheight")? as usize,
-            vout: row.try_get::<i64, _>("vout")? as usize,
-            data: hex::decode(row.try_get::<String, _>("data")?)
-                .map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
-        })
-    }
-}
-
-pub async fn insert_raw_blockchain(
-    conn: impl Executor<'_, Database = Sqlite>,
-    raw: &RawBlockchain,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_raw_blockchain.sql"))
-        .bind(raw.blockhash.to_string())
-        .bind(raw.txid.to_string())
-        .bind(raw.blocktime as i64)
-        .bind(raw.blockheight as i64)
-        .bind(raw.txheight as i64)
-        .bind(raw.vout as i64)
-        .bind(hex::encode(&raw.data))
-        .execute(conn)
-        .await?;
-    Ok(())
-}
-
-pub struct BlockchainIndex {
-    pub protocol: i64,
-    pub fingerprint: [u8; 5],
-    pub nsid: Nsid,
-    pub name: Option<String>,
-    pub pubkey: Option<XOnlyPublicKey>,
-    pub blockhash: BlockHash,
-    pub txid: Txid,
-    pub blocktime: usize,
-    pub blockheight: usize,
-    pub txheight: usize,
-    pub vout: usize,
-}
-pub async fn insert_blockchain_index(
-    conn: impl Executor<'_, Database = Sqlite>,
-    index: &BlockchainIndex,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_blockchain_index.sql"))
-        .bind(index.protocol)
-        .bind(hex::encode(index.fingerprint))
-        .bind(index.nsid.to_string())
-        .bind(&index.name)
-        .bind(index.pubkey.map(|k| k.to_string()))
-        .bind(&index.blockhash.to_string())
-        .bind(index.txid.to_string())
-        .bind(index.blocktime as i64)
-        .bind(index.blockheight as i64)
-        .bind(index.txheight as i64)
-        .bind(index.vout as i64)
-        .execute(conn)
-        .await?;
-    Ok(())
-}
-
-pub async fn insert_transfer_cache(
-    conn: impl Executor<'_, Database = Sqlite>,
-    index: &BlockchainIndex,
-) -> anyhow::Result<()> {
-    sqlx::query(include_str!("./queries/insert_transfer_cache.sql"))
-        .bind(index.protocol)
-        .bind(hex::encode(index.fingerprint))
-        .bind(index.nsid.to_string())
-        .bind(&index.name)
-        .bind(index.pubkey.map(|k| k.to_string()))
-        .bind(&index.blockhash.to_string())
-        .bind(index.txid.to_string())
-        .bind(index.blocktime as i64)
-        .bind(index.blockheight as i64)
-        .bind(index.txheight as i64)
-        .bind(index.vout as i64)
-        .execute(conn)
-        .await?;
-    Ok(())
-}
-
-pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
-    let (h,) =
-        sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(blockheight), 0) + 1 FROM index_height;")
-            .fetch_one(conn)
-            .await?;
-
-    Ok(h as usize)
-}
-
-pub async fn insert_index_height(
-    conn: &SqlitePool,
-    height: i64,
-    blockhash: &BlockHash,
-) -> anyhow::Result<()> {
-    sqlx::query(
-        "INSERT INTO index_height (blockheight, blockhash) VALUES (?, ?) ON CONFLICT DO NOTHING;",
-    )
-    .bind(height)
-    .bind(blockhash.to_string())
-    .execute(conn)
-    .await?;
-    Ok(())
-}
-
-pub async fn update_index_for_transfer(
-    conn: &sqlx::Pool<sqlx::Sqlite>,
-    nsid: Nsid,
-    new_owner: XOnlyPublicKey,
-    old_owner: XOnlyPublicKey,
-    name: String,
-) -> Result<(), anyhow::Error> {
-    sqlx::query("UPDATE blockchain_index SET nsid = ?, pubkey = ? WHERE name = ? AND pubkey = ?;")
-        .bind(hex::encode(nsid.as_ref()))
-        .bind(hex::encode(new_owner.serialize()))
-        .bind(&name)
-        .bind(hex::encode(old_owner.serialize()))
-        .execute(conn)
-        .await?;
-    Ok(())
-}
-
 pub async fn delete_from_transfer_cache(
     conn: &sqlx::Pool<sqlx::Sqlite>,
     id: i64,
@@ -221,30 +88,6 @@ pub async fn delete_from_transfer_cache(
         .execute(conn)
         .await?;
     Ok(())
-}
-
-#[derive(FromRow)]
-pub struct NameDetails {
-    pub blockhash: String,
-    pub txid: String,
-    pub blocktime: i64,
-    pub vout: i64,
-    pub blockheight: i64,
-    pub name: String,
-    pub records: String,
-    pub pubkey: String,
-    pub protocol: i64,
-}
-
-pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
-    let details = sqlx::query_as::<_, NameDetails>(
-        "SELECT * from valid_names_records_vw vn WHERE vn.nsid = ? or vn.name = ?",
-    )
-    .bind(query)
-    .bind(query)
-    .fetch_one(conn)
-    .await?;
-    Ok(details)
 }
 
 pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
@@ -278,49 +121,6 @@ pub async fn insert_name_event(
         .execute(conn)
         .await?;
     Ok(())
-}
-
-#[derive(FromRow)]
-pub struct NameRecords {
-    pub blockhash: String,
-    pub txid: String,
-    pub fingerprint: String,
-    pub nsid: String,
-    pub protocol: i64,
-    pub records: String,
-}
-
-pub async fn name_records(conn: &SqlitePool, name: String) -> anyhow::Result<Option<NameRecords>> {
-    let fingerprint = Hash160::default()
-        .chain_update(name.as_bytes())
-        .fingerprint();
-    let records = sqlx::query_as::<_, NameRecords>(
-        "SELECT vn.blockhash, vn.txid, vn.fingerprint, vn.nsid, vn.protocol, coalesce(ne.records, '{}') as records
-        FROM valid_names_vw vn
-        JOIN name_events ne ON vn.nsid = ne.nsid
-        WHERE vn.fingerprint = ? LIMIT 1;",
-    )
-    .bind(hex::encode(fingerprint))
-    .fetch_optional(conn)
-    .await?;
-    Ok(records)
-}
-
-pub async fn top_level_names(
-    conn: &SqlitePool,
-    query: Option<String>,
-) -> anyhow::Result<Vec<(String, String)>> {
-    let sql = match query {
-        Some(q) => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL AND instr(name, ?) ORDER BY name;",
-        )
-        .bind(q.to_lowercase()),
-        None => sqlx::query_as::<_, (String, String)>(
-            "SELECT nsid, name FROM valid_names_vw WHERE name IS NOT NULL ORDER BY name;",
-        ),
-    };
-
-    Ok(sql.fetch_all(conn).await?)
 }
 
 pub async fn save_event(conn: &SqlitePool, evt_type: &str, evt_data: &str) -> anyhow::Result<()> {
@@ -438,36 +238,4 @@ pub async fn reindex(
         .execute(conn)
         .await?;
     Ok(())
-}
-
-pub mod stats {
-    use sqlx::SqlitePool;
-
-    pub async fn known_names(conn: &SqlitePool) -> anyhow::Result<i64> {
-        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT count(*) FROM valid_names_vw;")
-            .fetch_one(conn)
-            .await?;
-        Ok(count)
-    }
-
-    pub async fn index_height(conn: &SqlitePool) -> anyhow::Result<i64> {
-        let (count,) = sqlx::query_as::<_, (i64,)>("SELECT max(blockheight) FROM index_height;")
-            .fetch_one(conn)
-            .await?;
-        Ok(count)
-    }
-
-    pub async fn nostr_events(conn: &SqlitePool) -> anyhow::Result<i64> {
-        let (count,) = sqlx::query_as::<_, (i64,)>(
-            "
-            WITH events as (
-                SELECT count(*) as count FROM name_events
-            )
-            SELECT SUM(count) FROM events;
-        ",
-        )
-        .fetch_one(conn)
-        .await?;
-        Ok(count)
-    }
 }
