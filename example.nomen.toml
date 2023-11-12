@@ -24,4 +24,3 @@ password = "rpc password"
 host = "localhost"
 port = 8441
 network = "bitcoin"
- 
