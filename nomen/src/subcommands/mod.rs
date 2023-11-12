@@ -46,3 +46,8 @@ pub(crate) async fn rescan(
 
     Ok(())
 }
+
+pub(crate) fn version() {
+    let version = env!("CARGO_PKG_VERSION");
+    println!("Current version is {version}");
+}
