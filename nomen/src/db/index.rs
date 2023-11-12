@@ -1,3 +1,5 @@
+#![allow(clippy::module_name_repetitions)]
+
 use bitcoin::{BlockHash, Txid};
 use nomen_core::Nsid;
 use secp256k1::XOnlyPublicKey;
@@ -16,6 +18,7 @@ pub struct BlockchainIndex {
     pub txheight: usize,
     pub vout: usize,
 }
+
 pub async fn insert_blockchain_index(
     conn: impl Executor<'_, Database = Sqlite>,
     index: &BlockchainIndex,

@@ -1,3 +1,5 @@
+#![allow(clippy::module_name_repetitions)]
+
 use bitcoin::{BlockHash, Txid};
 use sqlx::{sqlite::SqliteRow, Executor, FromRow, Row, Sqlite};
 use std::str::FromStr;
