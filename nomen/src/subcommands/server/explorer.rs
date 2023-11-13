@@ -78,6 +78,8 @@ pub struct NameTemplate {
     height: i64,
     pubkey: String,
     protocol: i64,
+    v1_upgrade_blockheight: Option<i64>,
+    v1_upgrade_txid: Option<String>,
 }
 
 impl TryFrom<NameDetails> for NameTemplate {
@@ -100,6 +102,8 @@ impl TryFrom<NameDetails> for NameTemplate {
             height: value.blockheight,
             pubkey: value.pubkey,
             protocol: value.protocol,
+            v1_upgrade_blockheight: value.v1_upgrade_blockheight,
+            v1_upgrade_txid: value.v1_upgrade_txid,
         })
     }
 }

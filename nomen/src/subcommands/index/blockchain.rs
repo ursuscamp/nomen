@@ -279,7 +279,15 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
         if let Some(name) = &index.name {
             if let Some(pubkey) = &index.pubkey {
                 tracing::info!("Checking for upgrade");
-                match db::index::upgrade_v0_to_v1(conn, name, *pubkey).await? {
+                match db::index::upgrade_v0_to_v1(
+                    conn,
+                    name,
+                    *pubkey,
+                    index.blockheight,
+                    index.txid,
+                )
+                .await?
+                {
                     db::index::UpgradeStatus::Upgraded => {
                         tracing::info!("Name '{name}' upgraded from v0 to v1.");
                     }
