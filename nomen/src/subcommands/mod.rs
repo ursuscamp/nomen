@@ -24,7 +24,7 @@ pub(crate) async fn reindex(
     blockheight: i64,
 ) -> anyhow::Result<()> {
     tracing::info!("Re-indexing blockchain from blockheight {blockheight}.");
-    db::reindex(pool, blockheight).await?;
+    db::index::reindex(pool, blockheight).await?;
     Ok(())
 }
 
@@ -34,7 +34,7 @@ pub(crate) async fn rescan(
     blockheight: i64,
 ) -> anyhow::Result<()> {
     tracing::info!("Re-scanning blockchain from blockheight {blockheight}.");
-    db::reindex(pool, blockheight).await?;
+    db::index::reindex(pool, blockheight).await?;
     sqlx::query("DELETE FROM index_height WHERE blockheight >= ?;")
         .bind(blockheight)
         .execute(pool)

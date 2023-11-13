@@ -9,6 +9,6 @@ pub async fn index(config: &Config) -> anyhow::Result<()> {
     events::records(config, &pool).await?;
     events::relay_index::publish(config, &pool).await?;
 
-    db::save_event(&pool, "index", "").await?;
+    db::event_log::save(&pool, "index", "").await?;
     Ok(())
 }

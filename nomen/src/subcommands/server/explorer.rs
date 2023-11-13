@@ -12,7 +12,7 @@ use nomen_core::{CreateBuilder, Name};
 use serde::Deserialize;
 
 use crate::{
-    db::{self, NameDetails},
+    db::{self, name::NameDetails},
     subcommands::util::{extend_psbt, name_event},
     util::{format_time, KeyVal, Npub},
 };
@@ -54,13 +54,13 @@ pub async fn explorer(
     Query(query): Query<ExplorerQuery>,
 ) -> Result<ExplorerTemplate, WebError> {
     let conn = state.pool;
-    let last_index_time = db::last_index_time(&conn).await?;
+    let last_index_time = db::event_log::last_index_time(&conn).await?;
     let last_index_time = format_time(last_index_time)?;
     let q = query.q.map(|s| s.trim().to_string());
 
     Ok(ExplorerTemplate {
         q: q.clone().unwrap_or_default(),
-        names: db::top_level_names(&conn, q).await?,
+        names: db::name::top_level_names(&conn, q).await?,
         last_index_time,
     })
 }
@@ -109,7 +109,7 @@ pub async fn show_name(
     Path(nsid): Path<String>,
 ) -> Result<NameTemplate, WebError> {
     let conn = state.pool;
-    let details = db::name_details(&conn, &nsid).await?;
+    let details = db::name::details(&conn, &nsid).await?;
 
     Ok(details.try_into()?)
 }
@@ -161,7 +161,7 @@ pub async fn new_name_submit(
     let available = if form.upgrade {
         true
     } else {
-        db::check_name_availability(&state.pool, form.name.as_ref()).await?
+        db::name::check_availability(&state.pool, form.name.as_ref()).await?
     };
     if !available {
         Err(anyhow!("Name unavailable"))?;

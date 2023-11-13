@@ -113,7 +113,7 @@ mod models {
 pub async fn names(
     State(state): State<AppState>,
 ) -> Result<Json<models::NamesResponse>, models::JsonError> {
-    let names = db::all_names(&state.pool)
+    let names = db::name::fetch_all(&state.pool)
         .await?
         .into_iter()
         .map(|(n, pk)| models::NameResponse {
@@ -129,7 +129,7 @@ pub async fn name(
     State(state): State<AppState>,
 ) -> Result<Json<models::NameResult>, models::JsonError> {
     let conn = state.pool;
-    let name = db::name_records(&conn, name.name).await?;
+    let name = db::name::records(&conn, name.name).await?;
 
     name.and_then(|nr| {
         Some(models::NameResult {
