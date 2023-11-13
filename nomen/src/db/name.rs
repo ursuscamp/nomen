@@ -1,7 +1,9 @@
 #![allow(clippy::module_name_repetitions)]
 
-use nomen_core::Hash160;
-use sqlx::{FromRow, SqlitePool};
+use nomen_core::{Hash160, Name, Nsid};
+use nostr_sdk::EventId;
+use secp256k1::XOnlyPublicKey;
+use sqlx::{FromRow, Sqlite, SqlitePool};
 
 #[derive(FromRow)]
 pub struct NameDetails {
@@ -16,7 +18,7 @@ pub struct NameDetails {
     pub protocol: i64,
 }
 
-pub async fn name_details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
+pub async fn details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {
     let details = sqlx::query_as::<_, NameDetails>(
         "SELECT * from valid_names_records_vw vn WHERE vn.nsid = ? or vn.name = ?",
     )
@@ -37,7 +39,7 @@ pub struct NameRecords {
     pub records: String,
 }
 
-pub async fn name_records(conn: &SqlitePool, name: String) -> anyhow::Result<Option<NameRecords>> {
+pub async fn records(conn: &SqlitePool, name: String) -> anyhow::Result<Option<NameRecords>> {
     let fingerprint = Hash160::default()
         .chain_update(name.as_bytes())
         .fingerprint();
@@ -68,4 +70,64 @@ pub async fn top_level_names(
     };
 
     Ok(sql.fetch_all(conn).await?)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_name_event(
+    conn: &SqlitePool,
+    name: Name,
+    fingerprint: [u8; 5],
+    nsid: Nsid,
+    pubkey: XOnlyPublicKey,
+    created_at: i64,
+    event_id: EventId,
+    records: String,
+    raw_event: String,
+) -> anyhow::Result<()> {
+    sqlx::query(include_str!("./queries/insert_name_event.sql"))
+        .bind(name.to_string())
+        .bind(hex::encode(fingerprint))
+        .bind(nsid.to_string())
+        .bind(pubkey.to_string())
+        .bind(created_at)
+        .bind(event_id.to_string())
+        .bind(records)
+        .bind(raw_event)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub type NameAndKey = (String, String);
+
+pub async fn fetch_all(conn: &SqlitePool) -> anyhow::Result<Vec<NameAndKey>> {
+    let rows = sqlx::query_as::<_, NameAndKey>("SELECT name, pubkey FROM valid_names_vw;")
+        .fetch_all(conn)
+        .await?;
+    Ok(rows)
+}
+
+pub async fn check_availability(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+) -> anyhow::Result<bool> {
+    let fp = hex::encode(
+        Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint(),
+    );
+    let (a,) = sqlx::query_as::<_, (bool,)>(
+        "SELECT COUNT(*) = 0 FROM valid_names_vw WHERE fingerprint = ?;",
+    )
+    .bind(&fp)
+    .fetch_one(conn)
+    .await?;
+    Ok(a)
+}
+
+pub async fn last_records_time(conn: &SqlitePool) -> anyhow::Result<u64> {
+    let (t,) = sqlx::query_as::<_, (i64,)>("SELECT COALESCE(MAX(created_at), 0) FROM name_events;")
+        .fetch_one(conn)
+        .await?;
+    Ok(t as u64)
 }

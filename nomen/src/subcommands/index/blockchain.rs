@@ -7,7 +7,7 @@ use sqlx::SqlitePool;
 
 use crate::{
     config::Config,
-    db::{self, insert_index_height, BlockchainIndex, RawBlockchain},
+    db::{self, index::BlockchainIndex, raw::RawBlockchain},
 };
 
 enum QueueMessage {
@@ -23,7 +23,7 @@ pub async fn index(config: &Config, pool: &sqlx::Pool<sqlx::Sqlite>) -> Result<(
     rewind_invalid_chain(config.rpc_client()?, pool.clone()).await?;
 
     let client = config.rpc_client()?;
-    let index_height = db::next_index_height(pool)
+    let index_height = db::index::next_index_height(pool)
         .await?
         .max(config.starting_block_height());
     let (sender, receiver) = tokio::sync::mpsc::channel(1);
@@ -57,15 +57,15 @@ async fn process_messages(
             msg = receiver.recv() => {
                 match msg {
                     Some(QueueMessage::RawBlockchain(raw_blockchain)) => {
-                        if let Err(e) = db::insert_raw_blockchain(pool, &raw_blockchain)
+                        if let Err(e) = db::raw::insert_raw_blockchain(pool, &raw_blockchain)
                         .await
                         {
                             tracing::error!("Index error: {e}");
                         }
-                        insert_index_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
+                        db::index::insert_height(pool, raw_blockchain.blockheight as i64, &raw_blockchain.blockhash).await?;
                     }
                     Some(QueueMessage::Index {blockheight, blockhash}) => {
-                        insert_index_height(pool, blockheight, &blockhash).await?;
+                        db::index::insert_height(pool, blockheight, &blockhash).await?;
                     },
                     None => break 'select,
                 }
@@ -254,10 +254,10 @@ async fn check_signature(
                 hex::encode(new_owner.serialize())
             );
             let nsid = NsidBuilder::new(name.as_str(), &new_owner).finalize();
-            db::update_index_for_transfer(conn, nsid, new_owner, old_owner, name).await?;
+            db::index::update_for_transfer(conn, nsid, new_owner, old_owner, name).await?;
 
             tracing::info!("Deleting record from transfer_cache");
-            db::delete_from_transfer_cache(conn, row.3).await?;
+            db::index::delete_from_transfer_cache(conn, row.3).await?;
 
             break;
         }
@@ -279,20 +279,20 @@ async fn index_output(conn: &SqlitePool, index: BlockchainIndex) -> anyhow::Resu
         if let Some(name) = &index.name {
             if let Some(pubkey) = &index.pubkey {
                 tracing::info!("Checking for upgrade");
-                match db::upgrade_v0_to_v1(conn, name, *pubkey).await? {
-                    db::UpgradeStatus::Upgraded => {
+                match db::index::upgrade_v0_to_v1(conn, name, *pubkey).await? {
+                    db::index::UpgradeStatus::Upgraded => {
                         tracing::info!("Name '{name}' upgraded from v0 to v1.");
                     }
-                    db::UpgradeStatus::NotUpgraded => {
+                    db::index::UpgradeStatus::NotUpgraded => {
                         tracing::info!("No upgrade found!");
-                        db::insert_blockchain_index(conn, &index).await?;
+                        db::index::insert_blockchain_index(conn, &index).await?;
                     }
                 }
             }
             db::relay_index::queue(conn, name).await?;
         }
     } else {
-        db::insert_blockchain_index(conn, &index).await?;
+        db::index::insert_blockchain_index(conn, &index).await?;
     }
 
     Ok(())
@@ -302,7 +302,7 @@ async fn cache_transfer(
     conn: &sqlx::Pool<sqlx::Sqlite>,
     index: BlockchainIndex,
 ) -> anyhow::Result<()> {
-    db::insert_transfer_cache(conn, &index).await?;
+    db::index::insert_transfer_cache(conn, &index).await?;
     Ok(())
 }
 

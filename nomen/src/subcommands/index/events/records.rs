@@ -34,7 +34,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
         records: _,
         raw_event,
     } = ed;
-    db::insert_name_event(
+    db::name::insert_name_event(
         pool,
         name.clone(),
         fingerprint,
@@ -47,7 +47,7 @@ async fn save_event(pool: &SqlitePool, ed: EventData) -> anyhow::Result<()> {
     )
     .await?;
 
-    db::update_v0_index(pool, name.as_ref(), &pubkey, calculated_nsid).await?;
+    db::index::update_v0_index(pool, name.as_ref(), &pubkey, calculated_nsid).await?;
 
     db::relay_index::queue(pool, name.as_ref()).await?;
 
@@ -58,7 +58,7 @@ async fn latest_events(
     config: &Config,
     pool: &sqlx::Pool<sqlx::Sqlite>,
 ) -> anyhow::Result<Vec<Event>> {
-    let records_time = db::last_records_time(pool).await? + 1;
+    let records_time = db::name::last_records_time(pool).await? + 1;
     let filter = Filter::new()
         .kind(NameKind::Name.into())
         .since(records_time.into());

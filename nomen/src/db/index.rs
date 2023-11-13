@@ -1,7 +1,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 use bitcoin::{BlockHash, Txid};
-use nomen_core::Nsid;
+use nomen_core::{Hash160, Nsid, NsidBuilder};
 use secp256k1::XOnlyPublicKey;
 use sqlx::{Executor, Sqlite, SqlitePool};
 
@@ -70,7 +70,7 @@ pub async fn next_index_height(conn: &SqlitePool) -> anyhow::Result<usize> {
     Ok(h as usize)
 }
 
-pub async fn insert_index_height(
+pub async fn insert_height(
     conn: &SqlitePool,
     height: i64,
     blockhash: &BlockHash,
@@ -85,7 +85,7 @@ pub async fn insert_index_height(
     Ok(())
 }
 
-pub async fn update_index_for_transfer(
+pub async fn update_for_transfer(
     conn: &sqlx::Pool<sqlx::Sqlite>,
     nsid: Nsid,
     new_owner: XOnlyPublicKey,
@@ -97,6 +97,89 @@ pub async fn update_index_for_transfer(
         .bind(hex::encode(new_owner.serialize()))
         .bind(&name)
         .bind(hex::encode(old_owner.serialize()))
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub enum UpgradeStatus {
+    Upgraded,
+    NotUpgraded,
+}
+
+pub async fn upgrade_v0_to_v1(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+    pubkey: XOnlyPublicKey,
+) -> anyhow::Result<UpgradeStatus> {
+    let fingerprint = hex::encode(
+        Hash160::default()
+            .chain_update(name.as_bytes())
+            .fingerprint(),
+    );
+    let nsid = hex::encode(NsidBuilder::new(name, &pubkey).finalize().as_ref());
+
+    let updated = sqlx::query(
+        "UPDATE blockchain_index SET name = ?, pubkey = ?, protocol = 1 WHERE fingerprint = ? AND nsid = ? AND protocol = 0;",
+    )
+    .bind(name)
+    .bind(hex::encode(pubkey.serialize()))
+    .bind(&fingerprint)
+    .bind(&nsid)
+    .execute(conn)
+    .await?;
+
+    if updated.rows_affected() > 0 {
+        return Ok(UpgradeStatus::Upgraded);
+    }
+
+    Ok(UpgradeStatus::NotUpgraded)
+}
+
+pub async fn update_v0_index(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+    pubkey: &XOnlyPublicKey,
+    nsid: Nsid,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE blockchain_index SET name = ?, pubkey = ? WHERE protocol = 0 AND nsid = ?;",
+    )
+    .bind(name)
+    .bind(pubkey.to_string())
+    .bind(hex::encode(nsid.as_slice()))
+    .execute(conn)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn delete_from_transfer_cache(
+    conn: &sqlx::Pool<sqlx::Sqlite>,
+    id: i64,
+) -> Result<(), anyhow::Error> {
+    tracing::debug!("DELETING transfer_cache with id {id}");
+    sqlx::query("DELETE FROM transfer_cache WHERE id = ?;")
+        .bind(id)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+pub async fn reindex(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    blockheight: i64,
+) -> anyhow::Result<()> {
+    sqlx::query("DELETE FROM blockchain_index WHERE blockheight >= ?;")
+        .bind(blockheight)
+        .execute(conn)
+        .await?;
+    sqlx::query("DELETE FROM transfer_cache WHERE blockheight >= ?;")
+        .bind(blockheight)
+        .execute(conn)
+        .await?;
+    sqlx::query("DELETE FROM old_transfer_cache WHERE blockheight >= ?;")
+        .bind(blockheight)
         .execute(conn)
         .await?;
     Ok(())
