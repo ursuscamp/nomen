@@ -37,8 +37,26 @@
 
       <tr>
         <td>Protocol Version</td>
-        <td>{{ protocol }} {% if protocol == 0 %}<a href="/newname?upgrade=true">Upgrade to v1</a>{% endif %}</td>
+        <td>
+          {{ protocol }}
+          {% if protocol == 0 %}<a href="/newname?upgrade=true">Upgrade to v1</a>{% endif %}
+        </td>
       </tr>
+
+      {% if v1_upgrade_blockheight.is_some() %}
+      <tr>
+        <td>Upgrade Blockheight</td>
+        <td>{{ v1_upgrade_blockheight.unwrap() }}</td>
+      </tr>
+      {% endif %}
+
+      {% if v1_upgrade_txid.is_some() %}
+      {% let txid = v1_upgrade_txid.clone().unwrap() %}
+      <tr>
+        <td>Upgrade Txid</td>
+        <td><a href="https://mempool.space/tx/{{ txid }}">{{ txid }}</a></td>
+      </tr>
+      {% endif %}
     </tbody>
   </table>
 

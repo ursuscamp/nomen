@@ -16,6 +16,8 @@ pub struct NameDetails {
     pub records: String,
     pub pubkey: String,
     pub protocol: i64,
+    pub v1_upgrade_blockheight: Option<i64>,
+    pub v1_upgrade_txid: Option<String>,
 }
 
 pub async fn details(conn: &SqlitePool, query: &str) -> anyhow::Result<NameDetails> {

@@ -111,6 +111,8 @@ pub async fn upgrade_v0_to_v1(
     conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
     name: &str,
     pubkey: XOnlyPublicKey,
+    blockheight: usize,
+    txid: Txid,
 ) -> anyhow::Result<UpgradeStatus> {
     let fingerprint = hex::encode(
         Hash160::default()
@@ -120,10 +122,14 @@ pub async fn upgrade_v0_to_v1(
     let nsid = hex::encode(NsidBuilder::new(name, &pubkey).finalize().as_ref());
 
     let updated = sqlx::query(
-        "UPDATE blockchain_index SET name = ?, pubkey = ?, protocol = 1 WHERE fingerprint = ? AND nsid = ? AND protocol = 0;",
+        "UPDATE blockchain_index
+        SET name = ?, pubkey = ?, protocol = 1, v1_upgrade_blockheight = ?, v1_upgrade_txid = ?
+        WHERE fingerprint = ? AND nsid = ? AND protocol = 0;",
     )
     .bind(name)
     .bind(hex::encode(pubkey.serialize()))
+    .bind(blockheight as i64)
+    .bind(hex::encode(txid))
     .bind(&fingerprint)
     .bind(&nsid)
     .execute(conn)
