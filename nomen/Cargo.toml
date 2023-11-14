@@ -1,6 +1,6 @@
 [package]
 name = "nomen"
-version = "0.3.0"
+version = "0.4.0-pre5"
 edition = "2021"
 build = "build.rs"
 default-run = "nomen"
