@@ -188,5 +188,8 @@ pub async fn reindex(
         .bind(blockheight)
         .execute(conn)
         .await?;
+    sqlx::query("DELETE FROM name_events;")
+        .execute(conn)
+        .await?;
     Ok(())
 }
