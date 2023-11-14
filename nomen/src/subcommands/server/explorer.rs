@@ -300,6 +300,7 @@ pub mod transfer {
     use serde::Deserialize;
 
     use crate::{
+        db,
         subcommands::{AppState, WebError},
         util::Npub,
     };
@@ -327,13 +328,15 @@ pub mod transfer {
         pubkey: Npub,
         old_pubkey: Npub,
         event: String,
+        error: Option<String>,
     }
 
     #[allow(clippy::unused_async)]
     pub async fn submit_initiate(
-        State(_state): State<AppState>,
+        State(state): State<AppState>,
         Form(transfer): Form<InitiateTransferForm>,
     ) -> Result<SignEventTemplate, WebError> {
+        let error = set_initiate_error(state, &transfer).await;
         let te = TransferBuilder {
             new_pubkey: transfer.pubkey.as_ref(),
             name: &transfer.name,
@@ -344,7 +347,33 @@ pub mod transfer {
             pubkey: transfer.pubkey,
             old_pubkey: transfer.old_pubkey,
             event: serde_json::to_string(&event)?,
+            error,
         })
+    }
+
+    async fn set_initiate_error(
+        state: AppState,
+        transfer: &InitiateTransferForm,
+    ) -> Option<String> {
+        let mut error = None;
+        let name_detail = db::name::details(&state.pool, &transfer.name).await;
+        match name_detail {
+            Ok(detail) => {
+                if detail.protocol == 0 {
+                    error = Some(
+                        "This name uses the v0 protocol. Please upgrade the name to v1 first.",
+                    );
+                } else if detail.pubkey != transfer.old_pubkey.to_string() {
+                    error = Some("The pubkeys do not match.");
+                } else if detail.pubkey == transfer.old_pubkey.to_string() {
+                    error = Some("A name cannot be transferred to the same current owner.");
+                }
+            }
+            Err(_) => {
+                error = Some("This name does not exist. Non-existant name cannot be transferred.");
+            }
+        };
+        error.map(Into::into)
     }
 
     #[derive(Deserialize)]
