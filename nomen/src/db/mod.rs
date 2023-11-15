@@ -9,7 +9,7 @@ pub mod raw;
 pub mod relay_index;
 pub mod stats;
 
-static MIGRATIONS: [&str; 17] = [
+static MIGRATIONS: [&str; 18] = [
     "CREATE TABLE event_log (id INTEGER PRIMARY KEY, created_at, type, data);",
     "CREATE TABLE index_height (blockheight INTEGER PRIMARY KEY, blockhash);",
     "CREATE TABLE raw_blockchain (id INTEGER PRIMARY KEY, blockhash, txid, blocktime, blockheight, txheight, vout, data, indexed_at);",
@@ -46,6 +46,7 @@ static MIGRATIONS: [&str; 17] = [
     "CREATE TABLE relay_index_queue (name);",
     "ALTER TABLE blockchain_index ADD COLUMN v1_upgrade_blockheight;",
     "ALTER TABLE blockchain_index ADD COLUMN v1_upgrade_txid",
+    "CREATE UNIQUE INDEX riq_name_idx ON relay_index_queue (name)",
 ];
 
 pub async fn initialize(config: &Config) -> anyhow::Result<SqlitePool> {

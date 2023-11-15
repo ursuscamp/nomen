@@ -19,18 +19,19 @@ pub async fn publish(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
         .expect("Missing config validation for secret")
         .into();
     let keys = Keys::new(sk);
-    let client = config.nostr_keys_client(&keys).await?;
+    let (_, client) = config.nostr_random_client().await?;
+
     tracing::info!("Publishing relay index.");
     let names = db::relay_index::fetch_all(pool).await?;
+    send_events(pool, names, keys, &client).await?;
+    tracing::info!("Publishing relay index complete.");
 
-    send_event(names, keys, &client).await?;
-
-    db::relay_index::clear(pool).await?;
     client.disconnect().await.ok();
     Ok(())
 }
 
-async fn send_event(
+async fn send_events(
+    conn: &SqlitePool,
     names: Vec<Name>,
     keys: Keys,
     client: &nostr_sdk::Client,
@@ -50,8 +51,17 @@ async fn send_event(
         )
         .to_event(&keys)?;
 
-        if client.send_event(event).await.is_err() {
-            tracing::error!("Unable to broadcast event during relay index publish");
+        match client.send_event(event.clone()).await {
+            Ok(s) => {
+                tracing::info!("Broadcast event id {s}");
+                db::relay_index::delete(conn, &name.name).await?;
+            }
+            Err(e) => {
+                tracing::error!(
+                    "Unable to broadcast event {} during relay index publish: {e}",
+                    event.id
+                );
+            }
         }
     }
     Ok(())
