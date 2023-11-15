@@ -191,5 +191,8 @@ pub async fn reindex(
     sqlx::query("DELETE FROM name_events;")
         .execute(conn)
         .await?;
+    sqlx::query("DELETE FROM relay_index_queue;")
+        .execute(conn)
+        .await?;
     Ok(())
 }

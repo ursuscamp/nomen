@@ -4,7 +4,7 @@ pub async fn queue(
     conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
     name: &str,
 ) -> anyhow::Result<()> {
-    sqlx::query("INSERT INTO relay_index_queue (name) VALUES (?)")
+    sqlx::query("INSERT OR IGNORE INTO relay_index_queue (name) VALUES (?)")
         .bind(name)
         .execute(conn)
         .await?;
@@ -31,8 +31,12 @@ pub async fn fetch_all(
     Ok(results)
 }
 
-pub async fn clear(conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy) -> anyhow::Result<()> {
-    sqlx::query("DELETE FROM relay_index_queue;")
+pub async fn delete(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+    name: &str,
+) -> anyhow::Result<()> {
+    sqlx::query("DELETE FROM relay_index_queue WHERE name = ?;")
+        .bind(name)
         .execute(conn)
         .await?;
     Ok(())

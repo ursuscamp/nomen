@@ -73,19 +73,6 @@ impl Config {
         Ok((keys, client))
     }
 
-    pub async fn nostr_keys_client(
-        &self,
-        keys: &nostr_sdk::Keys,
-    ) -> anyhow::Result<nostr_sdk::Client> {
-        let client = nostr_sdk::Client::with_opts(keys, Options::new().wait_for_send(true));
-        let relays = self.relays();
-        for relay in relays {
-            client.add_relay(relay, None).await?;
-        }
-        client.connect().await;
-        Ok(client)
-    }
-
     pub async fn nostr_random_client(
         &self,
     ) -> anyhow::Result<(nostr_sdk::Keys, nostr_sdk::Client)> {
