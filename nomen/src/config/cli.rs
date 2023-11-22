@@ -29,6 +29,9 @@ pub enum Subcommand {
     /// Rescan the blockchain, given an optional starting blockheight. This operation is slow, it redownloads blocks.
     Rescan { blockheight: Option<i64> },
 
+    /// Rebroadcast Nostr record events
+    Rebroadcast,
+
     /// Prints the current version of application
     Version,
 }
