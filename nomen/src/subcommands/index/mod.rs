@@ -1,7 +1,7 @@
 use crate::{config::Config, db};
 
 mod blockchain;
-mod events;
+pub mod events;
 
 pub async fn index(config: &Config) -> anyhow::Result<()> {
     let pool = config.sqlite().await?;

@@ -24,7 +24,7 @@ pub(crate) async fn reindex(
     pool: &SqlitePool,
     blockheight: i64,
 ) -> anyhow::Result<()> {
-    tracing::info!("Re-indexing blockchain from blockheight {blockheight}.");
+    println!("Re-indexing blockchain from blockheight {blockheight}.");
     db::index::reindex(pool, blockheight).await?;
     Ok(())
 }
@@ -34,7 +34,7 @@ pub(crate) async fn rescan(
     pool: &SqlitePool,
     blockheight: i64,
 ) -> anyhow::Result<()> {
-    tracing::info!("Re-scanning blockchain from blockheight {blockheight}.");
+    println!("Re-scanning blockchain from blockheight {blockheight}.");
     db::index::reindex(pool, blockheight).await?;
     sqlx::query("DELETE FROM index_height WHERE blockheight >= ?;")
         .bind(blockheight)
@@ -59,7 +59,7 @@ pub(crate) async fn rebroadcast(config: &Config, pool: &SqlitePool) -> anyhow::R
     )
     .fetch_all(pool)
     .await?;
-    tracing::info!(
+    println!(
         "Rebroadcasing {} events to {} relays",
         events.len(),
         config.relays().len()
@@ -71,4 +71,9 @@ pub(crate) async fn rebroadcast(config: &Config, pool: &SqlitePool) -> anyhow::R
     }
 
     Ok(())
+}
+
+pub(crate) async fn publish(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
+    println!("Publishing full relay index");
+    index::events::relay_index::publish(config, pool).await
 }

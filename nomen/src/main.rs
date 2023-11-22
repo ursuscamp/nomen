@@ -19,6 +19,11 @@ use config::Config;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // No log output by default
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "off");
+    }
+
     tracing_subscriber::fmt::init();
     let config = parse_config()?;
 
@@ -37,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::Rebroadcast => {
             subcommands::rebroadcast(&config, &pool).await?;
         }
+        config::Subcommand::Publish => subcommands::publish(&config, &pool).await?,
         config::Subcommand::Version => {
             subcommands::version();
         }
