@@ -426,7 +426,8 @@ pub mod well_known {
         let pk = Keys::new(*sk.as_ref()).public_key();
         let result = serde_json::json!({
             "indexer": {
-                "pubkey": pk.to_string()
+                "pubkey": pk.to_string(),
+                "relays": state.config.relays()
             }
         });
 
