@@ -3,6 +3,7 @@ mod server;
 pub mod util;
 
 pub use index::*;
+use nostr_sdk::Event;
 pub use server::*;
 use sqlx::SqlitePool;
 
@@ -50,4 +51,24 @@ pub(crate) async fn rescan(
 pub(crate) fn version() {
     let version = env!("CARGO_PKG_VERSION");
     println!("Current version is {version}");
+}
+
+pub(crate) async fn rebroadcast(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
+    let events = sqlx::query_as::<_, (String,)>(
+        "select ne.raw_event from valid_names_vw vn join name_events ne on vn.nsid = ne.nsid;",
+    )
+    .fetch_all(pool)
+    .await?;
+    tracing::info!(
+        "Rebroadcasing {} events to {} relays",
+        events.len(),
+        config.relays().len()
+    );
+    let (_, client) = config.nostr_random_client().await?;
+    for (event,) in events {
+        let event = Event::from_json(event)?;
+        client.send_event(event).await?;
+    }
+
+    Ok(())
 }

@@ -34,6 +34,9 @@ async fn main() -> anyhow::Result<()> {
         config::Subcommand::Rescan { blockheight } => {
             subcommands::rescan(&config, &pool, blockheight.unwrap_or_default()).await?;
         }
+        config::Subcommand::Rebroadcast => {
+            subcommands::rebroadcast(&config, &pool).await?;
+        }
         config::Subcommand::Version => {
             subcommands::version();
         }
