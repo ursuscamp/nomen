@@ -32,6 +32,9 @@ pub enum Subcommand {
     /// Rebroadcast Nostr record events
     Rebroadcast,
 
+    /// Publish full name index to relay servers
+    Publish,
+
     /// Prints the current version of application
     Version,
 }
