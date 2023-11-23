@@ -18,13 +18,25 @@ pub struct Name {
     pub records: String,
 }
 
-pub async fn fetch_all(
+pub async fn fetch_all_queued(
     conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
 ) -> anyhow::Result<Vec<Name>> {
     let results = sqlx::query_as::<_, Name>(
         "SELECT vnr.name, vnr.pubkey, COALESCE(vnr.records, '{}') as records
         FROM valid_names_records_vw vnr
         JOIN relay_index_queue riq ON vnr.name = riq.name;",
+    )
+    .fetch_all(conn)
+    .await?;
+    Ok(results)
+}
+
+pub async fn fetch_all(
+    conn: impl sqlx::Executor<'_, Database = Sqlite> + Copy,
+) -> anyhow::Result<Vec<Name>> {
+    let results = sqlx::query_as::<_, Name>(
+        "SELECT vnr.name, vnr.pubkey, COALESCE(vnr.records, '{}') as records
+        FROM valid_names_records_vw vnr;",
     )
     .fetch_all(conn)
     .await?;

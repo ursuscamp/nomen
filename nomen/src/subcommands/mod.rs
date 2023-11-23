@@ -75,5 +75,5 @@ pub(crate) async fn rebroadcast(config: &Config, pool: &SqlitePool) -> anyhow::R
 
 pub(crate) async fn publish(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     println!("Publishing full relay index");
-    index::events::relay_index::publish(config, pool).await
+    index::events::relay_index::publish(config, pool, false).await
 }
