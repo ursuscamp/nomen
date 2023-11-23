@@ -10,7 +10,7 @@ use crate::{
     db::{self, relay_index::Name},
 };
 
-pub async fn publish(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
+pub async fn publish(config: &Config, pool: &SqlitePool, use_queue: bool) -> anyhow::Result<()> {
     if !config.publish_index() {
         return Ok(());
     }
@@ -22,7 +22,11 @@ pub async fn publish(config: &Config, pool: &SqlitePool) -> anyhow::Result<()> {
     let (_, client) = config.nostr_random_client().await?;
 
     tracing::info!("Publishing relay index.");
-    let names = db::relay_index::fetch_all(pool).await?;
+    let names = if use_queue {
+        db::relay_index::fetch_all_queued(pool).await?
+    } else {
+        db::relay_index::fetch_all(pool).await?
+    };
     send_events(pool, names, keys, &client).await?;
     tracing::info!("Publishing relay index complete.");
 
