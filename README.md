@@ -20,8 +20,8 @@ Read [the specs](https://github.com/ursuscamp/noms) for more details about the p
 
 ## Documentation
 
-- [Changelog](docs/changelogs/v0.3.0.md)
-- [Release Notes](docs/release_notes/v0.3.0.md)
+- [Changelog](CHANGELOG.md)
+- [Release Notes](RELEASE_NOTES.md)
 
 ## Setting up a dev environment
 
